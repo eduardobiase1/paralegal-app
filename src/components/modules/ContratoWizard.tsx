@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { ContractTemplate, Empresa, Clausula } from '@/types'
 import { formatCNPJ } from '@/lib/utils'
+import { dataExtenso, dataExtensoCompleto, capitalExtenso, formatarReais } from '@/lib/formatters'
 import toast from 'react-hot-toast'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -22,6 +23,7 @@ type EventKey = 'socios' | 'endereco' | 'capital' | 'objeto' | 'clausulas'
 interface EmpresaDados {
   nire: string; sessao_junta: string; logradouro: string; numero: string
   complemento: string; bairro: string; cidade: string; uf: string; cep: string
+  capital_social: string; data_inicio_atividades: string
 }
 
 interface Props {
@@ -64,7 +66,11 @@ export default function ContratoWizard({ template, empresas, defaultEmpresaId = 
   const [empresaDados, setEmpresaDados] = useState<EmpresaDados>({
     nire: '', sessao_junta: '', logradouro: '', numero: '',
     complemento: '', bairro: '', cidade: '', uf: '', cep: '',
+    capital_social: '', data_inicio_atividades: '',
   })
+
+  // Confirmação final (Step 3 — rodapé)
+  const [dataContrato, setDataContrato] = useState(new Date().toISOString().split('T')[0])
 
   // Step 2
   const [events, setEvents] = useState<Set<EventKey>>(new Set(['socios']))
@@ -93,15 +99,17 @@ export default function ContratoWizard({ template, empresas, defaultEmpresaId = 
       if (!data) return
       setEmpresaObj(data as Empresa)
       setEmpresaDados({
-        nire:          (data as any).nire ?? '',
-        sessao_junta:  (data as any).sessao_junta ?? '',
-        logradouro:    data.logradouro ?? '',
-        numero:        data.numero ?? '',
-        complemento:   data.complemento ?? '',
-        bairro:        data.bairro ?? '',
-        cidade:        data.cidade ?? '',
-        uf:            data.uf ?? '',
-        cep:           data.cep ?? '',
+        nire:                  (data as any).nire ?? '',
+        sessao_junta:          (data as any).sessao_junta ?? '',
+        logradouro:            data.logradouro ?? '',
+        numero:                data.numero ?? '',
+        complemento:           data.complemento ?? '',
+        bairro:                data.bairro ?? '',
+        cidade:                data.cidade ?? '',
+        uf:                    data.uf ?? '',
+        cep:                   data.cep ?? '',
+        capital_social:        (data as any).capital_social ?? '',
+        data_inicio_atividades:(data as any).data_inicio_atividades ?? '',
       })
     })
   }, [empresaId])
@@ -125,23 +133,55 @@ export default function ContratoWizard({ template, empresas, defaultEmpresaId = 
   function buildData(): Record<string, any> {
     if (!empresaObj) return {}
 
-    const data: Record<string, any> = {
-      razao_social:       empresaObj.razao_social,
-      nome_fantasia:      empresaObj.nome_fantasia ?? '',
-      cnpj:               formatCNPJ(empresaObj.cnpj),
-      inscricao_estadual: empresaObj.inscricao_estadual ?? '',
-      inscricao_municipal:empresaObj.inscricao_municipal ?? '',
-      logradouro:         empresaDados.logradouro,
-      numero:             empresaDados.numero,
-      complemento:        empresaDados.complemento,
-      bairro:             empresaDados.bairro,
-      cidade:             empresaDados.cidade,
-      uf:                 empresaDados.uf,
-      cep:                empresaDados.cep,
-      nire:               empresaDados.nire,
-      sessao_junta:       empresaDados.sessao_junta,
+    // Data do contrato para formatters
+    const dtContrato = dataContrato ? new Date(dataContrato + 'T12:00:00') : new Date()
 
-      // Flags condicionais
+    const data: Record<string, any> = {
+      // Empresa
+      razao_social:        empresaObj.razao_social,
+      nome_fantasia:       empresaObj.nome_fantasia ?? '',
+      cnpj:                formatCNPJ(empresaObj.cnpj),
+      inscricao_estadual:  empresaObj.inscricao_estadual ?? '',
+      inscricao_municipal: empresaObj.inscricao_municipal ?? '',
+      nire:                empresaDados.nire,
+      sessao_junta:        empresaDados.sessao_junta,
+      data_inicio_atividades: empresaDados.data_inicio_atividades,
+
+      // Endereço da sede — prefixo {{sede_*}}
+      sede_logradouro:  empresaDados.logradouro,
+      sede_numero:      empresaDados.numero,
+      sede_complemento: empresaDados.complemento,
+      sede_bairro:      empresaDados.bairro,
+      sede_cidade:      empresaDados.cidade,
+      sede_uf:          empresaDados.uf,
+      sede_cep:         empresaDados.cep,
+
+      // Retrocompatibilidade com templates antigos ({{logradouro}} etc.)
+      logradouro:  empresaDados.logradouro,
+      numero:      empresaDados.numero,
+      complemento: empresaDados.complemento,
+      bairro:      empresaDados.bairro,
+      cidade:      empresaDados.cidade,
+      uf:          empresaDados.uf,
+      cep:         empresaDados.cep,
+
+      // ── Formatters automáticos ──────────────────────────────────────────
+      // Data do contrato
+      data_contrato:        dtContrato.toLocaleDateString('pt-BR'),
+      data_extenso:         dataExtenso(dtContrato),
+      data_extenso_completo:dataExtensoCompleto(dtContrato, empresaDados.cidade || 'São Paulo'),
+
+      // Capital social
+      capital_social:         empresaDados.capital_social,
+      capital_social_formatado: formatarReais(empresaDados.capital_social),
+      capital_social_extenso: capitalExtenso(empresaDados.capital_social),
+
+      // Capital novo (se alteração)
+      capital_social_novo:         capNovo,
+      capital_social_novo_formatado: formatarReais(capNovo),
+      capital_social_novo_extenso: capitalExtenso(capNovo),
+
+      // ── Flags condicionais ──────────────────────────────────────────────
       has_socios:   events.has('socios'),
       has_endereco: events.has('endereco'),
       has_capital:  events.has('capital'),
@@ -156,10 +196,6 @@ export default function ContratoWizard({ template, empresas, defaultEmpresaId = 
       novo_cidade:      novoEnd.cidade,
       novo_uf:          novoEnd.uf,
       novo_cep:         novoEnd.cep,
-
-      // Capital
-      capital_social:     capAtual,
-      capital_social_novo:capNovo,
 
       // Objeto
       objeto_social: objeto,
@@ -382,6 +418,19 @@ export default function ContratoWizard({ template, empresas, defaultEmpresaId = 
                   <label className="label text-xs">CEP</label>
                   <input className="input bg-white text-sm font-mono" value={empresaDados.cep}
                     onChange={e => setEmpresaDados(p => ({ ...p, cep: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="label text-xs">Capital Social (R$)</label>
+                  <input className="input bg-white text-sm" placeholder="Ex: 10.000,00" value={empresaDados.capital_social}
+                    onChange={e => setEmpresaDados(p => ({ ...p, capital_social: e.target.value }))} />
+                  {empresaDados.capital_social && (
+                    <p className="text-xs text-gray-400 mt-0.5">{capitalExtenso(empresaDados.capital_social)}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="label text-xs">Início das Atividades</label>
+                  <input type="date" className="input bg-white text-sm" value={empresaDados.data_inicio_atividades}
+                    onChange={e => setEmpresaDados(p => ({ ...p, data_inicio_atividades: e.target.value }))} />
                 </div>
               </div>
             </div>
@@ -675,6 +724,48 @@ export default function ContratoWizard({ template, empresas, defaultEmpresaId = 
               )}
             </div>
           )}
+
+          {/* ── Confirmação Final ── */}
+          <div className="border-2 border-blue-200 rounded-xl p-4 bg-blue-50 space-y-3">
+            <h3 className="font-semibold text-blue-800 flex items-center gap-2 text-sm">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Confirmação Final — Revisar antes de gerar
+            </h3>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="label text-xs">Data do Documento</label>
+                <input type="date" className="input bg-white text-sm" value={dataContrato}
+                  onChange={e => setDataContrato(e.target.value)} />
+                {dataContrato && (
+                  <p className="text-xs text-blue-600 mt-0.5 font-medium">
+                    {dataExtensoCompleto(new Date(dataContrato + 'T12:00:00'), empresaDados.cidade || 'São Paulo')}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="label text-xs">Sessão da Junta</label>
+                <input className="input bg-white text-sm" placeholder="Ex: 10/03/2021"
+                  value={empresaDados.sessao_junta}
+                  onChange={e => setEmpresaDados(p => ({ ...p, sessao_junta: e.target.value }))} />
+              </div>
+              <div>
+                <label className="label text-xs">Início das Atividades</label>
+                <input type="date" className="input bg-white text-sm" value={empresaDados.data_inicio_atividades}
+                  onChange={e => setEmpresaDados(p => ({ ...p, data_inicio_atividades: e.target.value }))} />
+              </div>
+              <div>
+                <label className="label text-xs">Capital Social (R$)</label>
+                <input className="input bg-white text-sm" placeholder="Ex: 10.000,00"
+                  value={empresaDados.capital_social}
+                  onChange={e => setEmpresaDados(p => ({ ...p, capital_social: e.target.value }))} />
+                {empresaDados.capital_social && (
+                  <p className="text-xs text-blue-600 mt-0.5">{capitalExtenso(empresaDados.capital_social)}</p>
+                )}
+              </div>
+            </div>
+          </div>
 
           {/* Botões finais */}
           <div className="flex items-center justify-between pt-2 border-t">
