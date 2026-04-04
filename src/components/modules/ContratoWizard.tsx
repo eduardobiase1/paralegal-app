@@ -71,6 +71,7 @@ export default function ContratoWizard({ template, empresas, defaultEmpresaId = 
 
   // Confirmação final (Step 3 — rodapé)
   const [dataContrato, setDataContrato] = useState(new Date().toISOString().split('T')[0])
+  const [cidadeAssinatura, setCidadeAssinatura] = useState('São Paulo')
 
   // Step 2
   const [events, setEvents] = useState<Set<EventKey>>(new Set(['socios']))
@@ -169,7 +170,8 @@ export default function ContratoWizard({ template, empresas, defaultEmpresaId = 
       // Data do contrato
       data_contrato:        dtContrato.toLocaleDateString('pt-BR'),
       data_extenso:         dataExtenso(dtContrato),
-      data_extenso_completo:dataExtensoCompleto(dtContrato, empresaDados.cidade || 'São Paulo'),
+      cidade_assinatura:    cidadeAssinatura || empresaDados.cidade || 'São Paulo',
+      data_extenso_completo:dataExtensoCompleto(dtContrato, cidadeAssinatura || empresaDados.cidade || 'São Paulo'),
 
       // Capital social
       capital_social:         empresaDados.capital_social,
@@ -764,7 +766,18 @@ export default function ContratoWizard({ template, empresas, defaultEmpresaId = 
                   <p className="text-xs text-blue-600 mt-0.5">{capitalExtenso(empresaDados.capital_social)}</p>
                 )}
               </div>
+              <div>
+                <label className="label text-xs">Cidade da Assinatura</label>
+                <input className="input bg-white text-sm" placeholder="Ex: São Paulo"
+                  value={cidadeAssinatura}
+                  onChange={e => setCidadeAssinatura(e.target.value)} />
+              </div>
             </div>
+            {dataContrato && (
+              <p className="text-xs text-blue-700 font-medium">
+                Linha de assinatura: <span className="italic">{cidadeAssinatura || empresaDados.cidade || 'São Paulo'}, {dataExtenso(new Date(dataContrato + 'T12:00:00'))}.</span>
+              </p>
+            )}
           </div>
 
           {/* Botões finais */}
