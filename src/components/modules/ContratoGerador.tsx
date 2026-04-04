@@ -132,8 +132,21 @@ export default function ContratoGerador({ template, empresas, defaultEmpresaId, 
         const file = zip.file(fileName)
         if (!file) continue
         let xml = await file.async('string')
+
+        // 1. Remover tags de verificação ortográfica do Word (proofErr)
+        //    que dividem marcadores {{...}} em runs XML separados
+        xml = xml.replace(/<w:proofErr[^>]*\/>/g, '')
+
+        // 2. Mesclar runs adjacentes sem formatação
+        //    Isso une os fragmentos: {{ + variavel + }} que ficaram em runs separados
+        let prev: string
+        do {
+          prev = xml
+          xml = xml.replace(/<\/w:t><\/w:r><w:r><w:t(?:\s+xml:space="preserve")?>/g, '')
+        } while (xml !== prev)
+
+        // 3. Substituir os marcadores {{variavel}} pelos valores reais
         for (const [key, value] of Object.entries(variaveis)) {
-          // Substituir o marcador mesmo que esteja dividido em runs XML
           const escaped = value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
           xml = xml.split(`{{${key}}}`).join(escaped)
         }
