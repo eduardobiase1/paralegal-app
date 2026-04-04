@@ -152,8 +152,13 @@ export type TipoProcesso =
   | 'transferencia_entrada'
   | 'transferencia_saida'
 
-export type StatusProcesso = 'em_andamento' | 'concluido' | 'cancelado'
-export type StatusEtapa = 'pendente' | 'em_andamento' | 'concluido' | 'aguardando_cliente'
+export type StatusProcesso = 'em_andamento' | 'concluido' | 'cancelado' | 'em_exigencia'
+export type StatusEtapa = 'pendente' | 'em_andamento' | 'concluido' | 'aguardando_cliente' | 'em_exigencia'
+
+export interface TimerLogEntry {
+  status: string
+  timestamp: string
+}
 
 export interface ProcessoSocietario {
   id: string
@@ -164,6 +169,7 @@ export interface ProcessoSocietario {
   responsavel_id?: string
   data_abertura: string
   data_conclusao?: string
+  data_previsao_entrega?: string
   observacoes?: string
   created_by?: string
   created_at: string
@@ -182,6 +188,12 @@ export interface ProcessoEtapa {
   responsavel_id?: string
   data_conclusao?: string
   observacoes?: string
+  observacao_interna?: string
+  observacao_externa?: string
+  numero_protocolo?: string
+  arquivo_url?: string
+  arquivo_nome?: string
+  timer_log?: TimerLogEntry[]
   updated_at: string
 }
 
@@ -263,6 +275,7 @@ export const STATUS_PROCESSO_LABELS: Record<StatusProcesso, string> = {
   em_andamento: 'Em Andamento',
   concluido: 'Concluído',
   cancelado: 'Cancelado',
+  em_exigencia: 'Em Exigência',
 }
 
 export const STATUS_ETAPA_LABELS: Record<StatusEtapa, string> = {
@@ -270,4 +283,5 @@ export const STATUS_ETAPA_LABELS: Record<StatusEtapa, string> = {
   em_andamento: 'Em Andamento',
   concluido: 'Concluído',
   aguardando_cliente: 'Aguardando Cliente',
+  em_exigencia: 'Em Exigência',
 }
