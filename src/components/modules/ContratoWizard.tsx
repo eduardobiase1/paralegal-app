@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { ContractTemplate, Empresa, Clausula } from '@/types'
 import { formatCNPJ } from '@/lib/utils'
-import { dataExtenso, dataExtensoCompleto, capitalExtenso, formatarReais } from '@/lib/formatters'
+import { dataExtenso, dataExtensoCompleto, capitalExtenso, formatarReais, aplicarGenero } from '@/lib/formatters'
 import toast from 'react-hot-toast'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -37,12 +37,12 @@ interface Props {
 
 const EMPTY_SOCIO: Socio = {
   nome: '', genero: 'masculino', nacionalidade: 'brasileiro(a)', naturalidade: '',
-  estado_civil: 'solteiro(a)', regime_bens: '', profissao: '', cpf: '', rg: '',
+  estado_civil: 'solteiro', regime_bens: '', profissao: '', cpf: '', rg: '',
   orgao_expedidor: '', logradouro: '', numero: '', complemento: '',
   bairro: '', cidade: '', uf: '', cep: '', percentual_quotas: '',
 }
 
-const ESTADOS_CIVIS = ['solteiro(a)', 'casado(a)', 'divorciado(a)', 'viúvo(a)', 'união estável']
+const ESTADOS_CIVIS = ['solteiro', 'casado', 'divorciado', 'viúvo', 'união estável']
 const REGIMES = ['comunhão parcial de bens', 'comunhão universal de bens', 'separação total de bens', 'participação final nos aquestos']
 
 const EVENTOS: { key: EventKey; label: string; desc: string }[] = [
@@ -215,21 +215,41 @@ export default function ContratoWizard({ template, empresas, defaultEmpresaId = 
 
     // Sócios — array para {{#socios}} loop
     const sociosArr = socios.map(s => {
-      const precisaRegime = ['casado(a)', 'união estável'].includes(s.estado_civil)
-      const nac = s.nacionalidade.replace('(a)', s.genero === 'feminino' ? 'a' : 'o')
+      const g = s.genero
+      const precisaRegime = ['casado', 'união estável'].includes(s.estado_civil)
+
+      const estadoCivil   = aplicarGenero(s.estado_civil, g)
+      const nacionalidade = aplicarGenero(s.nacionalidade, g)
+      const profissao     = aplicarGenero(s.profissao, g)
+      const portador      = g === 'feminino' ? 'portadora' : 'portador'
+      const residente     = g === 'feminino' ? 'residente e domiciliada' : 'residente e domiciliado'
+      const artigo        = g === 'feminino' ? 'a sócia' : 'o sócio'
+
       const ecCompleto = precisaRegime && s.regime_bens
-        ? `${s.estado_civil} sob o regime de ${s.regime_bens}`
-        : s.estado_civil
+        ? `${estadoCivil} sob o regime de ${s.regime_bens}`
+        : estadoCivil
+
       return {
-        nome: s.nome, genero: s.genero,
-        artigo: s.genero === 'feminino' ? 'a sócia' : 'o sócio',
-        nacionalidade: nac, naturalidade: s.naturalidade,
-        estado_civil: s.estado_civil, estado_civil_completo: ecCompleto,
-        regime_bens: precisaRegime ? s.regime_bens : '',
-        profissao: s.profissao, cpf: s.cpf, rg: s.rg,
+        nome: s.nome, genero: g,
+        artigo,
+        nacionalidade,
+        naturalidade:  s.naturalidade,
+        estado_civil:  estadoCivil,
+        estado_civil_completo: ecCompleto,
+        regime_bens:   precisaRegime ? s.regime_bens : '',
+        profissao,
+        portador,
+        residente,
+        cpf:           s.cpf,
+        rg:            s.rg,
         orgao_expedidor: s.orgao_expedidor,
-        logradouro: s.logradouro, numero: s.numero, complemento: s.complemento,
-        bairro: s.bairro, cidade: s.cidade, uf: s.uf, cep: s.cep,
+        logradouro:    s.logradouro,
+        numero:        s.numero,
+        complemento:   s.complemento,
+        bairro:        s.bairro,
+        cidade:        s.cidade,
+        uf:            s.uf,
+        cep:           s.cep,
         percentual_quotas: s.percentual_quotas,
       }
     })
@@ -533,7 +553,7 @@ export default function ContratoWizard({ template, empresas, defaultEmpresaId = 
                           {ESTADOS_CIVIS.map(ec => <option key={ec} value={ec}>{ec}</option>)}
                         </select>
                       </div>
-                      {['casado(a)', 'união estável'].includes(s.estado_civil) && (
+                      {['casado', 'união estável'].includes(s.estado_civil) && (
                         <div>
                           <label className="label text-xs">Regime de Bens</label>
                           <select className="input bg-white text-sm" value={s.regime_bens}

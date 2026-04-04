@@ -104,6 +104,34 @@ export function capitalExtenso(valor: string | number): string {
   return resultado.charAt(0).toUpperCase() + resultado.slice(1)
 }
 
+// ─── Gênero Automático (PT-BR) ────────────────────────────────────────────────
+
+const FEMININOS: Record<string, string> = {
+  'solteiro':    'solteira',
+  'casado':      'casada',
+  'divorciado':  'divorciada',
+  'viúvo':       'viúva',
+  'brasileiro':  'brasileira',
+  'empresário':  'empresária',
+  'o sócio':     'a sócia',
+  'portador':    'portadora',
+  'domiciliado': 'domiciliada',
+  'residente':   'residente',
+}
+
+/**
+ * Aplica gênero a uma palavra ou frase.
+ * Trata casos explícitos e faz fallback: 'o' final → 'a'
+ */
+export function aplicarGenero(texto: string, genero: 'masculino' | 'feminino'): string {
+  if (genero === 'masculino' || !texto) return texto
+  const lower = texto.toLowerCase()
+  if (FEMININOS[lower]) return FEMININOS[lower]
+  // Fallback genérico: termina em 'o' → troca por 'a'
+  if (lower.endsWith('o')) return texto.slice(0, -1) + 'a'
+  return texto
+}
+
 /** Formata valor monetário: 10000 → "R$ 10.000,00" */
 export function formatarReais(valor: string | number): string {
   const str = String(valor).replace(/\s/g, '').replace(/\./g, '').replace(',', '.')
