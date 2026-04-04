@@ -118,7 +118,7 @@ export default function ContratoGerador({ template, empresas, defaultEmpresaId, 
       const arrayBuffer = await resp.arrayBuffer()
 
       // Importar docx dinamicamente
-      const { PatchType, patchDocument } = await import('docx')
+      const { PatchType, patchDocument, TextRun } = await import('docx')
       const { saveAs } = await import('file-saver')
 
       const variaveis = buildVariaveis()
@@ -128,11 +128,11 @@ export default function ContratoGerador({ template, empresas, defaultEmpresaId, 
       for (const [key, value] of Object.entries(variaveis)) {
         patches[key] = {
           type: PatchType.PARAGRAPH,
-          children: [{ text: value }],
+          children: [new TextRun({ text: value })],
         }
       }
 
-      const patchedDoc = await patchDocument(arrayBuffer, { patches })
+      const patchedDoc = await patchDocument({ data: arrayBuffer, patches })
       const blob = new Blob([patchedDoc as BlobPart], {
         type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
       })
