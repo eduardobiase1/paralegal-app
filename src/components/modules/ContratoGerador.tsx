@@ -10,19 +10,21 @@ interface Socio {
   nome: string
   genero: 'masculino' | 'feminino'
   nacionalidade: string
+  naturalidade: string
   estado_civil: string
   regime_bens: string
   profissao: string
   cpf: string
   rg: string
+  orgao_expedidor: string
   endereco: string
   percentual_quotas: string
 }
 
 const EMPTY_SOCIO: Socio = {
   nome: '', genero: 'masculino', nacionalidade: 'brasileiro(a)',
-  estado_civil: 'solteiro(a)', regime_bens: '',
-  profissao: '', cpf: '', rg: '', endereco: '', percentual_quotas: '',
+  naturalidade: '', estado_civil: 'solteiro(a)', regime_bens: '',
+  profissao: '', cpf: '', rg: '', orgao_expedidor: '', endereco: '', percentual_quotas: '',
 }
 
 const ESTADOS_CIVIS = ['solteiro(a)', 'casado(a)', 'divorciado(a)', 'viúvo(a)', 'união estável']
@@ -80,11 +82,13 @@ export default function ContratoGerador({ template, empresas, defaultEmpresaId, 
       vars[`socio_${n}_genero`] = generoStr
       vars[`socio_${n}_artigo`] = artigo
       vars[`socio_${n}_nacionalidade`] = nac
+      vars[`socio_${n}_naturalidade`] = s.naturalidade
       vars[`socio_${n}_estado_civil`] = s.estado_civil
       vars[`socio_${n}_regime_bens`] = ['casado(a)', 'união estável'].includes(s.estado_civil) ? s.regime_bens : ''
       vars[`socio_${n}_profissao`] = s.profissao
       vars[`socio_${n}_cpf`] = s.cpf
       vars[`socio_${n}_rg`] = s.rg
+      vars[`socio_${n}_orgao_expedidor`] = s.orgao_expedidor
       vars[`socio_${n}_endereco`] = s.endereco
       vars[`socio_${n}_percentual`] = s.percentual_quotas
 
@@ -209,6 +213,11 @@ export default function ContratoGerador({ template, empresas, defaultEmpresaId, 
                     onChange={e => setSocioField(i, 'nacionalidade', e.target.value)} />
                 </div>
                 <div>
+                  <label className="label text-xs">Naturalidade (Cidade/UF)</label>
+                  <input className="input" placeholder="Ex: São Paulo/SP" value={socio.naturalidade}
+                    onChange={e => setSocioField(i, 'naturalidade', e.target.value)} />
+                </div>
+                <div>
                   <label className="label text-xs">Estado Civil</label>
                   <select className="input" value={socio.estado_civil}
                     onChange={e => setSocioField(i, 'estado_civil', e.target.value)}>
@@ -239,6 +248,11 @@ export default function ContratoGerador({ template, empresas, defaultEmpresaId, 
                   <label className="label text-xs">RG</label>
                   <input className="input font-mono" value={socio.rg}
                     onChange={e => setSocioField(i, 'rg', e.target.value)} />
+                </div>
+                <div>
+                  <label className="label text-xs">Órgão Expedidor</label>
+                  <input className="input" placeholder="Ex: SSP/SP" value={socio.orgao_expedidor}
+                    onChange={e => setSocioField(i, 'orgao_expedidor', e.target.value)} />
                 </div>
                 <div>
                   <label className="label text-xs">% de Quotas</label>
