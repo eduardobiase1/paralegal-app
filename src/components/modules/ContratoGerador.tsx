@@ -117,23 +117,31 @@ export default function ContratoGerador({ template, empresas, defaultEmpresaId, 
       if (!resp.ok) throw new Error('Erro ao baixar template')
       const arrayBuffer = await resp.arrayBuffer()
 
-      // Importar docx dinamicamente
-      const { PatchType, patchDocument, TextRun } = await import('docx')
+      const JSZip = (await import('jszip')).default
       const { saveAs } = await import('file-saver')
 
       const variaveis = buildVariaveis()
 
-      // Substituir variáveis no docx
-      const patches: Record<string, any> = {}
-      for (const [key, value] of Object.entries(variaveis)) {
-        patches[key] = {
-          type: PatchType.PARAGRAPH,
-          children: [new TextRun({ text: value })],
+      // Abrir o docx como ZIP e substituir marcadores no XML
+      const zip = await JSZip.loadAsync(arrayBuffer)
+
+      const xmlFiles = ['word/document.xml', 'word/header1.xml', 'word/footer1.xml',
+                        'word/header2.xml', 'word/footer2.xml', 'word/header3.xml', 'word/footer3.xml']
+
+      for (const fileName of xmlFiles) {
+        const file = zip.file(fileName)
+        if (!file) continue
+        let xml = await file.async('string')
+        for (const [key, value] of Object.entries(variaveis)) {
+          // Substituir o marcador mesmo que esteja dividido em runs XML
+          const escaped = value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+          xml = xml.split(`{{${key}}}`).join(escaped)
         }
+        zip.file(fileName, xml)
       }
 
-      const patchedDoc = await patchDocument({ data: arrayBuffer, patches })
-      const blob = new Blob([patchedDoc as BlobPart], {
+      const newDocx = await zip.generateAsync({ type: 'arraybuffer' })
+      const blob = new Blob([newDocx], {
         type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
       })
 
