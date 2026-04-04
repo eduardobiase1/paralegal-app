@@ -65,6 +65,8 @@ export default function ContratoGerador({ template, empresas, defaultEmpresaId, 
       cidade: empresa.cidade ?? '',
       uf: empresa.uf ?? '',
       cep: empresa.cep ?? '',
+      nire: (empresa as any).nire ?? '',
+      sessao_junta: (empresa as any).sessao_junta ?? '',
     }
 
     // Sócios

@@ -38,6 +38,8 @@ export default function EmpresaForm({ empresa }: EmpresaFormProps) {
     url_portal_alvara: empresa?.url_portal_alvara ?? '',
     url_certidao_municipal: empresa?.url_certidao_municipal ?? '',
     url_portal_visa: empresa?.url_portal_visa ?? '',
+    nire: (empresa as any)?.nire ?? '',
+    sessao_junta: (empresa as any)?.sessao_junta ?? '',
   })
 
   function set(field: string, value: string) {
@@ -225,6 +227,25 @@ export default function EmpresaForm({ empresa }: EmpresaFormProps) {
               <option value="">Selecione</option>
               {UFS.map(uf => <option key={uf} value={uf}>{uf}</option>)}
             </select>
+          </div>
+        </div>
+      </section>
+
+      {/* Registro na Junta */}
+      <section>
+        <h2 className="text-base font-semibold text-gray-900 mb-4 pb-2 border-b">Registro na Junta Comercial</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="label">NIRE</label>
+            <input className="input font-mono" placeholder="Ex: 35123456789"
+              value={form.nire}
+              onChange={e => set('nire', e.target.value)} />
+          </div>
+          <div>
+            <label className="label">Sessão (Registro na Junta)</label>
+            <input className="input" placeholder="Ex: 3ª Sessão Ordinária de 2024"
+              value={form.sessao_junta}
+              onChange={e => set('sessao_junta', e.target.value)} />
           </div>
         </div>
       </section>
