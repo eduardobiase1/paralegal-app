@@ -37,13 +37,51 @@ interface Props {
   onSuccess: () => void
 }
 
+interface EmpresaDados {
+  nire: string
+  sessao_junta: string
+  logradouro: string
+  numero: string
+  complemento: string
+  bairro: string
+  cidade: string
+  uf: string
+  cep: string
+}
+
 export default function ContratoGerador({ template, empresas, defaultEmpresaId, onSuccess }: Props) {
   const [supabase] = useState(createClient)
   const [loading, setLoading] = useState(false)
   const [empresaId, setEmpresaId] = useState(defaultEmpresaId || '')
   const [socios, setSocios] = useState<Socio[]>([{ ...EMPTY_SOCIO }])
+  const [empresaDados, setEmpresaDados] = useState<EmpresaDados>({
+    nire: '', sessao_junta: '', logradouro: '', numero: '',
+    complemento: '', bairro: '', cidade: '', uf: '', cep: '',
+  })
 
   const empresa = empresas.find(e => e.id === empresaId)
+
+  function handleEmpresaChange(id: string) {
+    setEmpresaId(id)
+    const emp = empresas.find(e => e.id === id)
+    if (emp) {
+      setEmpresaDados({
+        nire: (emp as any).nire ?? '',
+        sessao_junta: (emp as any).sessao_junta ?? '',
+        logradouro: emp.logradouro ?? '',
+        numero: emp.numero ?? '',
+        complemento: emp.complemento ?? '',
+        bairro: emp.bairro ?? '',
+        cidade: emp.cidade ?? '',
+        uf: emp.uf ?? '',
+        cep: emp.cep ?? '',
+      })
+    }
+  }
+
+  function setEmpresaField(field: keyof EmpresaDados, value: string) {
+    setEmpresaDados(prev => ({ ...prev, [field]: value }))
+  }
 
   function addSocio() { setSocios(prev => [...prev, { ...EMPTY_SOCIO }]) }
   function removeSocio(i: number) { setSocios(prev => prev.filter((_, idx) => idx !== i)) }
@@ -60,15 +98,15 @@ export default function ContratoGerador({ template, empresas, defaultEmpresaId, 
       cnpj: formatCNPJ(empresa.cnpj),
       inscricao_estadual: empresa.inscricao_estadual ?? '',
       inscricao_municipal: empresa.inscricao_municipal ?? '',
-      logradouro: empresa.logradouro ?? '',
-      numero: empresa.numero ?? '',
-      complemento: empresa.complemento ?? '',
-      bairro: empresa.bairro ?? '',
-      cidade: empresa.cidade ?? '',
-      uf: empresa.uf ?? '',
-      cep: empresa.cep ?? '',
-      nire: (empresa as any).nire ?? '',
-      sessao_junta: (empresa as any).sessao_junta ?? '',
+      logradouro: empresaDados.logradouro,
+      numero: empresaDados.numero,
+      complemento: empresaDados.complemento,
+      bairro: empresaDados.bairro,
+      cidade: empresaDados.cidade,
+      uf: empresaDados.uf,
+      cep: empresaDados.cep,
+      nire: empresaDados.nire,
+      sessao_junta: empresaDados.sessao_junta,
     }
 
     // Sócios
@@ -188,11 +226,75 @@ export default function ContratoGerador({ template, empresas, defaultEmpresaId, 
       {/* Empresa */}
       <div>
         <label className="label">Empresa *</label>
-        <select className="input" value={empresaId} onChange={e => setEmpresaId(e.target.value)}>
+        <select className="input" value={empresaId} onChange={e => handleEmpresaChange(e.target.value)}>
           <option value="">Selecione...</option>
           {empresas.map(e => <option key={e.id} value={e.id}>{e.razao_social}</option>)}
         </select>
       </div>
+
+      {/* Dados da Empresa */}
+      {empresaId && empresa && (
+        <div className="border rounded-xl p-4 space-y-3">
+          <h3 className="font-semibold text-gray-900">Dados da Empresa</h3>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label text-xs">Razão Social</label>
+              <input className="input bg-gray-50" readOnly value={empresa.razao_social} />
+            </div>
+            <div>
+              <label className="label text-xs">CNPJ</label>
+              <input className="input bg-gray-50 font-mono" readOnly value={formatCNPJ(empresa.cnpj)} />
+            </div>
+            <div>
+              <label className="label text-xs">NIRE</label>
+              <input className="input" value={empresaDados.nire}
+                onChange={e => setEmpresaField('nire', e.target.value)} />
+            </div>
+            <div>
+              <label className="label text-xs">Sessão da Junta</label>
+              <input className="input" placeholder="Ex: 10/03/2021"
+                value={empresaDados.sessao_junta}
+                onChange={e => setEmpresaField('sessao_junta', e.target.value)} />
+            </div>
+            <div className="col-span-2">
+              <label className="label text-xs">Logradouro</label>
+              <input className="input" value={empresaDados.logradouro}
+                onChange={e => setEmpresaField('logradouro', e.target.value)} />
+            </div>
+            <div>
+              <label className="label text-xs">Número</label>
+              <input className="input" value={empresaDados.numero}
+                onChange={e => setEmpresaField('numero', e.target.value)} />
+            </div>
+            <div>
+              <label className="label text-xs">Complemento</label>
+              <input className="input" value={empresaDados.complemento}
+                onChange={e => setEmpresaField('complemento', e.target.value)} />
+            </div>
+            <div>
+              <label className="label text-xs">Bairro</label>
+              <input className="input" value={empresaDados.bairro}
+                onChange={e => setEmpresaField('bairro', e.target.value)} />
+            </div>
+            <div>
+              <label className="label text-xs">Cidade</label>
+              <input className="input" value={empresaDados.cidade}
+                onChange={e => setEmpresaField('cidade', e.target.value)} />
+            </div>
+            <div>
+              <label className="label text-xs">UF</label>
+              <input className="input" value={empresaDados.uf}
+                onChange={e => setEmpresaField('uf', e.target.value)} />
+            </div>
+            <div>
+              <label className="label text-xs">CEP</label>
+              <input className="input" value={empresaDados.cep}
+                onChange={e => setEmpresaField('cep', e.target.value)} />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Sócios */}
       <div>
