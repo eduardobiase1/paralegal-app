@@ -2,39 +2,78 @@
 
 import { Suspense, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { ContractTemplate, Contrato, Empresa } from '@/types'
+import { ContractTemplate, Contrato, Empresa, Clausula } from '@/types'
 import { formatDate } from '@/lib/utils'
 import Modal from '@/components/ui/Modal'
-import ContratoGerador from '@/components/modules/ContratoGerador'
+import ContratoWizard from '@/components/modules/ContratoWizard'
 import TemplateUpload from '@/components/modules/TemplateUpload'
 import toast from 'react-hot-toast'
 import { useSearchParams } from 'next/navigation'
 
 function ContratosPageInner() {
   const searchParams = useSearchParams()
-  const [tab, setTab] = useState<'gerar' | 'historico' | 'templates'>('gerar')
+  const [tab, setTab] = useState<'gerar' | 'historico' | 'templates' | 'clausulas'>('gerar')
   const [templates, setTemplates] = useState<ContractTemplate[]>([])
   const [contratos, setContratos] = useState<Contrato[]>([])
   const [empresas, setEmpresas] = useState<Empresa[]>([])
+  const [clausulas, setClausulas] = useState<Clausula[]>([])
   const [loading, setLoading] = useState(true)
   const [gerarModal, setGerarModal] = useState(false)
   const [selectedTemplate, setSelectedTemplate] = useState<ContractTemplate | null>(null)
   const [supabase] = useState(createClient)
 
+  // Cláusula form
+  const [clausulaForm, setClausulaForm] = useState({ titulo: '', tipo: '', conteudo: '' })
+  const [savingClausula, setSavingClausula] = useState(false)
+
   async function load() {
     setLoading(true)
-    const [{ data: tmpl }, { data: contr }, { data: emps }] = await Promise.all([
+    const [{ data: tmpl }, { data: contr }, { data: emps }, { data: claus }] = await Promise.all([
       supabase.from('contract_templates').select('*').eq('ativo', true).order('nome'),
       supabase.from('contratos').select('*, empresa:empresas(razao_social)').order('created_at', { ascending: false }).limit(50),
       supabase.from('empresas').select('id, razao_social, cnpj').order('razao_social'),
+      supabase.from('clausulas').select('*').eq('ativo', true).order('tipo').order('titulo'),
     ])
     setTemplates(tmpl ?? [])
     setContratos((contr ?? []).map((c: any) => ({ ...c, razao_social: c.empresa?.razao_social })))
     setEmpresas((emps ?? []) as Empresa[])
+    setClausulas((claus ?? []) as Clausula[])
     setLoading(false)
   }
 
+  async function saveClausula() {
+    if (!clausulaForm.titulo || !clausulaForm.conteudo) {
+      toast.error('Preencha título e conteúdo')
+      return
+    }
+    setSavingClausula(true)
+    const { error } = await supabase.from('clausulas').insert({
+      titulo: clausulaForm.titulo,
+      tipo: clausulaForm.tipo || 'Geral',
+      conteudo: clausulaForm.conteudo,
+      ativo: true,
+    })
+    if (error) { toast.error('Erro ao salvar cláusula'); setSavingClausula(false); return }
+    toast.success('Cláusula salva!')
+    setClausulaForm({ titulo: '', tipo: '', conteudo: '' })
+    setSavingClausula(false)
+    load()
+  }
+
+  async function deleteClausula(id: string) {
+    await supabase.from('clausulas').update({ ativo: false }).eq('id', id)
+    toast.success('Cláusula removida')
+    load()
+  }
+
   useEffect(() => { load() }, [])
+
+  const TABS = [
+    { key: 'gerar',     label: 'Gerar Contrato' },
+    { key: 'historico', label: 'Histórico' },
+    { key: 'templates', label: 'Templates' },
+    { key: 'clausulas', label: 'Cláusulas' },
+  ]
 
   return (
     <div className="p-6">
@@ -44,28 +83,19 @@ function ContratosPageInner() {
 
       {/* Tabs */}
       <div className="flex gap-1 border-b mb-6">
-        {[
-          { key: 'gerar', label: 'Gerar Contrato' },
-          { key: 'historico', label: 'Histórico' },
-          { key: 'templates', label: 'Templates' },
-        ].map(t => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key as any)}
+        {TABS.map(t => (
+          <button key={t.key} onClick={() => setTab(t.key as any)}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              tab === t.key
-                ? 'border-primary-600 text-primary-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-            }`}
-          >
+              tab === t.key ? 'border-primary-600 text-primary-600' : 'border-transparent text-gray-600 hover:text-gray-900'}`}>
             {t.label}
           </button>
         ))}
       </div>
 
+      {/* ── Gerar ── */}
       {tab === 'gerar' && (
         <div>
-          <p className="text-sm text-gray-600 mb-4">Selecione um template para gerar um novo contrato:</p>
+          <p className="text-sm text-gray-600 mb-4">Selecione um template para iniciar o assistente de geração:</p>
           {loading ? (
             <div className="text-gray-400">Carregando...</div>
           ) : !templates.length ? (
@@ -76,11 +106,9 @@ function ContratosPageInner() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {templates.map(t => (
-                <button
-                  key={t.id}
+                <button key={t.id}
                   onClick={() => { setSelectedTemplate(t); setGerarModal(true) }}
-                  className="card p-5 text-left hover:border-primary-300 hover:shadow-md transition-all group"
-                >
+                  className="card p-5 text-left hover:border-primary-300 hover:shadow-md transition-all group">
                   <div className="flex items-start gap-3">
                     <div className="w-10 h-10 bg-primary-50 rounded-lg flex items-center justify-center flex-shrink-0">
                       <svg className="w-5 h-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -101,6 +129,7 @@ function ContratosPageInner() {
         </div>
       )}
 
+      {/* ── Histórico ── */}
       {tab === 'historico' && (
         <div className="card">
           {loading ? (
@@ -126,9 +155,7 @@ function ContratosPageInner() {
                       <td className="px-4 py-3 text-gray-500">{formatDate(c.created_at)}</td>
                       <td className="px-4 py-3 text-right">
                         {c.arquivo_url && (
-                          <a href={c.arquivo_url} download className="btn-secondary text-xs py-1 px-2">
-                            Baixar
-                          </a>
+                          <a href={c.arquivo_url} download className="btn-secondary text-xs py-1 px-2">Baixar</a>
                         )}
                       </td>
                     </tr>
@@ -140,22 +167,16 @@ function ContratosPageInner() {
         </div>
       )}
 
+      {/* ── Templates ── */}
       {tab === 'templates' && (
         <div className="space-y-4">
           <div className="card">
-            <div className="card-header">
-              <h2 className="font-semibold text-gray-900">Upload de Template</h2>
-            </div>
-            <div className="card-body">
-              <TemplateUpload onSuccess={load} />
-            </div>
+            <div className="card-header"><h2 className="font-semibold text-gray-900">Upload de Template</h2></div>
+            <div className="card-body"><TemplateUpload onSuccess={load} /></div>
           </div>
-
           {templates.length > 0 && (
             <div className="card">
-              <div className="card-header">
-                <h2 className="font-semibold text-gray-900">Templates cadastrados</h2>
-              </div>
+              <div className="card-header"><h2 className="font-semibold text-gray-900">Templates cadastrados</h2></div>
               <div className="divide-y">
                 {templates.map(t => (
                   <div key={t.id} className="px-6 py-3 flex items-center justify-between">
@@ -163,16 +184,10 @@ function ContratosPageInner() {
                       <p className="font-medium text-gray-900">{t.nome}</p>
                       <p className="text-sm text-gray-500">{t.arquivo_nome}</p>
                     </div>
-                    <button
-                      onClick={async () => {
-                        await supabase.from('contract_templates').update({ ativo: false }).eq('id', t.id)
-                        toast.success('Template removido')
-                        load()
-                      }}
-                      className="text-xs text-red-500 hover:text-red-700"
-                    >
-                      Remover
-                    </button>
+                    <button onClick={async () => {
+                      await supabase.from('contract_templates').update({ ativo: false }).eq('id', t.id)
+                      toast.success('Template removido'); load()
+                    }} className="text-xs text-red-500 hover:text-red-700">Remover</button>
                   </div>
                 ))}
               </div>
@@ -181,14 +196,76 @@ function ContratosPageInner() {
         </div>
       )}
 
+      {/* ── Cláusulas ── */}
+      {tab === 'clausulas' && (
+        <div className="space-y-4">
+          {/* Formulário nova cláusula */}
+          <div className="card">
+            <div className="card-header">
+              <h2 className="font-semibold text-gray-900">Nova Cláusula</h2>
+              <p className="text-xs text-gray-500 mt-0.5">Cláusulas ficam disponíveis para seleção ao gerar contratos</p>
+            </div>
+            <div className="card-body space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="label">Título *</label>
+                  <input className="input" placeholder="Ex: Cláusula de Arbitragem"
+                    value={clausulaForm.titulo}
+                    onChange={e => setClausulaForm(p => ({ ...p, titulo: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="label">Tipo / Categoria</label>
+                  <input className="input" placeholder="Ex: Arbitragem, Sucessão, Não concorrência"
+                    value={clausulaForm.tipo}
+                    onChange={e => setClausulaForm(p => ({ ...p, tipo: e.target.value }))} />
+                </div>
+              </div>
+              <div>
+                <label className="label">Texto da Cláusula *</label>
+                <textarea className="input resize-none h-32"
+                  placeholder="Digite o texto completo da cláusula..."
+                  value={clausulaForm.conteudo}
+                  onChange={e => setClausulaForm(p => ({ ...p, conteudo: e.target.value }))} />
+              </div>
+              <div className="flex justify-end">
+                <button className="btn-primary" onClick={saveClausula} disabled={savingClausula}>
+                  {savingClausula ? 'Salvando...' : 'Salvar Cláusula'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Lista de cláusulas */}
+          {clausulas.length > 0 && (
+            <div className="card">
+              <div className="card-header"><h2 className="font-semibold text-gray-900">Biblioteca de Cláusulas ({clausulas.length})</h2></div>
+              <div className="divide-y">
+                {clausulas.map(c => (
+                  <div key={c.id} className="px-6 py-4 flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="font-medium text-gray-900">{c.titulo}</p>
+                        <span className="text-xs px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full">{c.tipo}</span>
+                      </div>
+                      <p className="text-sm text-gray-500 line-clamp-2">{c.conteudo}</p>
+                    </div>
+                    <button onClick={() => deleteClausula(c.id)}
+                      className="text-xs text-red-500 hover:text-red-700 flex-shrink-0">Remover</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Modal Wizard */}
       {selectedTemplate && (
-        <Modal
-          open={gerarModal}
+        <Modal open={gerarModal}
           onClose={() => { setGerarModal(false); setSelectedTemplate(null) }}
           title={`Gerar: ${selectedTemplate.nome}`}
-          size="xl"
-        >
-          <ContratoGerador
+          size="xl">
+          <ContratoWizard
             template={selectedTemplate}
             empresas={empresas}
             defaultEmpresaId={searchParams.get('empresa') || ''}

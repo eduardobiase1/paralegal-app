@@ -28,12 +28,24 @@ export interface Empresa {
   bairro?: string
   cidade?: string
   uf?: string
+  nire?: string
+  sessao_junta?: string
   url_portal_alvara?: string
   url_certidao_municipal?: string
   url_portal_visa?: string
   responsavel_id?: string
   created_at: string
   updated_at: string
+}
+
+export interface Clausula {
+  id: string
+  titulo: string
+  tipo: string
+  conteudo: string
+  ativo: boolean
+  created_by?: string
+  created_at: string
 }
 
 export type StatusCor = 'ok' | 'alerta' | 'atencao' | 'critico' | 'vencido' | 'sem_data'

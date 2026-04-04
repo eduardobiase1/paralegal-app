@@ -17,14 +17,22 @@ interface Socio {
   cpf: string
   rg: string
   orgao_expedidor: string
-  endereco: string
+  logradouro: string
+  numero: string
+  complemento: string
+  bairro: string
+  cidade: string
+  uf: string
+  cep: string
   percentual_quotas: string
 }
 
 const EMPTY_SOCIO: Socio = {
   nome: '', genero: 'masculino', nacionalidade: 'brasileiro(a)',
   naturalidade: '', estado_civil: 'solteiro(a)', regime_bens: '',
-  profissao: '', cpf: '', rg: '', orgao_expedidor: '', endereco: '', percentual_quotas: '',
+  profissao: '', cpf: '', rg: '', orgao_expedidor: '',
+  logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', uf: '', cep: '',
+  percentual_quotas: '',
 }
 
 const ESTADOS_CIVIS = ['solteiro(a)', 'casado(a)', 'divorciado(a)', 'viúvo(a)', 'união estável']
@@ -127,7 +135,13 @@ export default function ContratoGerador({ template, empresas, defaultEmpresaId, 
       vars[`socio_${n}_cpf`] = s.cpf
       vars[`socio_${n}_rg`] = s.rg
       vars[`socio_${n}_orgao_expedidor`] = s.orgao_expedidor
-      vars[`socio_${n}_endereco`] = s.endereco
+      vars[`socio_${n}_logradouro`] = s.logradouro
+      vars[`socio_${n}_numero`] = s.numero
+      vars[`socio_${n}_complemento`] = s.complemento
+      vars[`socio_${n}_bairro`] = s.bairro
+      vars[`socio_${n}_cidade`] = s.cidade
+      vars[`socio_${n}_uf`] = s.uf
+      vars[`socio_${n}_cep`] = s.cep
       vars[`socio_${n}_percentual`] = s.percentual_quotas
 
       // estado civil completo com regime
@@ -383,9 +397,39 @@ export default function ContratoGerador({ template, empresas, defaultEmpresaId, 
                     onChange={e => setSocioField(i, 'percentual_quotas', e.target.value)} />
                 </div>
                 <div className="col-span-2">
-                  <label className="label text-xs">Endereço completo</label>
-                  <input className="input" value={socio.endereco}
-                    onChange={e => setSocioField(i, 'endereco', e.target.value)} />
+                  <label className="label text-xs">Logradouro</label>
+                  <input className="input" placeholder="Ex: Rua das Flores" value={socio.logradouro}
+                    onChange={e => setSocioField(i, 'logradouro', e.target.value)} />
+                </div>
+                <div>
+                  <label className="label text-xs">Número</label>
+                  <input className="input" value={socio.numero}
+                    onChange={e => setSocioField(i, 'numero', e.target.value)} />
+                </div>
+                <div>
+                  <label className="label text-xs">Complemento</label>
+                  <input className="input" placeholder="Apto, sala..." value={socio.complemento}
+                    onChange={e => setSocioField(i, 'complemento', e.target.value)} />
+                </div>
+                <div>
+                  <label className="label text-xs">Bairro</label>
+                  <input className="input" value={socio.bairro}
+                    onChange={e => setSocioField(i, 'bairro', e.target.value)} />
+                </div>
+                <div>
+                  <label className="label text-xs">Cidade</label>
+                  <input className="input" value={socio.cidade}
+                    onChange={e => setSocioField(i, 'cidade', e.target.value)} />
+                </div>
+                <div>
+                  <label className="label text-xs">UF</label>
+                  <input className="input" placeholder="SP" value={socio.uf}
+                    onChange={e => setSocioField(i, 'uf', e.target.value)} />
+                </div>
+                <div>
+                  <label className="label text-xs">CEP</label>
+                  <input className="input font-mono" placeholder="00000-000" value={socio.cep}
+                    onChange={e => setSocioField(i, 'cep', e.target.value)} />
                 </div>
               </div>
             </div>
