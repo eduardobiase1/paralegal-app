@@ -8,13 +8,16 @@ CREATE EXTENSION IF NOT EXISTS unaccent;
 
 -- ─── Wrapper IMMUTABLE para unaccent ─────────────────────────────────────────
 -- O PostgreSQL exige que funções usadas em índices sejam IMMUTABLE.
--- unaccent() por padrão é STABLE, então criamos um wrapper marcado como IMMUTABLE.
+-- unaccent() é STABLE por padrão. Usando plpgsql (não sofre inlining),
+-- o PostgreSQL confia na declaração IMMUTABLE sem verificar as funções internas.
 CREATE OR REPLACE FUNCTION public.f_unaccent(text)
   RETURNS text
-  LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT AS
-$func$
-  SELECT unaccent('unaccent', $1)
-$func$;
+  LANGUAGE plpgsql IMMUTABLE STRICT PARALLEL SAFE AS
+$$
+BEGIN
+  RETURN unaccent($1);
+END;
+$$;
 
 -- ─── 1. Tabela cnaes — todos os ~1.300 CNAEs do IBGE ─────────────────────────
 
