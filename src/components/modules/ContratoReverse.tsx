@@ -20,6 +20,7 @@ interface Substituicao {
   original: string
   novo: string
   ativo: boolean
+  contexto: string
 }
 
 // ── Regex Patterns ────────────────────────────────────────────────────────────
@@ -145,6 +146,7 @@ export default function ContratoReverse() {
       original: e.valor,
       novo: '',
       ativo: true,
+      contexto: e.contexto,
     })))
     setStep(2)
   }
