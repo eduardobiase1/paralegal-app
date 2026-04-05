@@ -6,8 +6,8 @@ import { Toaster } from 'react-hot-toast'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Paralegal — Gestão Contábil',
-  description: 'Sistema de gestão paralegal para escritório contábil',
+  title: 'Paralegal PRO — Gestão para Escritórios',
+  description: 'Paralegal PRO — Sistema completo de gestão para escritórios contábeis e jurídicos',
 }
 
 export default function RootLayout({
