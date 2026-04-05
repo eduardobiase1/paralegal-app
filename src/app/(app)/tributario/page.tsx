@@ -270,6 +270,9 @@ function TabConsultaCnae({ cnaeAtual, setCnaeAtual, setTab }: {
                           📊 <strong>Fator R aplicável</strong> — folha ≥ 28% do faturamento pode migrar para Anexo III
                         </p>
                       )}
+                      <p className="text-xs text-green-600 mt-2 border-t border-green-200 pt-2">
+                        ⚠️ <strong>Análise indicativa</strong> — a elegibilidade final depende de outros fatores (faturamento, sócios, regime especial). Confirme com o contador.
+                      </p>
                     </div>
                   </div>
                 </div>
