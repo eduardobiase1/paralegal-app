@@ -251,7 +251,7 @@ export default function LoginPage() {
                 <span className="text-white font-bold text-sm">{title}</span>
                 <span className="text-gray-300 text-sm"> {desc}</span>
               </div>
-              <span className="text-amber-500/60 font-mono text-xl leading-none mt-0.5 ml-auto">]</span>
+              <span className="text-amber-500/60 font-mono text-xl leading-none mt-0.5">]</span>
             </div>
           ))}
         </div>
