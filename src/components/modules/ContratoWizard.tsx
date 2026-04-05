@@ -660,7 +660,7 @@ export default function ContratoWizard({ template, empresas, defaultEmpresaId = 
           dataContrato={dataContrato} setDataContrato={setDataContrato}
           cidadeAssinatura={cidadeAssinatura} setCidadeAssinatura={setCidadeAssinatura}
           cidadeForo={cidadeForo} setCidadeForo={setCidadeForo}
-          empresaDados={empresaDados}
+          empresaDados={empresaDados} setEmpresaDados={setEmpresaDados}
           clausulas={clausulas} clausulasSel={clausulasSel} setClausulasSel={setClausulasSel}
           loading={loading}
           onBack={() => setStep(1)}
@@ -1036,7 +1036,7 @@ function FormConstituicao({ socios, setSocios, setSocioField, cnaes, setCnaes, o
 function FormDistrato({ socios, setSocios, setSocioField,
   guardiaoIdx, setGuardiaoIdx, liquidanteIdx, setLiquidanteIdx,
   dataContrato, setDataContrato, cidadeAssinatura, setCidadeAssinatura,
-  cidadeForo, setCidadeForo, empresaDados,
+  cidadeForo, setCidadeForo, empresaDados, setEmpresaDados,
   clausulas, clausulasSel, setClausulasSel, loading, onBack, onGerarDocx, onGerarPdf }: any) {
   return (
     <div className="space-y-6">
