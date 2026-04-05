@@ -243,15 +243,14 @@ export default function LoginPage() {
               desc: 'Em PDF para o cliente.',
             },
           ].map(({ icon, title, desc }) => (
-            <div key={title} className="flex items-start gap-4">
-              {/* Bracket esquerdo */}
-              <span className="text-amber-500/60 font-mono text-xl leading-none mt-0.5">[</span>
-              <span className="mt-0.5">{icon}</span>
-              <div>
-                <span className="text-white font-bold text-sm">{title}</span>
-                <span className="text-gray-300 text-sm"> {desc}</span>
-              </div>
-              <span className="text-amber-500/60 font-mono text-xl leading-none mt-0.5">]</span>
+            <div key={title} className="flex items-center gap-3 w-fit">
+              <span className="text-amber-500/60 font-mono text-lg leading-none">[</span>
+              <span className="flex-shrink-0">{icon}</span>
+              <p className="text-sm">
+                <span className="text-white font-bold">{title}</span>
+                <span className="text-gray-400"> {desc}</span>
+              </p>
+              <span className="text-amber-500/60 font-mono text-lg leading-none">]</span>
             </div>
           ))}
         </div>
