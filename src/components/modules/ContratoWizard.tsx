@@ -115,8 +115,17 @@ export default function ContratoWizard({ template, empresas, defaultEmpresaId = 
         uf:                    data.uf ?? '',
         cep:                   data.cep ?? '',
         capital_social:        (data as any).capital_social ?? '',
+        valor_quota:           (data as any).valor_quota || '1,00',
         data_inicio_atividades:(data as any).data_inicio_atividades ?? '',
       })
+      // Pre-preenche cidade do foro com a cidade da empresa
+      if ((data as any).cidade) setCidadeForo((data as any).cidade)
+      // Pre-preenche CNAEs a partir do banco
+      const cnaePrincipal  = (data as any).cnae_principal ?? ''
+      const cnaesSecund: string[] = (data as any).cnaes_secundarios ?? []
+      const todosCnaes = [cnaePrincipal, ...cnaesSecund].filter(Boolean)
+      if (todosCnaes.length > 0) setCnaes(todosCnaes)
+      else setCnaes([''])
     })
   }, [empresaId])
 
@@ -219,9 +228,6 @@ export default function ContratoWizard({ template, empresas, defaultEmpresaId = 
       novo_cidade:      novoEnd.cidade,
       novo_uf:          novoEnd.uf,
       novo_cep:         novoEnd.cep,
-
-      // Objeto
-      objeto_social: objeto,
 
       // Cláusulas adicionais
       clausulas_adicionais: clausulasSel
@@ -743,18 +749,53 @@ export default function ContratoWizard({ template, empresas, defaultEmpresaId = 
             </div>
           )}
 
-          {/* Objeto Social */}
+          {/* Objeto Social — CNAE Selector */}
           {events.has('objeto') && (
             <div>
               <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
                 <span className="w-5 h-5 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-xs">≡</span>
-                Objeto Social
+                Objeto Social / Atividades (CNAE)
               </h3>
-              <div className="border rounded-xl p-4 bg-gray-50">
-                <label className="label text-xs">Novo Objeto Social</label>
-                <textarea className="input bg-white text-sm resize-none h-28"
-                  placeholder="Descreva as atividades da empresa..."
-                  value={objeto} onChange={e => setObjeto(e.target.value)} />
+              <div className="border rounded-xl p-4 bg-gray-50 space-y-3">
+                <p className="text-xs text-gray-500">Adicione as atividades linha a linha. Elas serão formatadas automaticamente em texto jurídico.</p>
+                {cnaes.map((c, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <span className="text-xs text-gray-400 w-5 flex-shrink-0 text-right">{i + 1}.</span>
+                    <input
+                      className="input bg-white text-sm flex-1"
+                      placeholder={i === 0 ? 'Ex: Consultoria em gestão empresarial' : 'Ex: Assessoria contábil e tributária'}
+                      value={c}
+                      onChange={e => setCnaes(prev => prev.map((v, idx) => idx === i ? e.target.value : v))}
+                    />
+                    {cnaes.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => setCnaes(prev => prev.filter((_, idx) => idx !== i))}
+                        className="text-red-400 hover:text-red-600 flex-shrink-0 p-1"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setCnaes(prev => [...prev, ''])}
+                  className="text-xs text-purple-700 hover:text-purple-900 font-medium flex items-center gap-1"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Adicionar atividade
+                </button>
+                {objetoFormatado && (
+                  <div className="mt-2 p-3 bg-white rounded-lg border border-purple-100">
+                    <p className="text-xs text-purple-700 font-medium mb-1">Prévia do texto jurídico:</p>
+                    <p className="text-xs text-gray-700 italic leading-relaxed">{objetoFormatado}</p>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -835,6 +876,13 @@ export default function ContratoWizard({ template, empresas, defaultEmpresaId = 
                 <input className="input bg-white text-sm" placeholder="Ex: São Paulo"
                   value={cidadeAssinatura}
                   onChange={e => setCidadeAssinatura(e.target.value)} />
+              </div>
+              <div>
+                <label className="label text-xs">Cidade do Foro / Comarca</label>
+                <input className="input bg-white text-sm" placeholder="Ex: São Paulo"
+                  value={cidadeForo}
+                  onChange={e => setCidadeForo(e.target.value)} />
+                <p className="text-xs text-gray-400 mt-0.5">Tag: &#123;&#123;cidade_foro&#125;&#125;</p>
               </div>
             </div>
             {dataContrato && (
