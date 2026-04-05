@@ -567,7 +567,7 @@ export default function ContratoWizard({ template, empresas, defaultEmpresaId = 
                     </p>
                   )}
                 </div>
-                {(tipo === 'constituicao' || tipo === 'distrato') && (
+                {tipo === 'constituicao' && (
                   <div>
                     <label className="label text-xs">Data de Início das Atividades</label>
                     <input type="date" className="input bg-white text-sm"
@@ -1034,6 +1034,32 @@ function FormDistrato({ socios, setSocios, setSocioField,
           <p className="text-xs text-red-600 mt-0.5">
             Preencha os dados dos sócios conforme constam no contrato social vigente.
           </p>
+        </div>
+      </div>
+
+      {/* Data de início das atividades — Cláusula Primeira */}
+      <div className="border rounded-xl p-4 bg-gray-50">
+        <h3 className="font-semibold text-gray-900 mb-3 text-sm flex items-center gap-2">
+          <span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded font-mono">Cláusula 1ª</span>
+          Data de Início das Atividades *
+        </h3>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="label text-xs">Data (para o contrato)</label>
+            <input
+              type="date"
+              className="input bg-white text-sm"
+              value={empresaDados.data_inicio_atividades}
+              onChange={e => setEmpresaDados((p: any) => ({ ...p, data_inicio_atividades: e.target.value }))}
+            />
+          </div>
+          {empresaDados.data_inicio_atividades && (
+            <div className="flex items-end pb-2">
+              <p className="text-xs text-blue-600 font-medium">
+                {new Date(empresaDados.data_inicio_atividades + 'T12:00:00').toLocaleDateString('pt-BR')}
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
