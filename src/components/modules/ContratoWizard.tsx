@@ -213,7 +213,12 @@ export default function ContratoWizard({ template, empresas, defaultEmpresaId = 
       inscricao_municipal:  empresaObj.inscricao_municipal ?? '',
       nire:                 empresaDados.nire,
       sessao_junta:         empresaDados.sessao_junta,
-      data_inicio_atividades: empresaDados.data_inicio_atividades,
+      data_inicio_atividades: empresaDados.data_inicio_atividades
+        ? new Date(empresaDados.data_inicio_atividades + 'T12:00:00').toLocaleDateString('pt-BR')
+        : '',
+      data_inicio_atividades_extenso: empresaDados.data_inicio_atividades
+        ? dataExtenso(new Date(empresaDados.data_inicio_atividades + 'T12:00:00'))
+        : '',
 
       // Endereço da sede
       sede_logradouro:  empresaDados.logradouro,
