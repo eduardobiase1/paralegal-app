@@ -197,9 +197,9 @@ export default function LoginPage() {
         {/* Headline */}
         <div className="mb-10">
           <h1 className="font-black leading-none tracking-tight" style={{ fontSize: 'clamp(2.8rem, 4.5vw, 4rem)' }}>
-            <span style={{ color: '#c9a533' }}>SAÚDE DA EMPRESA</span>
+            <span style={{ color: '#c9a533' }}>PLATAFORMA</span>
             <br />
-            <span className="text-white">EM FOCO</span>
+            <span className="text-white">INTEGRADA</span>
           </h1>
         </div>
 
@@ -208,10 +208,21 @@ export default function LoginPage() {
           {[
             {
               icon: (
-                <span className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0" />
+                <svg className="w-5 h-5 flex-shrink-0 text-amber-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
               ),
-              title: 'Semáforo de Legalização:',
-              desc: 'Score de Conformidade.',
+              title: 'Geração de Contratos:',
+              desc: 'Documentos automáticos para clientes.',
+            },
+            {
+              icon: (
+                <svg className="w-5 h-5 flex-shrink-0 text-amber-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path d="M9 7H6a2 2 0 00-2 2v9a2 2 0 002 2h9a2 2 0 002-2v-3M13 3h8m0 0v8m0-8L11 13" />
+                </svg>
+              ),
+              title: 'Estrategista Tributário:',
+              desc: 'Análise de CNAEs.',
             },
             {
               icon: (
