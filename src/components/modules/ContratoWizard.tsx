@@ -270,6 +270,7 @@ export default function ContratoWizard({ template, empresas, defaultEmpresaId = 
 
       // Foro
       cidade_foro: cidadeForo || empresaDados.cidade || '',
+      uf_foro:     empresaDados.uf || '',
 
       // Flags
       has_socios:    evAtivos.has('socios'),
@@ -304,13 +305,25 @@ export default function ContratoWizard({ template, empresas, defaultEmpresaId = 
       // Gênero societário (Sócio 1 como referência)
       ...(() => {
         const g = socios[0]?.genero ?? 'masculino'
+        const f = g === 'feminino'
         return {
-          socio_unico_artigo:      g === 'feminino' ? 'única sócia'          : 'único sócio',
-          socio_unico_artigo_cap:  g === 'feminino' ? 'Única Sócia'          : 'Único Sócio',
-          socio_administrador:     g === 'feminino' ? 'sócia administradora' : 'sócio administrador',
-          socio_administrador_cap: g === 'feminino' ? 'Sócia Administradora' : 'Sócio Administrador',
-          o_socio:                 g === 'feminino' ? 'a sócia'              : 'o sócio',
-          O_socio:                 g === 'feminino' ? 'A sócia'              : 'O sócio',
+          // Existentes
+          socio_unico_artigo:      f ? 'única sócia'          : 'único sócio',
+          socio_unico_artigo_cap:  f ? 'Única Sócia'          : 'Único Sócio',
+          socio_administrador:     f ? 'sócia administradora' : 'sócio administrador',
+          socio_administrador_cap: f ? 'Sócia Administradora' : 'Sócio Administrador',
+          o_socio:                 f ? 'a sócia'              : 'o sócio',
+          O_socio:                 f ? 'A sócia'              : 'O sócio',
+          // Novos — constituição e documentos gerais
+          tratamento:                    f ? 'Sra.'                          : 'Sr.',
+          o_abaixo_assinado:             f ? 'a abaixo assinada'             : 'o abaixo assinado',
+          ao_unico_socio:                f ? 'à única sócia'                 : 'ao único sócio',
+          ao_unico_socio_tratamento:     f ? 'à única sócia a Sra.'          : 'ao único sócio o Sr.',
+          o_administrador:               f ? 'a administradora'              : 'o administrador',
+          O_administrador:               f ? 'A administradora'              : 'O administrador',
+          do_unico_socio:                f ? 'da única sócia'                : 'do único sócio',
+          pelo_unico_socio:              f ? 'pela única sócia'              : 'pelo único sócio',
+          ao_socio_liquidante:           f ? 'à sócia liquidante'            : 'ao sócio liquidante',
         }
       })(),
     }
@@ -322,14 +335,16 @@ export default function ContratoWizard({ template, empresas, defaultEmpresaId = 
       const estadoCivil   = aplicarGenero(s.estado_civil, g)
       const nacionalidade = aplicarGenero(s.nacionalidade, g)
       const profissao     = aplicarGenero(s.profissao, g)
-      const portador      = g === 'feminino' ? 'portadora' : 'portador'
+      const portador      = g === 'feminino' ? 'portadora'              : 'portador'
       const residente     = g === 'feminino' ? 'residente e domiciliada' : 'residente e domiciliado'
-      const artigo        = g === 'feminino' ? 'a sócia' : 'o sócio'
+      const artigo        = g === 'feminino' ? 'a sócia'               : 'o sócio'
+      const tratamento    = g === 'feminino' ? 'Sra.'                  : 'Sr.'
+      const empresario    = g === 'feminino' ? 'empresária'            : 'empresário'
       const ecCompleto    = precisaRegime && s.regime_bens
         ? `${estadoCivil} sob o regime de ${s.regime_bens}` : estadoCivil
 
       return {
-        nome: s.nome, genero: g, artigo, nacionalidade,
+        nome: s.nome, genero: g, artigo, tratamento, empresario, nacionalidade,
         naturalidade: s.naturalidade, estado_civil: estadoCivil,
         estado_civil_completo: ecCompleto,
         regime_bens: precisaRegime ? s.regime_bens : '',
