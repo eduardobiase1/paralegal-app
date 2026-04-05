@@ -141,6 +141,10 @@ export default function ContratoWizard({ template, empresas, defaultEmpresaId = 
   const [clausulas, setClausulas] = useState<Clausula[]>([])
   const [clausulasSel, setClausulasSel] = useState<string[]>([])
 
+  // Distrato — guardião dos livros e liquidante (índice do sócio)
+  const [guardiaoIdx, setGuardiaoIdx] = useState(0)
+  const [liquidanteIdx, setLiquidanteIdx] = useState(0)
+
   // ── Carregar empresa ──────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -287,6 +291,10 @@ export default function ContratoWizard({ template, empresas, defaultEmpresaId = 
 
       total_socios: socios.length.toString(),
       socio_unico:  socios.length === 1 ? 'sim' : 'não',
+
+      // Distrato — guardião dos livros e liquidante
+      socio_guardiao_livros:  socios[guardiaoIdx]?.nome  ?? socios[0]?.nome ?? '',
+      socio_liquidante:       socios[liquidanteIdx]?.nome ?? socios[0]?.nome ?? '',
 
       // Gênero societário (Sócio 1 como referência)
       ...(() => {
@@ -554,9 +562,9 @@ export default function ContratoWizard({ template, empresas, defaultEmpresaId = 
                     </p>
                   )}
                 </div>
-                {tipo === 'constituicao' && (
+                {(tipo === 'constituicao' || tipo === 'distrato') && (
                   <div>
-                    <label className="label text-xs">Início das Atividades</label>
+                    <label className="label text-xs">Data de Início das Atividades</label>
                     <input type="date" className="input bg-white text-sm"
                       value={empresaDados.data_inicio_atividades}
                       onChange={e => setEmpresaDados(p => ({ ...p, data_inicio_atividades: e.target.value }))} />
@@ -627,6 +635,8 @@ export default function ContratoWizard({ template, empresas, defaultEmpresaId = 
       {step === 2 && tipo === 'distrato' && (
         <FormDistrato
           socios={socios} setSocios={setSocios} setSocioField={setSocioField}
+          guardiaoIdx={guardiaoIdx} setGuardiaoIdx={setGuardiaoIdx}
+          liquidanteIdx={liquidanteIdx} setLiquidanteIdx={setLiquidanteIdx}
           dataContrato={dataContrato} setDataContrato={setDataContrato}
           cidadeAssinatura={cidadeAssinatura} setCidadeAssinatura={setCidadeAssinatura}
           cidadeForo={cidadeForo} setCidadeForo={setCidadeForo}
@@ -1003,8 +1013,10 @@ function FormConstituicao({ socios, setSocios, setSocioField, cnaes, setCnaes, o
 
 // ─── Formulário: DISTRATO ─────────────────────────────────────────────────────
 
-function FormDistrato({ socios, setSocios, setSocioField, dataContrato, setDataContrato,
-  cidadeAssinatura, setCidadeAssinatura, cidadeForo, setCidadeForo, empresaDados,
+function FormDistrato({ socios, setSocios, setSocioField,
+  guardiaoIdx, setGuardiaoIdx, liquidanteIdx, setLiquidanteIdx,
+  dataContrato, setDataContrato, cidadeAssinatura, setCidadeAssinatura,
+  cidadeForo, setCidadeForo, empresaDados,
   clausulas, clausulasSel, setClausulasSel, loading, onBack, onGerarDocx, onGerarPdf }: any) {
   return (
     <div className="space-y-6">
@@ -1014,12 +1026,62 @@ function FormDistrato({ socios, setSocios, setSocioField, dataContrato, setDataC
         <span className="text-lg">⚠️</span>
         <div>
           <p className="font-medium">Distrato Social — Encerramento da empresa</p>
-          <p className="text-xs text-red-600 mt-0.5">Preencha os dados dos sócios que constam no contrato social vigente.</p>
+          <p className="text-xs text-red-600 mt-0.5">
+            Preencha os dados dos sócios conforme constam no contrato social vigente.
+          </p>
         </div>
       </div>
 
       {/* Sócios */}
-      <SociosPanel titulo="Sócios (conforme contrato vigente)" socios={socios} setSocios={setSocios} setSocioField={setSocioField} />
+      <SociosPanel
+        titulo="Sócios (conforme contrato vigente)"
+        socios={socios} setSocios={setSocios} setSocioField={setSocioField}
+      />
+
+      {/* Responsabilidades — só aparecem se houver mais de 1 sócio */}
+      {socios.length > 1 && (
+        <div className="border rounded-xl p-4 bg-amber-50 border-amber-200 space-y-4">
+          <h3 className="text-sm font-semibold text-amber-800 flex items-center gap-2">
+            <span>📌</span> Responsabilidades no Distrato
+          </h3>
+
+          {/* Guardião dos livros — Cláusula 5ª */}
+          <div>
+            <label className="label text-xs">
+              Cláusula 5ª — Responsável pela guarda dos livros
+            </label>
+            <select
+              className="input bg-white text-sm"
+              value={guardiaoIdx}
+              onChange={e => setGuardiaoIdx(Number(e.target.value))}
+            >
+              {socios.map((s: Socio, i: number) => (
+                <option key={i} value={i}>
+                  Sócio {i + 1}{s.nome ? ` — ${s.nome}` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Liquidante — Cláusula 6ª */}
+          <div>
+            <label className="label text-xs">
+              Cláusula 6ª — Liquidante da empresa
+            </label>
+            <select
+              className="input bg-white text-sm"
+              value={liquidanteIdx}
+              onChange={e => setLiquidanteIdx(Number(e.target.value))}
+            >
+              {socios.map((s: Socio, i: number) => (
+                <option key={i} value={i}>
+                  Sócio {i + 1}{s.nome ? ` — ${s.nome}` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
 
       <PainelConfirmacao
         dataContrato={dataContrato} setDataContrato={setDataContrato}
