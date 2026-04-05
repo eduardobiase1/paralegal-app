@@ -68,7 +68,7 @@ export default async function EmpresasPage() {
                           <div className="text-xs text-gray-500">{emp.nome_fantasia}</div>
                         )}
                       </td>
-                      <td className="px-4 py-3 font-mono text-gray-600">{formatCNPJ(emp.cnpj)}</td>
+                      <td className="px-4 py-3 font-mono text-gray-600">{emp.cnpj ? formatCNPJ(emp.cnpj) : <span className="text-xs text-yellow-600 font-sans">Em Abertura</span>}</td>
                       <td className="px-4 py-3 text-gray-600">
                         {emp.cidade && emp.uf ? `${emp.cidade}/${emp.uf}` : emp.cidade || '—'}
                       </td>
