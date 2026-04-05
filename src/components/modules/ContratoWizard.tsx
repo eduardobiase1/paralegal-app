@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { ContractTemplate, Empresa, Clausula } from '@/types'
 import { formatCNPJ } from '@/lib/utils'
-import { dataExtenso, dataExtensoCompleto, capitalExtenso, formatarReais, aplicarGenero } from '@/lib/formatters'
+import { dataExtenso, dataExtensoCompleto, capitalExtenso, formatarReais, aplicarGenero, calcularCapitalSocial, formatarObjetoSocial } from '@/lib/formatters'
 import toast from 'react-hot-toast'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -23,7 +23,7 @@ type EventKey = 'socios' | 'endereco' | 'capital' | 'objeto' | 'clausulas'
 interface EmpresaDados {
   nire: string; sessao_junta: string; logradouro: string; numero: string
   complemento: string; bairro: string; cidade: string; uf: string; cep: string
-  capital_social: string; data_inicio_atividades: string
+  capital_social: string; valor_quota: string; data_inicio_atividades: string
 }
 
 interface Props {
@@ -66,12 +66,17 @@ export default function ContratoWizard({ template, empresas, defaultEmpresaId = 
   const [empresaDados, setEmpresaDados] = useState<EmpresaDados>({
     nire: '', sessao_junta: '', logradouro: '', numero: '',
     complemento: '', bairro: '', cidade: '', uf: '', cep: '',
-    capital_social: '', data_inicio_atividades: '',
+    capital_social: '', valor_quota: '1,00', data_inicio_atividades: '',
   })
 
   // Confirmação final (Step 3 — rodapé)
   const [dataContrato, setDataContrato] = useState(new Date().toISOString().split('T')[0])
   const [cidadeAssinatura, setCidadeAssinatura] = useState('São Paulo')
+  const [cidadeForo, setCidadeForo] = useState('')
+
+  // Step 3 — CNAEs / Objeto Social
+  const [cnaes, setCnaes] = useState<string[]>([''])
+  const objetoFormatado = formatarObjetoSocial(cnaes)
 
   // Step 2
   const [events, setEvents] = useState<Set<EventKey>>(new Set(['socios']))
@@ -173,15 +178,31 @@ export default function ContratoWizard({ template, empresas, defaultEmpresaId = 
       cidade_assinatura:    cidadeAssinatura || empresaDados.cidade || 'São Paulo',
       data_extenso_completo:dataExtensoCompleto(dtContrato, cidadeAssinatura || empresaDados.cidade || 'São Paulo'),
 
-      // Capital social
-      capital_social:         empresaDados.capital_social,
+      // ── Motor de Capital Social ─────────────────────────────────────────
+      capital_social:           empresaDados.capital_social,
       capital_social_formatado: formatarReais(empresaDados.capital_social),
-      capital_social_extenso: capitalExtenso(empresaDados.capital_social),
+      capital_social_extenso:   capitalExtenso(empresaDados.capital_social),
+      ...(() => {
+        const c = calcularCapitalSocial(empresaDados.capital_social, empresaDados.valor_quota)
+        return {
+          capital_quotas:         c.quantidade_str,
+          capital_quotas_extenso: c.quantidade_extenso,
+          valor_quota:            empresaDados.valor_quota,
+          valor_quota_formatado:  c.valor_quota_str,
+          valor_quota_extenso:    c.valor_quota_extenso,
+        }
+      })(),
 
       // Capital novo (se alteração)
-      capital_social_novo:         capNovo,
+      capital_social_novo:           capNovo,
       capital_social_novo_formatado: formatarReais(capNovo),
-      capital_social_novo_extenso: capitalExtenso(capNovo),
+      capital_social_novo_extenso:   capitalExtenso(capNovo),
+
+      // ── Objeto Social (CNAEs) ───────────────────────────────────────────
+      objeto_social: objetoFormatado || objeto,
+
+      // ── Foro / comarca ──────────────────────────────────────────────────
+      cidade_foro: cidadeForo || empresaDados.cidade || '',
 
       // ── Flags condicionais ──────────────────────────────────────────────
       has_socios:   events.has('socios'),
@@ -211,6 +232,19 @@ export default function ContratoWizard({ template, empresas, defaultEmpresaId = 
 
       total_socios: socios.length.toString(),
       socio_unico:  socios.length === 1 ? 'sim' : 'não',
+
+      // ── Gênero societário (Sócio 1 como referência) ─────────────────────
+      ...(() => {
+        const g = socios[0]?.genero ?? 'masculino'
+        return {
+          socio_unico_artigo:       g === 'feminino' ? 'única sócia'          : 'único sócio',
+          socio_unico_artigo_cap:   g === 'feminino' ? 'Única Sócia'          : 'Único Sócio',
+          socio_administrador:      g === 'feminino' ? 'sócia administradora' : 'sócio administrador',
+          socio_administrador_cap:  g === 'feminino' ? 'Sócia Administradora' : 'Sócio Administrador',
+          o_socio:                  g === 'feminino' ? 'a sócia'              : 'o sócio',
+          O_socio:                  g === 'feminino' ? 'A sócia'              : 'O sócio',
+        }
+      })(),
     }
 
     // Sócios — array para {{#socios}} loop
@@ -447,6 +481,16 @@ export default function ContratoWizard({ template, empresas, defaultEmpresaId = 
                     onChange={e => setEmpresaDados(p => ({ ...p, capital_social: e.target.value }))} />
                   {empresaDados.capital_social && (
                     <p className="text-xs text-gray-400 mt-0.5">{capitalExtenso(empresaDados.capital_social)}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="label text-xs">Valor por Quota (R$)</label>
+                  <input className="input bg-white text-sm" placeholder="Ex: 1,00" value={empresaDados.valor_quota}
+                    onChange={e => setEmpresaDados(p => ({ ...p, valor_quota: e.target.value }))} />
+                  {empresaDados.capital_social && empresaDados.valor_quota && (
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      = {calcularCapitalSocial(empresaDados.capital_social, empresaDados.valor_quota).quantidade_extenso}
+                    </p>
                   )}
                 </div>
                 <div>

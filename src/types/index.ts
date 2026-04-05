@@ -21,6 +21,7 @@ export interface Empresa {
   inscricao_estadual?: string
   inscricao_municipal?: string
   status: EmpresaStatus
+  // Endereço
   cep?: string
   logradouro?: string
   numero?: string
@@ -28,8 +29,23 @@ export interface Empresa {
   bairro?: string
   cidade?: string
   uf?: string
+  // Registro Junta
   nire?: string
   sessao_junta?: string
+  // Cartão CNPJ
+  natureza_juridica?: string
+  data_abertura?: string
+  cnae_principal?: string
+  cnaes_secundarios?: string[]
+  // Capital Social
+  capital_social?: string
+  capital_quotas?: string
+  valor_quota?: string
+  // Contatos
+  email?: string
+  telefone?: string
+  telefone2?: string
+  // URLs
   url_portal_alvara?: string
   url_certidao_municipal?: string
   url_portal_visa?: string

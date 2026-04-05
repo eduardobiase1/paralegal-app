@@ -1,7 +1,9 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import { useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 
 const navigation = [
@@ -26,6 +28,7 @@ const navigation = [
     items: [
       { href: '/societario', label: 'Módulo Societário', icon: UsersIcon },
       { href: '/contratos', label: 'Contratos', icon: DocumentTextIcon },
+      { href: '/simulador', label: 'Simulador de Taxas', icon: CalculatorIcon },
     ],
   },
   {
@@ -38,6 +41,15 @@ const navigation = [
 
 export default function Sidebar() {
   const pathname = usePathname()
+  const router = useRouter()
+  const [supabase] = useState(createClient)
+  const [loggingOut, setLoggingOut] = useState(false)
+
+  async function handleLogout() {
+    setLoggingOut(true)
+    await supabase.auth.signOut()
+    router.push('/login')
+  }
 
   return (
     <aside className="fixed inset-y-0 left-0 w-64 bg-white border-r flex flex-col z-10">
@@ -50,7 +62,7 @@ export default function Sidebar() {
           </svg>
         </div>
         <div>
-          <p className="font-bold text-gray-900 text-sm leading-tight">Paralegal</p>
+          <p className="font-bold text-gray-900 text-sm leading-tight">Paralegal Pro</p>
           <p className="text-xs text-gray-500">Gestão Contábil</p>
         </div>
       </div>
@@ -88,7 +100,7 @@ export default function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="border-t px-3 py-3">
+      <div className="border-t px-3 py-3 space-y-0.5">
         <Link
           href="/usuarios"
           className={cn(
@@ -101,6 +113,14 @@ export default function Sidebar() {
           <UserIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
           Usuários
         </Link>
+        <button
+          onClick={handleLogout}
+          disabled={loggingOut}
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-red-600 hover:bg-red-50 hover:text-red-700"
+        >
+          <LogoutIcon className="w-4 h-4 flex-shrink-0" />
+          {loggingOut ? 'Saindo...' : 'Sair'}
+        </button>
       </div>
     </aside>
   )
@@ -194,6 +214,24 @@ function UserIcon({ className }: { className?: string }) {
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
         d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+    </svg>
+  )
+}
+
+function CalculatorIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+    </svg>
+  )
+}
+
+function LogoutIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
     </svg>
   )
 }

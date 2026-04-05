@@ -132,6 +132,63 @@ export function aplicarGenero(texto: string, genero: 'masculino' | 'feminino'): 
   return texto
 }
 
+// ─── Motor de Cálculo de Capital Social ──────────────────────────────────────
+
+interface ResultadoCapital {
+  quantidade:      number
+  quantidade_str:  string   // "1.000"
+  quantidade_extenso: string // "Mil quotas"
+  valor_quota_str: string   // "R$ 1,00"
+  valor_quota_extenso: string // "Um Real"
+}
+
+/**
+ * Calcula a quantidade de quotas e formata os extensos.
+ * capitalStr: "10.000,00" | valorQuotaStr: "1,00"
+ */
+export function calcularCapitalSocial(capitalStr: string, valorQuotaStr: string): ResultadoCapital {
+  const parseBR = (s: string) => parseFloat(s.replace(/\./g,'').replace(',','.')) || 0
+  const capital    = parseBR(capitalStr)
+  const valorQuota = parseBR(valorQuotaStr) || 1
+  const quantidade = Math.round(capital / valorQuota)
+
+  return {
+    quantidade,
+    quantidade_str:     quantidade.toLocaleString('pt-BR'),
+    quantidade_extenso: inteiroExtenso(quantidade) + (quantidade === 1 ? ' quota' : ' quotas'),
+    valor_quota_str:    valorQuota.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+    valor_quota_extenso:capitalExtenso(valorQuotaStr),
+  }
+}
+
+// ─── Formatador de Objeto Social (CNAEs) ─────────────────────────────────────
+
+/**
+ * Recebe lista de atividades e formata em texto jurídico corrido.
+ * Ex: ['Consultoria', 'Comércio varejista'] →
+ * "consultoria; comércio varejista. E demais atividades correlatas e complementares."
+ */
+export function formatarObjetoSocial(atividades: string[]): string {
+  const validas = atividades.map(a => a.trim()).filter(Boolean)
+  if (validas.length === 0) return ''
+
+  // Normaliza: primeira letra minúscula (exceto siglas), remove ponto final interno
+  const normalizadas = validas.map(a => {
+    const s = a.replace(/\.$/, '').trim()
+    return s.charAt(0).toLowerCase() + s.slice(1)
+  })
+
+  let texto: string
+  if (normalizadas.length === 1) {
+    texto = normalizadas[0]
+  } else {
+    const ultimas = normalizadas.pop()!
+    texto = normalizadas.join('; ') + '; e ' + ultimas
+  }
+
+  return texto.charAt(0).toUpperCase() + texto.slice(1) + '.'
+}
+
 /** Formata valor monetário: 10000 → "R$ 10.000,00" */
 export function formatarReais(valor: string | number): string {
   const str = String(valor).replace(/\s/g, '').replace(/\./g, '').replace(',', '.')

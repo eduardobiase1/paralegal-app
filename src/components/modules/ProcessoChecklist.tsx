@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { ProcessoSocietario, ProcessoEtapa, Profile, TimerLogEntry } from '@/types'
 import { TIPO_PROCESSO_LABELS, StatusEtapa } from '@/types'
@@ -60,7 +60,64 @@ function slaInfo(previsao?: string, status?: string) {
   return { diff, vencido }
 }
 
+// ─── Checklist de Documentos Templates ──────────────────────────────────────
+
+const DOCS_TEMPLATES: Record<string, { doc: string; obrigatorio: boolean }[]> = {
+  abertura: [
+    { doc: 'RG e CPF de todos os sócios (cópias autenticadas)', obrigatorio: true },
+    { doc: 'Comprovante de residência dos sócios (até 90 dias)', obrigatorio: true },
+    { doc: 'Comprovante de endereço da sede (IPTU ou conta de luz)', obrigatorio: true },
+    { doc: 'Minuta do Contrato Social assinada', obrigatorio: true },
+    { doc: 'DBE — Documento Básico de Entrada (Receita Federal)', obrigatorio: true },
+    { doc: 'Formulário de cadastro da Junta Comercial', obrigatorio: true },
+    { doc: 'Procuração (se houver representante)', obrigatorio: false },
+    { doc: 'IPTU da sede (para uso exclusivo ou compartilhado)', obrigatorio: false },
+    { doc: 'Declaração de desimpedimento dos sócios', obrigatorio: false },
+  ],
+  alteracao_contratual: [
+    { doc: 'RG e CPF dos sócios envolvidos', obrigatorio: true },
+    { doc: 'Minuta da Alteração Contratual assinada', obrigatorio: true },
+    { doc: 'Contrato Social consolidado vigente', obrigatorio: true },
+    { doc: 'Certidão de situação fiscal (se exigido)', obrigatorio: false },
+    { doc: 'Comprovante do novo endereço (se alteração de sede)', obrigatorio: false },
+    { doc: 'Autorização dos sócios (ata ou assembleia)', obrigatorio: false },
+  ],
+  encerramento: [
+    { doc: 'RG e CPF dos sócios', obrigatorio: true },
+    { doc: 'Minuta do Distrato Social assinada', obrigatorio: true },
+    { doc: 'Certidão Negativa de Débitos — Receita Federal', obrigatorio: true },
+    { doc: 'Certidão Negativa de Débitos — Estadual (SEFAZ)', obrigatorio: true },
+    { doc: 'Certidão Negativa Municipal (ISS)', obrigatorio: true },
+    { doc: 'CRF — Certificado de Regularidade do FGTS', obrigatorio: true },
+    { doc: 'Baixa do CNPJ na Receita Federal', obrigatorio: true },
+    { doc: 'DARF de encerramento (se aplicável)', obrigatorio: false },
+    { doc: 'Distrato de contratos de aluguel / locação', obrigatorio: false },
+  ],
+  transferencia_entrada: [
+    { doc: 'RG e CPF do novo sócio', obrigatorio: true },
+    { doc: 'Comprovante de residência do novo sócio', obrigatorio: true },
+    { doc: 'Contrato/Instrumento de Cessão de Quotas', obrigatorio: true },
+    { doc: 'Minuta de Alteração Contratual assinada', obrigatorio: true },
+    { doc: 'Certidão de situação fiscal do cedente', obrigatorio: false },
+  ],
+  transferencia_saida: [
+    { doc: 'RG e CPF do sócio retirante', obrigatorio: true },
+    { doc: 'Contrato/Instrumento de Cessão de Quotas', obrigatorio: true },
+    { doc: 'Minuta de Alteração Contratual assinada', obrigatorio: true },
+    { doc: 'Ata de reunião de sócios', obrigatorio: false },
+    { doc: 'Certidão de situação fiscal do cessionário', obrigatorio: false },
+  ],
+}
+
 // ─── Props ───────────────────────────────────────────────────────────────────
+
+interface DocItem {
+  id: string
+  documento: string
+  recebido: boolean
+  observacao: string
+  obrigatorio: boolean
+}
 
 interface Props {
   processo: ProcessoSocietario & { empresa?: { razao_social: string; cnpj: string } }
@@ -78,6 +135,11 @@ export default function ProcessoChecklist({ processo, etapas: initialEtapas }: P
   const [saving, setSaving] = useState<string | null>(null)
   const [uploading, setUploading] = useState<string | null>(null)
 
+  // Checklist de Documentos
+  const [docs, setDocs] = useState<DocItem[]>([])
+  const [docsLoaded, setDocsLoaded] = useState(false)
+  const [savingDoc, setSavingDoc] = useState<string | null>(null)
+
   const concluidas = etapas.filter(e => e.status === 'concluido').length
   const total = etapas.length
   const progresso = total > 0 ? Math.round((concluidas / total) * 100) : 0
@@ -87,6 +149,48 @@ export default function ProcessoChecklist({ processo, etapas: initialEtapas }: P
   const barColor = temExigencia
     ? 'bg-orange-500'
     : progresso === 100 ? 'bg-green-500' : 'bg-primary-600'
+
+  // ── Carregar Checklist de Documentos ──────────────────────────────────────
+
+  useEffect(() => {
+    async function loadDocs() {
+      const { data } = await supabase
+        .from('checklist_documentos')
+        .select('*')
+        .eq('processo_id', processo.id)
+        .order('created_at')
+      if (data && data.length > 0) {
+        setDocs(data as DocItem[])
+      } else {
+        const template = DOCS_TEMPLATES[processo.tipo] ?? []
+        if (template.length === 0) { setDocsLoaded(true); return }
+        const inserts = template.map(t => ({
+          processo_id:  processo.id,
+          documento:    t.doc,
+          obrigatorio:  t.obrigatorio,
+          recebido:     false,
+          observacao:   '',
+        }))
+        const { data: created } = await supabase.from('checklist_documentos').insert(inserts).select()
+        setDocs((created ?? []) as DocItem[])
+      }
+      setDocsLoaded(true)
+    }
+    loadDocs()
+  }, [processo.id])
+
+  async function toggleDoc(doc: DocItem) {
+    const recebido = !doc.recebido
+    setSavingDoc(doc.id)
+    await supabase.from('checklist_documentos').update({ recebido }).eq('id', doc.id)
+    setDocs(prev => prev.map(d => d.id === doc.id ? { ...d, recebido } : d))
+    setSavingDoc(null)
+  }
+
+  async function saveDocObs(doc: DocItem, observacao: string) {
+    await supabase.from('checklist_documentos').update({ observacao }).eq('id', doc.id)
+    setDocs(prev => prev.map(d => d.id === doc.id ? { ...d, observacao } : d))
+  }
 
   // ── Ações ──────────────────────────────────────────────────────────────────
 
@@ -219,6 +323,42 @@ export default function ProcessoChecklist({ processo, etapas: initialEtapas }: P
           </div>
         </div>
       </div>
+
+      {/* ── Checklist de Documentos ── */}
+      {docsLoaded && docs.length > 0 && (
+        <div className="card mb-6">
+          <div className="card-header flex items-center justify-between">
+            <div>
+              <h2 className="font-semibold text-gray-900">Checklist de Documentos</h2>
+              <p className="text-xs text-gray-500 mt-0.5">
+                {docs.filter(d => d.recebido).length}/{docs.length} documentos recebidos
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="h-1.5 w-24 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-green-500 transition-all"
+                  style={{ width: `${Math.round((docs.filter(d => d.recebido).length / docs.length) * 100)}%` }}
+                />
+              </div>
+              <span className="text-xs text-gray-500">
+                {Math.round((docs.filter(d => d.recebido).length / docs.length) * 100)}%
+              </span>
+            </div>
+          </div>
+          <div className="divide-y">
+            {docs.map(doc => (
+              <DocCheckItem
+                key={doc.id}
+                doc={doc}
+                saving={savingDoc === doc.id}
+                onToggle={() => toggleDoc(doc)}
+                onSaveObs={obs => saveDocObs(doc, obs)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Checklist */}
       <div className="space-y-3">
@@ -479,6 +619,74 @@ function EtapaCard({ etapa, empresaNome, saving, uploading, onStatusChange, onSa
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+// ─── DocCheckItem ─────────────────────────────────────────────────────────────
+
+interface DocCheckItemProps {
+  doc: DocItem
+  saving: boolean
+  onToggle: () => void
+  onSaveObs: (obs: string) => void
+}
+
+function DocCheckItem({ doc, saving, onToggle, onSaveObs }: DocCheckItemProps) {
+  const [obs, setObs] = useState(doc.observacao ?? '')
+  const [expanded, setExpanded] = useState(false)
+
+  return (
+    <div className={`px-5 py-3 transition-colors ${doc.recebido ? 'bg-green-50' : ''}`}>
+      <div className="flex items-start gap-3">
+        <button
+          onClick={onToggle}
+          disabled={saving}
+          className={`mt-0.5 w-5 h-5 rounded flex-shrink-0 border-2 flex items-center justify-center transition-colors ${
+            doc.recebido
+              ? 'bg-green-500 border-green-500 text-white'
+              : 'border-gray-300 hover:border-green-400'
+          }`}
+        >
+          {doc.recebido && (
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+            </svg>
+          )}
+        </button>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <p className={`text-sm ${doc.recebido ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+              {doc.documento}
+            </p>
+            {doc.obrigatorio && !doc.recebido && (
+              <span className="text-xs px-1.5 py-0.5 bg-red-100 text-red-600 rounded flex-shrink-0">Obrigatório</span>
+            )}
+          </div>
+          {doc.observacao && !expanded && (
+            <p className="text-xs text-gray-500 mt-0.5">{doc.observacao}</p>
+          )}
+          {expanded && (
+            <input
+              className="input text-xs mt-1"
+              placeholder="Observação (ex: enviado por e-mail em 10/04)"
+              value={obs}
+              onChange={e => setObs(e.target.value)}
+              onBlur={() => onSaveObs(obs)}
+            />
+          )}
+        </div>
+        <button
+          onClick={() => setExpanded(p => !p)}
+          className="text-gray-400 hover:text-gray-600 flex-shrink-0 p-1"
+          title="Adicionar observação"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+          </svg>
+        </button>
+      </div>
     </div>
   )
 }
