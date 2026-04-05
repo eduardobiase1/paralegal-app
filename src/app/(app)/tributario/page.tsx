@@ -194,10 +194,15 @@ function TabConsultaCnae({ cnaeAtual, setCnaeAtual, setTab }: {
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <span className="font-mono text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">{c.codigo}</span>
                     {c.temFiscal ? (
-                      <BadgeAnexo anexo={c.anexoSimples} />
+                      c.impedidoSimples ? (
+                        <span className="text-xs font-semibold bg-red-50 text-red-700 border border-red-200 px-2 py-0.5 rounded">⛔ Impedido Simples</span>
+                      ) : (
+                        <span className="text-xs font-semibold bg-green-50 text-green-700 border border-green-200 px-2 py-0.5 rounded">✅ Simples Nacional</span>
+                      )
                     ) : (
-                      <span className="text-xs bg-gray-50 text-gray-400 border border-gray-200 px-1.5 py-0.5 rounded">sem dados fiscais</span>
+                      <span className="text-xs bg-gray-50 text-gray-400 border border-gray-200 px-1.5 py-0.5 rounded">❓ não mapeado</span>
                     )}
+                    {c.temFiscal && !c.impedidoSimples && <BadgeAnexo anexo={c.anexoSimples} />}
                     {c.fatorRAplicavel && (
                       <span className="text-xs bg-indigo-50 text-indigo-600 border border-indigo-200 px-1.5 py-0.5 rounded">Fator R</span>
                     )}
@@ -233,28 +238,58 @@ function TabConsultaCnae({ cnaeAtual, setCnaeAtual, setTab }: {
                 <p className="font-mono text-xs text-gray-400 mb-1">{cnaeAtual.codigo}</p>
                 <p className="font-semibold text-gray-900">{cnaeAtual.descricao}</p>
               </div>
-              <BadgeAnexo anexo={cnaeAtual.anexoSimples} />
             </div>
 
-            {/* Aviso: dados fiscais não mapeados */}
-            {!cnaeAtual.temFiscal && (
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-sm text-blue-800">
-                <p className="font-semibold">📋 Dados fiscais não mapeados</p>
-                <p className="text-xs mt-0.5">
-                  Este CNAE consta na base do IBGE mas ainda não possui dados tributários e de
-                  licenciamento cadastrados. Entre em contato com o suporte para solicitar o mapeamento.
-                </p>
+            {/* ── BANNER SIMPLES NACIONAL — destaque principal ── */}
+            {cnaeAtual.temFiscal ? (
+              cnaeAtual.impedidoSimples ? (
+                <div className="rounded-xl border-2 border-red-300 bg-red-50 p-4">
+                  <div className="flex items-center gap-3">
+                    <span className="text-3xl">⛔</span>
+                    <div>
+                      <p className="font-bold text-red-800 text-base">IMPEDIDO AO SIMPLES NACIONAL</p>
+                      <p className="text-sm text-red-700 mt-0.5">{cnaeAtual.motivoImpedimento ?? 'Atividade vedada pela LC 123/2006'}</p>
+                      <p className="text-xs text-red-600 mt-1">Regimes disponíveis: <strong>Lucro Presumido</strong> ou <strong>Lucro Real</strong></p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-xl border-2 border-green-300 bg-green-50 p-4">
+                  <div className="flex items-center gap-3">
+                    <span className="text-3xl">✅</span>
+                    <div className="flex-1">
+                      <p className="font-bold text-green-800 text-base">ELEGÍVEL AO SIMPLES NACIONAL</p>
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        <BadgeAnexo anexo={cnaeAtual.anexoSimples} />
+                        <span className="text-sm text-green-700">
+                          {TABELAS_SIMPLES[cnaeAtual.anexoSimples as Anexo]?.nome ?? ''}
+                        </span>
+                      </div>
+                      {cnaeAtual.fatorRAplicavel && (
+                        <p className="text-xs text-indigo-700 mt-1">
+                          📊 <strong>Fator R aplicável</strong> — folha ≥ 28% do faturamento pode migrar para Anexo III
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )
+            ) : (
+              <div className="rounded-xl border-2 border-gray-200 bg-gray-50 p-4">
+                <div className="flex items-center gap-3">
+                  <span className="text-3xl">❓</span>
+                  <div>
+                    <p className="font-bold text-gray-700 text-base">SIMPLES NACIONAL — NÃO MAPEADO</p>
+                    <p className="text-sm text-gray-500 mt-0.5">
+                      Este CNAE consta na base do IBGE mas ainda não possui análise tributária cadastrada.
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">Consulte seu contador para verificar a elegibilidade.</p>
+                  </div>
+                </div>
               </div>
             )}
 
-            {/* Impedimento */}
-            {cnaeAtual.impedidoSimples && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-800">
-                <p className="font-semibold">⛔ Impedido ao Simples Nacional</p>
-                <p className="text-xs mt-0.5">{cnaeAtual.motivoImpedimento}</p>
-              </div>
-            )}
-
+            {/* Observações específicas do CNAE */}
             {cnaeAtual.observacoes && (
               <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-xl text-sm text-yellow-800">
                 <p className="font-semibold">ℹ️ Atenção</p>
