@@ -339,10 +339,8 @@ export default function LoginPage() {
 
           {/* Rodapé do card */}
           <p className="mt-6 text-center text-gray-500 text-xs leading-relaxed">
-            Protegendo os seus{' '}
-            <strong className="text-amber-400">80+ clientes</strong>{' '}
-            com{' '}
-            <strong className="text-white">Inteligência Legal</strong>.
+            Protegendo seus clientes com{' '}
+            <strong className="text-white">inteligência legal</strong>.
           </p>
         </div>
       </div>
