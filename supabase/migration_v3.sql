@@ -6,6 +6,16 @@
 -- Extensão para busca sem acentos (habilitada por padrão no Supabase)
 CREATE EXTENSION IF NOT EXISTS unaccent;
 
+-- ─── Wrapper IMMUTABLE para unaccent ─────────────────────────────────────────
+-- O PostgreSQL exige que funções usadas em índices sejam IMMUTABLE.
+-- unaccent() por padrão é STABLE, então criamos um wrapper marcado como IMMUTABLE.
+CREATE OR REPLACE FUNCTION public.f_unaccent(text)
+  RETURNS text
+  LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT AS
+$func$
+  SELECT unaccent('unaccent', $1)
+$func$;
+
 -- ─── 1. Tabela cnaes — todos os ~1.300 CNAEs do IBGE ─────────────────────────
 
 CREATE TABLE IF NOT EXISTS public.cnaes (
@@ -21,10 +31,10 @@ CREATE TABLE IF NOT EXISTS public.cnaes (
 CREATE INDEX IF NOT EXISTS idx_cnaes_codigo_norm
   ON public.cnaes (codigo_norm text_pattern_ops);
 
--- Índice full-text em português com remoção de acentos
+-- Índice full-text em português com remoção de acentos (usa wrapper IMMUTABLE)
 CREATE INDEX IF NOT EXISTS idx_cnaes_descricao_fts
   ON public.cnaes
-  USING gin (to_tsvector('portuguese', unaccent(descricao)));
+  USING gin (to_tsvector('portuguese', public.f_unaccent(descricao)));
 
 -- Índice LIKE para fallback
 CREATE INDEX IF NOT EXISTS idx_cnaes_descricao_like
@@ -121,11 +131,11 @@ BEGIN
       AND c.codigo_norm ILIKE '%' || q_norm || '%')
     -- b) Busca full-text em português (suporta singular/plural e acentos)
     OR (length(q_clean) >= 3
-      AND to_tsvector('portuguese', unaccent(c.descricao))
-          @@ plainto_tsquery('portuguese', unaccent(q_clean)))
+      AND to_tsvector('portuguese', public.f_unaccent(c.descricao))
+          @@ plainto_tsquery('portuguese', public.f_unaccent(q_clean)))
     -- c) ILIKE com unaccent como fallback (captura palavras curtas)
     OR (length(q_clean) >= 3
-      AND unaccent(lower(c.descricao)) ILIKE '%' || unaccent(lower(q_clean)) || '%')
+      AND public.f_unaccent(lower(c.descricao)) ILIKE '%' || public.f_unaccent(lower(q_clean)) || '%')
   ORDER BY
     -- Prioridade de relevância
     CASE
