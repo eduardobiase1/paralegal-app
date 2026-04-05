@@ -180,6 +180,8 @@ export interface CnaeInfo {
   conselhoClasse?: string      // CRM, CREA, CFC, OAB, etc.
   licencasObrigatorias: string[]
   observacoes?: string
+  /** true = dados fiscais completos vindos do banco; false = apenas descrição IBGE */
+  temFiscal?: boolean
 }
 
 const L = (licencas: string[]) => licencas
@@ -428,6 +430,60 @@ export function buscarCnae(query: string): CnaeInfo[] {
       (c.conselhoClasse ?? '').toLowerCase().includes(q)
     )
   }).slice(0, 15)
+}
+
+// ─── Busca assíncrona via Supabase (1.300+ CNAEs do IBGE) ────────────────────
+// Chama a função RPC `search_cnaes` que faz JOIN com cnae_fiscal.
+// Fallback automático para buscarCnae() (local) se o banco não estiver disponível.
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function buscarCnaeDB(query: string, supabase: any): Promise<CnaeInfo[]> {
+  if (!query || query.trim().length < 2) return []
+
+  try {
+    const { data, error } = await supabase.rpc('search_cnaes', {
+      p_query: query.trim(),
+      p_limit: 15,
+    })
+
+    if (error || !data || (data as unknown[]).length === 0) {
+      // Fallback para base local
+      return buscarCnae(query)
+    }
+
+    return (data as Array<{
+      codigo: string
+      descricao: string
+      anexo_simples: string | null
+      impedido_simples: boolean
+      motivo_impedimento: string | null
+      fator_r_aplicavel: boolean
+      tipo_atividade: string | null
+      risco_vigilancia: string | null
+      risco_bombeiros: string | null
+      conselho_classe: string | null
+      licencas: string[] | null
+      observacoes: string | null
+      tem_fiscal: boolean
+    }>).map(row => ({
+      codigo:               row.codigo,
+      descricao:            row.descricao,
+      anexoSimples:         (row.anexo_simples ?? 'III') as Anexo | 'impedido',
+      impedidoSimples:      row.impedido_simples ?? false,
+      motivoImpedimento:    row.motivo_impedimento ?? undefined,
+      fatorRAplicavel:      row.fator_r_aplicavel ?? false,
+      tipoAtividade:        (row.tipo_atividade ?? 'servico') as 'comercio' | 'servico' | 'industria',
+      riscoVigilancia:      (row.risco_vigilancia ?? 'Baixo') as RiscoVigilancia,
+      riscoBombeiros:       (row.risco_bombeiros  ?? 'Baixo') as RiscoBombeiros,
+      conselhoClasse:       row.conselho_classe ?? undefined,
+      licencasObrigatorias: row.licencas ?? [],
+      observacoes:          row.observacoes ?? undefined,
+      temFiscal:            row.tem_fiscal ?? false,
+    }))
+  } catch {
+    // Se houver qualquer erro de rede/RPC, usa a base local como fallback
+    return buscarCnae(query)
+  }
 }
 
 // ─── Helpers de formatação ────────────────────────────────────────────────────

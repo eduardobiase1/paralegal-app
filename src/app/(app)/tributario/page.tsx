@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import {
-  buscarCnae, calcularAliquotaEfetiva, calcularFatorR, calcularLucroPresumido,
+  buscarCnaeDB, calcularAliquotaEfetiva, calcularFatorR, calcularLucroPresumido,
   formatarMoeda, formatarPorcentagem,
   CnaeInfo, Anexo, TABELAS_SIMPLES,
 } from '@/lib/cnaeTax'
@@ -129,40 +130,74 @@ function TabConsultaCnae({ cnaeAtual, setCnaeAtual, setTab }: {
   setCnaeAtual: (c: CnaeInfo) => void
   setTab: (t: TabKey) => void
 }) {
+  const [supabase] = useState(createClient)
   const [query, setQuery] = useState('')
-  const resultados = buscarCnae(query)
+  const [resultados, setResultados] = useState<CnaeInfo[]>([])
+  const [loading, setLoading] = useState(false)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Busca com debounce de 350ms
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    if (!query.trim() || query.trim().length < 2) {
+      setResultados([])
+      setLoading(false)
+      return
+    }
+    setLoading(true)
+    debounceRef.current = setTimeout(async () => {
+      const res = await buscarCnaeDB(query, supabase)
+      setResultados(res)
+      setLoading(false)
+    }, 350)
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
+  }, [query, supabase])
 
   return (
     <div className="space-y-5">
       <div>
         <label className="label">Buscar CNAE por código ou descrição</label>
-        <input
-          className="input text-sm"
-          placeholder="Ex: 6201 ou desenvolvimento de software ou contabilidade..."
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-          autoFocus
-        />
+        <div className="relative">
+          <input
+            className="input text-sm pr-8"
+            placeholder="Ex: 8211-3/00 ou serviços administrativos ou contabilidade..."
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            autoFocus
+          />
+          {loading && (
+            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+              <div className="w-4 h-4 border-2 border-primary-400 border-t-transparent rounded-full animate-spin" />
+            </div>
+          )}
+        </div>
+        <p className="text-xs text-gray-400 mt-1">
+          Busca em +1.300 CNAEs — por código (ex: 8211) ou palavras da descrição
+        </p>
       </div>
 
-      {query.length >= 2 && resultados.length === 0 && (
-        <p className="text-sm text-gray-400 text-center py-6">Nenhum CNAE encontrado para "{query}"</p>
+      {query.length >= 2 && !loading && resultados.length === 0 && (
+        <p className="text-sm text-gray-400 text-center py-6">Nenhum CNAE encontrado para &ldquo;{query}&rdquo;</p>
       )}
 
       {resultados.length > 0 && (
         <div className="space-y-2">
           {resultados.map(c => (
             <button key={c.codigo}
-              onClick={() => { setCnaeAtual(c); setQuery('') }}
+              onClick={() => { setCnaeAtual(c); setQuery(''); setResultados([]) }}
               className={`w-full text-left p-4 border-2 rounded-xl transition-all hover:shadow-sm ${
                 cnaeAtual?.codigo === c.codigo
                   ? 'border-primary-400 bg-primary-50'
                   : 'border-gray-200 hover:border-gray-300 bg-white'}`}>
               <div className="flex items-start justify-between gap-3">
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <span className="font-mono text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">{c.codigo}</span>
-                    <BadgeAnexo anexo={c.anexoSimples} />
+                    {c.temFiscal ? (
+                      <BadgeAnexo anexo={c.anexoSimples} />
+                    ) : (
+                      <span className="text-xs bg-gray-50 text-gray-400 border border-gray-200 px-1.5 py-0.5 rounded">sem dados fiscais</span>
+                    )}
                     {c.fatorRAplicavel && (
                       <span className="text-xs bg-indigo-50 text-indigo-600 border border-indigo-200 px-1.5 py-0.5 rounded">Fator R</span>
                     )}
@@ -170,11 +205,13 @@ function TabConsultaCnae({ cnaeAtual, setCnaeAtual, setTab }: {
                       <span className="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded">{c.conselhoClasse}</span>
                     )}
                   </div>
-                  <p className="text-sm text-gray-800">{c.descricao}</p>
+                  <p className="text-sm text-gray-800 truncate">{c.descricao}</p>
                 </div>
-                <div className="flex flex-col gap-1 items-end flex-shrink-0">
-                  <BadgeRisco nivel={c.riscoVigilancia} />
-                </div>
+                {c.temFiscal && (
+                  <div className="flex flex-col gap-1 items-end flex-shrink-0">
+                    <BadgeRisco nivel={c.riscoVigilancia} />
+                  </div>
+                )}
               </div>
             </button>
           ))}
@@ -198,6 +235,17 @@ function TabConsultaCnae({ cnaeAtual, setCnaeAtual, setTab }: {
               </div>
               <BadgeAnexo anexo={cnaeAtual.anexoSimples} />
             </div>
+
+            {/* Aviso: dados fiscais não mapeados */}
+            {!cnaeAtual.temFiscal && (
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-sm text-blue-800">
+                <p className="font-semibold">📋 Dados fiscais não mapeados</p>
+                <p className="text-xs mt-0.5">
+                  Este CNAE consta na base do IBGE mas ainda não possui dados tributários e de
+                  licenciamento cadastrados. Entre em contato com o suporte para solicitar o mapeamento.
+                </p>
+              </div>
+            )}
 
             {/* Impedimento */}
             {cnaeAtual.impedidoSimples && (
