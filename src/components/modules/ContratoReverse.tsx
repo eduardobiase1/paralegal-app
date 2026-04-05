@@ -102,7 +102,7 @@ export default function ContratoReverse() {
       // Use CDN worker to avoid bundler complexity
       const version = (pdfjsLib as any).version as string
       pdfjsLib.GlobalWorkerOptions.workerSrc =
-        `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${version}/pdf.worker.min.js`
+        `https://unpkg.com/pdfjs-dist@${version}/build/pdf.worker.min.mjs`
 
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
       const numPages = pdf.numPages
