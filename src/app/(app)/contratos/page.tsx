@@ -6,13 +6,14 @@ import { ContractTemplate, Contrato, Empresa, Clausula } from '@/types'
 import { formatDate } from '@/lib/utils'
 import Modal from '@/components/ui/Modal'
 import ContratoWizard from '@/components/modules/ContratoWizard'
+import ContratoReverse from '@/components/modules/ContratoReverse'
 import TemplateUpload from '@/components/modules/TemplateUpload'
 import toast from 'react-hot-toast'
 import { useSearchParams } from 'next/navigation'
 
 function ContratosPageInner() {
   const searchParams = useSearchParams()
-  const [tab, setTab] = useState<'gerar' | 'historico' | 'templates' | 'clausulas'>('gerar')
+  const [tab, setTab] = useState<'gerar' | 'reversa' | 'historico' | 'templates' | 'clausulas'>('gerar')
   const [templates, setTemplates] = useState<ContractTemplate[]>([])
   const [contratos, setContratos] = useState<Contrato[]>([])
   const [empresas, setEmpresas] = useState<Empresa[]>([])
@@ -70,6 +71,7 @@ function ContratosPageInner() {
 
   const TABS = [
     { key: 'gerar',     label: 'Gerar Contrato' },
+    { key: 'reversa',   label: 'Nova via PDF' },
     { key: 'historico', label: 'Histórico' },
     { key: 'templates', label: 'Templates' },
     { key: 'clausulas', label: 'Cláusulas' },
@@ -126,6 +128,22 @@ function ContratosPageInner() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── Nova via PDF ── */}
+      {tab === 'reversa' && (
+        <div>
+          <div className="mb-4">
+            <h2 className="text-base font-semibold text-gray-900">Nova Alteração via PDF</h2>
+            <p className="text-sm text-gray-500 mt-0.5">
+              Faça upload do último contrato em PDF. O sistema extrai o texto, detecta CNPJs, CPFs, valores e datas
+              automaticamente e gera um novo documento com apenas as informações alteradas.
+            </p>
+          </div>
+          <div className="card p-6">
+            <ContratoReverse />
+          </div>
         </div>
       )}
 
