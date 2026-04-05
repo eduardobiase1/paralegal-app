@@ -22,7 +22,10 @@ export default function TemplateUpload({ onSuccess }: Props) {
 
     setLoading(true)
 
-    const fileName = `${Date.now()}_${file.name}`
+    const safeName = file.name
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')  // remove acentos
+      .replace(/[^a-zA-Z0-9._-]/g, '_')                  // substitui espaços e especiais por _
+    const fileName = `${Date.now()}_${safeName}`
     const { error: uploadError } = await supabase.storage
       .from('contratos-templates')
       .upload(fileName, file)
