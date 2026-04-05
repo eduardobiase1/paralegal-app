@@ -82,6 +82,7 @@ const TIPO_COR: Record<string, string> = {
 export default function ContratoReverse() {
   const [step, setStep] = useState<1 | 2 | 3>(1)
   const [loading, setLoading] = useState(false)
+  const [ocrProgress, setOcrProgress] = useState('')
   const [textoOriginal, setTextoOriginal] = useState('')
   const [entidades, setEntidades] = useState<EntidadeDetectada[]>([])
   const [substituicoes, setSubstituicoes] = useState<Substituicao[]>([])
@@ -118,8 +119,46 @@ export default function ContratoReverse() {
       }
 
       const texto = fullText.trim()
+
       if (!texto) {
-        toast.error('Não foi possível extrair texto. O PDF pode ser escaneado — cole o texto manualmente.')
+        // PDF is scanned — run OCR with Tesseract.js
+        toast('PDF escaneado detectado. Iniciando OCR em português...', { icon: '🔍' })
+        setOcrProgress('Carregando motor de OCR...')
+
+        const { createWorker } = await import('tesseract.js')
+        const worker = await createWorker('por', 1, {
+          logger: (m: any) => {
+            if (m.status === 'recognizing text') {
+              setOcrProgress(`OCR: ${Math.round((m.progress ?? 0) * 100)}%`)
+            }
+          },
+        })
+
+        let ocrText = ''
+        for (let i = 1; i <= numPages; i++) {
+          setOcrProgress(`Lendo página ${i} de ${numPages}...`)
+          const page = await pdf.getPage(i)
+          const viewport = page.getViewport({ scale: 2.5 })
+          const canvas = document.createElement('canvas')
+          canvas.width = viewport.width
+          canvas.height = viewport.height
+          const ctx = canvas.getContext('2d')!
+          await page.render({ canvasContext: ctx, viewport }).promise
+          const { data: { text } } = await worker.recognize(canvas)
+          ocrText += text + '\n\n'
+        }
+
+        await worker.terminate()
+        setOcrProgress('')
+
+        const textoOcr = ocrText.trim()
+        if (!textoOcr) {
+          toast.error('OCR não conseguiu extrair texto. Tente colar o texto manualmente.')
+          setLoading(false)
+          return
+        }
+        setTextoOriginal(textoOcr)
+        toast.success(`OCR concluído: ${numPages} página(s) processada(s)`)
         setLoading(false)
         return
       }
@@ -267,12 +306,12 @@ export default function ContratoReverse() {
                 ? 'border-gray-200 bg-gray-50 cursor-not-allowed'
                 : 'border-blue-300 bg-blue-50 hover:border-blue-400 hover:bg-blue-100'}`}>
               {loading ? (
-                <div className="text-center text-gray-400 text-sm">
+                <div className="text-center text-gray-500 text-sm">
                   <svg className="animate-spin w-6 h-6 mx-auto mb-1" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
                   </svg>
-                  Processando PDF...
+                  {ocrProgress || 'Processando PDF...'}
                 </div>
               ) : (
                 <div className="text-center text-blue-600">
