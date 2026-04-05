@@ -121,7 +121,7 @@ export default function EmpresaForm({ empresa }: EmpresaFormProps) {
     // Processa CNAEs secundários (um por linha)
     const cnaes_secundarios = form.cnaes_secundarios_txt
       .split('\n')
-      .map(s => s.trim())
+      .map((s: string) => s.trim())
       .filter(Boolean)
 
     const payload: Record<string, any> = {
