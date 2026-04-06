@@ -8,7 +8,7 @@ import toast from 'react-hot-toast'
 import Image from 'next/image'
 
 /* ─────────────────────────────────────────────
-   Ícones inline SVG (sem dependência extra)
+   Ícones inline SVG
 ───────────────────────────────────────────── */
 function IconMail() {
   return (
@@ -74,11 +74,8 @@ function LoginForm() {
 
   return (
     <form onSubmit={handleLogin} className="space-y-4">
-      {/* E-mail */}
       <div className="relative">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
-          <IconMail />
-        </span>
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"><IconMail /></span>
         <input
           type="email"
           className={inputBase}
@@ -89,16 +86,12 @@ function LoginForm() {
           autoComplete="email"
         />
       </div>
-
-      {/* Senha */}
       <div className="relative">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
-          <IconLock />
-        </span>
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"><IconLock /></span>
         <input
           type={showPass ? 'text' : 'password'}
           className={`${inputBase} pr-10`}
-          placeholder="Password"
+          placeholder="Senha"
           value={password}
           onChange={e => setPassword(e.target.value)}
           required
@@ -112,8 +105,6 @@ function LoginForm() {
           <IconEye open={showPass} />
         </button>
       </div>
-
-      {/* Botão */}
       <button
         type="submit"
         disabled={loading}
@@ -137,18 +128,12 @@ function LoginForm() {
 }
 
 /* ─────────────────────────────────────────────
-   Decoração geométrica — losangos/diamantes
+   Decoração geométrica
 ───────────────────────────────────────────── */
 function GeoDiamonds({ className }: { className?: string }) {
-  const lines = Array.from({ length: 6 })
   return (
-    <svg
-      className={className}
-      viewBox="0 0 200 200"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      {lines.map((_, i) => (
+    <svg className={className} viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+      {Array.from({ length: 6 }).map((_, i) => (
         <g key={i} transform={`translate(${i * 28}, ${i * 28})`}>
           <polygon
             points="100,20 180,100 100,180 20,100"
@@ -164,6 +149,65 @@ function GeoDiamonds({ className }: { className?: string }) {
 }
 
 /* ─────────────────────────────────────────────
+   Mockup do app — contratos + tributário
+───────────────────────────────────────────── */
+function AppMockup() {
+  const contratos = [
+    { nome: 'Abertura de MEI — João Silva', status: 'Gerado', cor: '#4ade80' },
+    { nome: 'Distrato Social — Tech Ltda', status: 'Pendente', cor: '#f5a623' },
+    { nome: 'Alteração Contratual — Rios ME', status: 'Gerado', cor: '#4ade80' },
+  ]
+  return (
+    <div
+      className="relative w-72 xl:w-80 rounded-2xl overflow-hidden shadow-2xl border"
+      style={{ borderColor: 'rgba(201,165,51,0.25)', backgroundColor: 'rgba(0,0,0,0.4)' }}
+    >
+      {/* Barra de título */}
+      <div className="px-4 py-2.5 border-b flex items-center gap-2" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+        <div className="flex gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full bg-red-500/60" />
+          <span className="w-2.5 h-2.5 rounded-full bg-yellow-500/60" />
+          <span className="w-2.5 h-2.5 rounded-full bg-green-500/60" />
+        </div>
+        <span className="text-gray-400 text-[11px] mx-auto">Paralegal PRO</span>
+      </div>
+
+      <div className="p-4 space-y-3">
+        {/* Título da seção */}
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] font-semibold text-gray-300">Contratos Recentes</span>
+          <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: 'rgba(245,166,35,0.15)', color: '#f5a623' }}>
+            3 hoje
+          </span>
+        </div>
+
+        {/* Lista de contratos */}
+        <div className="space-y-2">
+          {contratos.map(({ nome, status, cor }) => (
+            <div key={nome} className="flex items-center gap-2 py-1.5 px-2 rounded-lg" style={{ background: 'rgba(255,255,255,0.04)' }}>
+              <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: cor }}>
+                <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <span className="text-[10px] text-gray-300 flex-1 truncate">{nome}</span>
+              <span className="text-[9px] font-medium flex-shrink-0" style={{ color: cor }}>{status}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Análise CNAE rápida */}
+        <div className="mt-2 pt-2 border-t" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+          <div className="text-[11px] font-semibold text-gray-300 mb-1.5">Análise Tributária</div>
+          <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg" style={{ background: 'rgba(74,222,128,0.08)', border: '1px solid rgba(74,222,128,0.2)' }}>
+            <span className="text-green-400 text-xs">✅</span>
+            <span className="text-[10px] text-gray-300">CNAE 6911-7/01 — Simples Nacional</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ─────────────────────────────────────────────
    Página principal
 ───────────────────────────────────────────── */
 export default function LoginPage() {
@@ -172,39 +216,58 @@ export default function LoginPage() {
       className="min-h-screen flex relative overflow-hidden"
       style={{ backgroundColor: '#1b2018' }}
     >
+      {/* Keyframes de animação */}
+      <style>{`
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(24px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+        .anim-fade-up   { animation: fadeInUp 0.65s ease-out both; }
+        .anim-fade      { animation: fadeIn   0.65s ease-out both; }
+        .delay-100 { animation-delay: 0.10s; }
+        .delay-200 { animation-delay: 0.20s; }
+        .delay-300 { animation-delay: 0.30s; }
+        .delay-400 { animation-delay: 0.40s; }
+        .delay-500 { animation-delay: 0.50s; }
+        .delay-600 { animation-delay: 0.60s; }
+      `}</style>
+
       {/* ── Decorações geométricas ── */}
-      {/* Canto inferior esquerdo */}
       <GeoDiamonds className="absolute -bottom-16 -left-16 w-80 h-80 opacity-60 pointer-events-none" />
-      {/* Canto superior esquerdo (menor) */}
       <GeoDiamonds className="absolute -top-24 -left-24 w-64 h-64 opacity-30 pointer-events-none rotate-45" />
-      {/* Canto superior direito */}
       <GeoDiamonds className="absolute -top-12 right-96 w-48 h-48 opacity-20 pointer-events-none" />
 
-      {/* Estrela decorativa canto inferior direito */}
-      <svg
-        className="absolute bottom-8 right-8 w-8 h-8 opacity-40 pointer-events-none"
-        viewBox="0 0 40 40"
-        fill="white"
-      >
+      {/* Gradiente radial mobile */}
+      <div
+        className="absolute inset-0 pointer-events-none lg:hidden"
+        style={{ background: 'radial-gradient(ellipse at 50% 30%, rgba(201,165,51,0.07) 0%, transparent 70%)' }}
+      />
+
+      {/* Estrela decorativa */}
+      <svg className="absolute bottom-8 right-8 w-8 h-8 opacity-40 pointer-events-none" viewBox="0 0 40 40" fill="white">
         <path d="M20 0 L22 18 L40 20 L22 22 L20 40 L18 22 L0 20 L18 18 Z" />
       </svg>
 
       {/* ══════════════════════════════════════
           PAINEL ESQUERDO — Marketing
       ══════════════════════════════════════ */}
-      <div className="hidden lg:flex flex-1 flex-col justify-center px-14 xl:px-20 relative z-10">
+      <div className="hidden lg:flex flex-1 flex-col justify-center items-start px-14 xl:px-24 relative z-10 max-w-3xl">
 
-        {/* Headline */}
-        <div className="mb-10">
-          <h1 className="font-black leading-none tracking-tight" style={{ fontSize: 'clamp(2.8rem, 4.5vw, 4rem)' }}>
+        {/* Headline com fade-in */}
+        <div className="mb-10 anim-fade-up">
+          <h1 className="font-black leading-none tracking-tight" style={{ fontSize: 'clamp(3rem, 4.5vw, 4.2rem)' }}>
             <span style={{ color: '#c9a533' }}>PLATAFORMA</span>
             <br />
             <span className="text-white">INTEGRADA</span>
           </h1>
         </div>
 
-        {/* Features */}
-        <div className="space-y-5 mb-12">
+        {/* Features com stagger */}
+        <div className="space-y-4 mb-12">
           {[
             {
               icon: (
@@ -214,6 +277,7 @@ export default function LoginPage() {
               ),
               title: 'Geração de Contratos:',
               desc: 'Documentos automáticos para clientes.',
+              delay: 'delay-100',
             },
             {
               icon: (
@@ -223,6 +287,7 @@ export default function LoginPage() {
               ),
               title: 'Estrategista Tributário:',
               desc: 'Análise de CNAEs.',
+              delay: 'delay-200',
             },
             {
               icon: (
@@ -232,6 +297,7 @@ export default function LoginPage() {
               ),
               title: 'Alertas de Vencimento:',
               desc: 'Alvarás e CNDs.',
+              delay: 'delay-300',
             },
             {
               icon: (
@@ -241,9 +307,10 @@ export default function LoginPage() {
               ),
               title: 'Relatórios Automatizados:',
               desc: 'Em PDF para o cliente.',
+              delay: 'delay-400',
             },
-          ].map(({ icon, title, desc }) => (
-            <div key={title} className="flex items-center gap-3 w-fit">
+          ].map(({ icon, title, desc, delay }) => (
+            <div key={title} className={`flex items-center gap-3 w-fit anim-fade-up ${delay}`}>
               <span className="text-amber-500/60 font-mono text-lg leading-none">[</span>
               <span className="flex-shrink-0">{icon}</span>
               <p className="text-sm">
@@ -255,61 +322,24 @@ export default function LoginPage() {
           ))}
         </div>
 
-        {/* Mockup do app — card simulado */}
-        <div
-          className="relative w-72 xl:w-80 rounded-2xl overflow-hidden shadow-2xl border"
-          style={{ borderColor: 'rgba(201,165,51,0.25)', backgroundColor: 'rgba(0,0,0,0.35)' }}
-        >
-          {/* Topo do mockup */}
-          <div className="px-4 py-3 border-b flex items-center gap-2" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
-            <div className="relative w-20 h-6">
-              <Image src="/logo.png" alt="Paralegal PRO" fill className="object-contain object-left" />
-            </div>
-            <span className="text-gray-400 text-xs ml-auto">Dashboard</span>
-          </div>
-          {/* Semáforo simulado */}
-          <div className="p-4 space-y-3">
-            <div className="text-xs text-gray-400 font-medium">Semáforo de Legalização</div>
-            <div className="flex items-center gap-3">
-              <div
-                className="w-16 h-16 rounded-full flex items-center justify-center border-4 text-center"
-                style={{ borderColor: '#c9a533', background: 'rgba(201,165,51,0.1)' }}
-              >
-                <span className="text-amber-400 font-black text-lg leading-none">82<span className="text-xs font-normal text-gray-400">/100</span></span>
-              </div>
-              <div className="space-y-1.5 flex-1">
-                {[
-                  { label: 'Alvarás', pct: 85, color: '#4ade80' },
-                  { label: 'CNDs', pct: 70, color: '#f5a623' },
-                  { label: 'CNPJ', pct: 100, color: '#4ade80' },
-                ].map(({ label, pct, color }) => (
-                  <div key={label}>
-                    <div className="flex justify-between text-[10px] text-gray-500 mb-0.5">
-                      <span>{label}</span><span>{pct}%</span>
-                    </div>
-                    <div className="h-1 rounded-full bg-white/10">
-                      <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+        {/* Mockup atualizado */}
+        <div className="anim-fade-up delay-500">
+          <AppMockup />
         </div>
       </div>
 
       {/* ══════════════════════════════════════
           PAINEL DIREITO — Card de Login
       ══════════════════════════════════════ */}
-      <div className="flex items-center justify-center w-full lg:w-[460px] xl:w-[500px] p-6 relative z-10">
+      <div className="flex items-center justify-center w-full lg:w-[460px] xl:w-[500px] p-6 relative z-10 min-h-screen">
         <div
-          className="w-full max-w-[360px] rounded-2xl p-8 shadow-2xl backdrop-blur-sm"
+          className="w-full max-w-[360px] rounded-2xl p-8 shadow-2xl backdrop-blur-sm anim-fade delay-200"
           style={{
             backgroundColor: 'rgba(255,255,255,0.055)',
             border: '1px solid rgba(201,165,51,0.2)',
           }}
         >
-          {/* Logo no card */}
+          {/* Logo */}
           <div className="flex items-center gap-3 mb-6">
             <div className="relative w-10 h-10 flex-shrink-0">
               <Image src="/logo.png" alt="Paralegal PRO" fill className="object-contain" />
@@ -330,13 +360,11 @@ export default function LoginPage() {
           </div>
 
           {/* Formulário */}
-          <Suspense fallback={
-            <div className="text-center text-gray-500 text-sm py-4">Carregando...</div>
-          }>
+          <Suspense fallback={<div className="text-center text-gray-500 text-sm py-4">Carregando...</div>}>
             <LoginForm />
           </Suspense>
 
-          {/* Rodapé do card */}
+          {/* Rodapé */}
           <p className="mt-6 text-center text-gray-500 text-xs leading-relaxed">
             Protegendo seus clientes com{' '}
             <strong className="text-white">inteligência legal</strong>.
@@ -344,7 +372,7 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Linha divisória vertical (decorativa) */}
+      {/* Linha divisória vertical */}
       <div
         className="hidden lg:block absolute top-1/2 -translate-y-1/2 w-px h-3/4 pointer-events-none"
         style={{
