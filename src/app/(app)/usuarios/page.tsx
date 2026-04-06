@@ -71,7 +71,7 @@ export default function UsuariosPage() {
   }
 
   async function handleRemove(member: Member) {
-    if (!confirm(`Remover ${member.profiles?.nome ?? 'este usuário'} da organização?`)) return
+    if (!confirm(`Remover ${getProfile(member.profiles)?.nome ?? 'este usuário'} da organização?`)) return
     const { error } = await supabase
       .from('organization_members')
       .delete()
