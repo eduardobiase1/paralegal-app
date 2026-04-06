@@ -23,7 +23,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     redirect('/onboarding')
   }
 
-  const org = membership.organizations as { id: string; name: string }
+  const orgRaw = membership.organizations
+  const org = (Array.isArray(orgRaw) ? orgRaw[0] : orgRaw) as { id: string; name: string }
 
   return (
     <OrgProvider orgId={org.id} orgName={org.name} role={membership.role as OrgRole}>
