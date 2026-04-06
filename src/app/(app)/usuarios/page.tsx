@@ -54,7 +54,7 @@ export default function UsuariosPage() {
       .select('id, user_id, role, created_at, profiles(nome, email, ativo)')
       .eq('org_id', orgId)
       .order('created_at')
-    setMembers((data as Member[]) ?? [])
+    setMembers((data as unknown as Member[]) ?? [])
     setLoading(false)
   }
 
