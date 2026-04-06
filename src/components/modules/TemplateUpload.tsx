@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useOrg } from '@/lib/org-context'
 import toast from 'react-hot-toast'
 
 interface Props {
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export default function TemplateUpload({ onSuccess }: Props) {
+  const { orgId } = useOrg()
   const [supabase] = useState(createClient)
   const [loading, setLoading] = useState(false)
   const [file, setFile] = useState<File | null>(null)
@@ -47,6 +49,7 @@ export default function TemplateUpload({ onSuccess }: Props) {
         descricao: descricao || null,
         arquivo_url: publicUrl,
         arquivo_nome: file.name,
+        org_id: orgId,
       })
 
     setLoading(false)

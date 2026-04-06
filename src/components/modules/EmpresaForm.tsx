@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { useOrg } from '@/lib/org-context'
 import { Empresa } from '@/types'
 import { buscarCEP, formatCNPJ, validateCNPJ } from '@/lib/utils'
 import toast from 'react-hot-toast'
@@ -30,6 +31,7 @@ interface EmpresaFormProps {
 
 export default function EmpresaForm({ empresa }: EmpresaFormProps) {
   const router = useRouter()
+  const { orgId } = useOrg()
   const [supabase] = useState(createClient)
   const isEdit = !!empresa
 
@@ -153,6 +155,11 @@ export default function EmpresaForm({ empresa }: EmpresaFormProps) {
       url_portal_alvara:   form.url_portal_alvara,
       url_certidao_municipal: form.url_certidao_municipal,
       url_portal_visa:     form.url_portal_visa,
+    }
+
+    // Vincula à organização apenas no insert (não sobrescreve no update)
+    if (!isEdit) {
+      payload.org_id = orgId
     }
 
     let error
