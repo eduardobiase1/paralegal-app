@@ -9,16 +9,23 @@ import toast from 'react-hot-toast'
 
 type OrgRole = 'admin' | 'operador' | 'viewer'
 
+interface MemberProfile {
+  nome: string
+  email: string
+  ativo: boolean
+}
+
 interface Member {
   id: string
   user_id: string
   role: OrgRole
   created_at: string
-  profiles: {
-    nome: string
-    email: string
-    ativo: boolean
-  } | null
+  profiles: MemberProfile | MemberProfile[] | null
+}
+
+function getProfile(profiles: Member['profiles']): MemberProfile | null {
+  if (!profiles) return null
+  return Array.isArray(profiles) ? profiles[0] ?? null : profiles
 }
 
 const ROLE_LABELS: Record<OrgRole, string> = {
@@ -122,8 +129,8 @@ export default function UsuariosPage() {
               <tbody className="divide-y">
                 {members.map(m => (
                   <tr key={m.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium text-gray-900">{m.profiles?.nome ?? '—'}</td>
-                    <td className="px-4 py-3 text-gray-600">{m.profiles?.email ?? '—'}</td>
+                    <td className="px-4 py-3 font-medium text-gray-900">{getProfile(m.profiles)?.nome ?? '—'}</td>
+                    <td className="px-4 py-3 text-gray-600">{getProfile(m.profiles)?.email ?? '—'}</td>
                     <td className="px-4 py-3">
                       {isAdmin ? (
                         <select
@@ -143,9 +150,9 @@ export default function UsuariosPage() {
                     </td>
                     <td className="px-4 py-3">
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                        m.profiles?.ativo !== false ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                        getProfile(m.profiles)?.ativo !== false ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
                       }`}>
-                        {m.profiles?.ativo !== false ? 'Ativo' : 'Inativo'}
+                        {getProfile(m.profiles)?.ativo !== false ? 'Ativo' : 'Inativo'}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-gray-500">{formatDate(m.created_at)}</td>
