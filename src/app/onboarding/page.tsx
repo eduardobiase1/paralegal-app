@@ -29,31 +29,15 @@ export default function OnboardingPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.push('/login'); return }
 
-    const baseSlug = slugify(name)
+    const slug = `${slugify(name)}-${Math.random().toString(36).slice(2, 6)}`
 
-    // Garante slug único adicionando sufixo aleatório se necessário
-    const slug = `${baseSlug}-${Math.random().toString(36).slice(2, 6)}`
+    // Cria org + adiciona usuário como admin em transação atômica (SECURITY DEFINER)
+    const { error: rpcError } = await supabase
+      .rpc('create_organization', { p_name: name.trim(), p_slug: slug })
 
-    // Cria a organização
-    const { data: org, error: orgError } = await supabase
-      .from('organizations')
-      .insert({ name: name.trim(), slug })
-      .select('id')
-      .single()
-
-    if (orgError || !org) {
+    if (rpcError) {
       toast.error('Erro ao criar organização. Tente novamente.')
-      setLoading(false)
-      return
-    }
-
-    // Adiciona o criador como admin
-    const { error: memberError } = await supabase
-      .from('organization_members')
-      .insert({ org_id: org.id, user_id: user.id, role: 'admin' })
-
-    if (memberError) {
-      toast.error('Erro ao configurar permissões.')
+      console.error(rpcError)
       setLoading(false)
       return
     }
