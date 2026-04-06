@@ -2,63 +2,75 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Profile } from '@/types'
+import { useOrg } from '@/lib/org-context'
 import { formatDate } from '@/lib/utils'
 import Modal from '@/components/ui/Modal'
 import toast from 'react-hot-toast'
 
+type OrgRole = 'admin' | 'operador' | 'viewer'
+
+interface Member {
+  id: string
+  user_id: string
+  role: OrgRole
+  created_at: string
+  profiles: {
+    nome: string
+    email: string
+    ativo: boolean
+  } | null
+}
+
+const ROLE_LABELS: Record<OrgRole, string> = {
+  admin: 'Administrador',
+  operador: 'Operador',
+  viewer: 'Visualizador',
+}
+
+const ROLE_COLORS: Record<OrgRole, string> = {
+  admin: 'bg-amber-100 text-amber-700',
+  operador: 'bg-blue-100 text-blue-700',
+  viewer: 'bg-gray-100 text-gray-600',
+}
+
 export default function UsuariosPage() {
-  const [profiles, setProfiles] = useState<Profile[]>([])
+  const { orgId, orgName, isAdmin } = useOrg()
+  const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
-  const [form, setForm] = useState({ email: '', nome: '', perfil: 'operacional', senha: '' })
-  const [saving, setSaving] = useState(false)
   const [supabase] = useState(createClient)
 
   async function load() {
     setLoading(true)
-    const { data } = await supabase.from('profiles').select('*').order('nome')
-    setProfiles(data ?? [])
+    const { data } = await supabase
+      .from('organization_members')
+      .select('id, user_id, role, created_at, profiles(nome, email, ativo)')
+      .eq('org_id', orgId)
+      .order('created_at')
+    setMembers((data as Member[]) ?? [])
     setLoading(false)
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [orgId])
 
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault()
-    setSaving(true)
-
-    const { error } = await supabase.auth.admin.createUser({
-      email: form.email,
-      password: form.senha,
-      user_metadata: { nome: form.nome, perfil: form.perfil },
-      email_confirm: true,
-    }).then(r => r)
-
-    // Fallback: se não tiver acesso admin, usar signUp
-    if (true) {
-      // Para simplificar, orientar o usuário a usar o painel do Supabase
-      toast('Para criar usuários, acesse o painel Supabase > Authentication > Users e crie o usuário lá, preenchendo nome e perfil nos metadados.', { duration: 8000, icon: 'ℹ️' })
-      setSaving(false)
-      setModalOpen(false)
-      return
-    }
-  }
-
-  async function toggleAtivo(profile: Profile) {
+  async function handleChangeRole(member: Member, newRole: OrgRole) {
     const { error } = await supabase
-      .from('profiles')
-      .update({ ativo: !profile.ativo })
-      .eq('id', profile.id)
-    if (error) { toast.error('Erro ao atualizar'); return }
-    toast.success(profile.ativo ? 'Usuário desativado' : 'Usuário ativado')
+      .from('organization_members')
+      .update({ role: newRole })
+      .eq('id', member.id)
+    if (error) { toast.error('Erro ao atualizar papel'); return }
+    toast.success('Papel atualizado!')
     load()
   }
 
-  async function changePerfil(profile: Profile, perfil: string) {
-    const { error } = await supabase.from('profiles').update({ perfil }).eq('id', profile.id)
-    if (error) { toast.error('Erro ao atualizar'); return }
-    toast.success('Perfil atualizado!')
+  async function handleRemove(member: Member) {
+    if (!confirm(`Remover ${member.profiles?.nome ?? 'este usuário'} da organização?`)) return
+    const { error } = await supabase
+      .from('organization_members')
+      .delete()
+      .eq('id', member.id)
+    if (error) { toast.error('Erro ao remover membro'); return }
+    toast.success('Membro removido da organização.')
     load()
   }
 
@@ -67,11 +79,26 @@ export default function UsuariosPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Usuários</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{profiles.length} usuário(s)</p>
+          <p className="text-sm text-gray-500 mt-0.5">
+            {members.length} membro(s) em <strong>{orgName}</strong>
+          </p>
         </div>
-        <button onClick={() => setModalOpen(true)} className="btn-primary">
-          + Novo Usuário
-        </button>
+        {isAdmin && (
+          <button onClick={() => setModalOpen(true)} className="btn-primary">
+            + Convidar Usuário
+          </button>
+        )}
+      </div>
+
+      {/* Aviso de isolamento */}
+      <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800 flex gap-3">
+        <span className="text-lg flex-shrink-0">🔐</span>
+        <div>
+          <strong>Isolamento de dados ativo.</strong> Esta organização vê apenas seus próprios dados.
+          {' '}<span className="font-semibold">Administrador</span> gerencia usuários e configurações.
+          {' '}<span className="font-semibold">Operador</span> cria e edita registros.
+          {' '}<span className="font-semibold">Visualizador</span> apenas consulta.
+        </div>
       </div>
 
       <div className="card">
@@ -84,47 +111,54 @@ export default function UsuariosPage() {
                 <tr>
                   <th className="px-4 py-3 text-left font-medium text-gray-600">Nome</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-600">E-mail</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-600">Perfil</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-600">Papel</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-600">Status</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-600">Desde</th>
-                  <th className="px-4 py-3 text-right font-medium text-gray-600">Ações</th>
+                  {isAdmin && (
+                    <th className="px-4 py-3 text-right font-medium text-gray-600">Ações</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {profiles.map(p => (
-                  <tr key={p.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium text-gray-900">{p.nome}</td>
-                    <td className="px-4 py-3 text-gray-600">{p.email}</td>
+                {members.map(m => (
+                  <tr key={m.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 font-medium text-gray-900">{m.profiles?.nome ?? '—'}</td>
+                    <td className="px-4 py-3 text-gray-600">{m.profiles?.email ?? '—'}</td>
                     <td className="px-4 py-3">
-                      <select
-                        className="text-xs border rounded px-2 py-1"
-                        value={p.perfil}
-                        onChange={e => changePerfil(p, e.target.value)}
-                      >
-                        <option value="gestor">Gestor</option>
-                        <option value="operacional">Operacional</option>
-                      </select>
+                      {isAdmin ? (
+                        <select
+                          className="text-xs border rounded px-2 py-1"
+                          value={m.role}
+                          onChange={e => handleChangeRole(m, e.target.value as OrgRole)}
+                        >
+                          <option value="admin">Administrador</option>
+                          <option value="operador">Operador</option>
+                          <option value="viewer">Visualizador</option>
+                        </select>
+                      ) : (
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ROLE_COLORS[m.role]}`}>
+                          {ROLE_LABELS[m.role]}
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                        p.ativo ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                        m.profiles?.ativo !== false ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
                       }`}>
-                        {p.ativo ? 'Ativo' : 'Inativo'}
+                        {m.profiles?.ativo !== false ? 'Ativo' : 'Inativo'}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-gray-500">{formatDate(p.created_at)}</td>
-                    <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={() => toggleAtivo(p)}
-                        className={`text-xs px-2 py-1 rounded border transition-colors ${
-                          p.ativo
-                            ? 'text-red-600 border-red-200 hover:bg-red-50'
-                            : 'text-green-600 border-green-200 hover:bg-green-50'
-                        }`}
-                      >
-                        {p.ativo ? 'Desativar' : 'Ativar'}
-                      </button>
-                    </td>
+                    <td className="px-4 py-3 text-gray-500">{formatDate(m.created_at)}</td>
+                    {isAdmin && (
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          onClick={() => handleRemove(m)}
+                          className="text-xs px-2 py-1 rounded border text-red-600 border-red-200 hover:bg-red-50 transition-colors"
+                        >
+                          Remover
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -133,16 +167,24 @@ export default function UsuariosPage() {
         )}
       </div>
 
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Novo Usuário">
+      {/* Modal de convite */}
+      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Convidar Usuário">
         <div className="space-y-4">
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
-            <p className="font-medium mb-1">Como criar um novo usuário:</p>
-            <ol className="list-decimal list-inside space-y-1 text-blue-700">
-              <li>Acesse o painel Supabase (supabase.com)</li>
-              <li>Vá em Authentication → Users</li>
-              <li>Clique em "Invite user" e preencha o e-mail</li>
-              <li>Após o cadastro, altere o perfil aqui nesta tela</li>
+            <p className="font-medium mb-2">Como adicionar um novo usuário à organização:</p>
+            <ol className="list-decimal list-inside space-y-1.5 text-blue-700 text-xs">
+              <li>Acesse <strong>Supabase → Authentication → Users</strong></li>
+              <li>Clique em <strong>"Invite user"</strong> e informe o e-mail</li>
+              <li>O usuário define a senha pelo e-mail recebido</li>
+              <li>No primeiro login, ele cria sua própria organização — ou você pode vinculá-lo à sua com o SQL abaixo:</li>
             </ol>
+            <pre className="mt-3 bg-blue-100 rounded p-2 text-[10px] text-blue-900 overflow-x-auto select-all">
+{`INSERT INTO organization_members (org_id, user_id, role)
+VALUES ('${orgId}', 'UUID_DO_USUARIO_AQUI', 'operador');`}
+            </pre>
+            <p className="mt-2 text-xs text-blue-600">
+              🚀 Em breve: convite direto por e-mail dentro do sistema.
+            </p>
           </div>
           <button onClick={() => setModalOpen(false)} className="btn-secondary w-full justify-center">
             Entendido
