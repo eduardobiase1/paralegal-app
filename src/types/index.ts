@@ -313,3 +313,14 @@ export const STATUS_ETAPA_LABELS: Record<StatusEtapa, string> = {
   aguardando_cliente: 'Aguardando Cliente',
   em_exigencia: 'Em Exigência',
 }
+export interface FinanceiroPro {
+  id: string;
+  processo_id: string;
+  tipo_custo: string;
+  descricao: string;
+  valor: number;
+  data_vencimento: string;
+  data_pagamento?: string;
+  status: 'Pendente' | 'Pago' | 'Reembolsado' | 'Aguardando Reembolso';
+  comprovante_url?: string;
+}
