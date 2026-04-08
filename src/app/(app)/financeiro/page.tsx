@@ -15,6 +15,19 @@ export default function FinanceiroPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [processos, setProcessos] = useState<any[]>([])
 
+  // LÓGICA DE CÁLCULO DOS CARDS
+  const totalHonorarios = lancamentos
+    .filter(i => i.tipo_custo === 'Honorário')
+    .reduce((acc, curr) => acc + curr.valor, 0)
+
+  const totalTaxas = lancamentos
+    .filter(i => i.tipo_custo.includes('Taxa'))
+    .reduce((acc, curr) => acc + curr.valor, 0)
+
+  const totalPendente = lancamentos
+    .filter(i => i.status === 'Pendente')
+    .reduce((acc, curr) => acc + curr.valor, 0)
+
   const [formData, setFormData] = useState({
     processo_id: '',
     tipo_custo: 'Honorário',
@@ -43,18 +56,11 @@ export default function FinanceiroPage() {
     setLoading(false)
   }
 
-  // FUNÇÃO PARA ATUALIZAR STATUS VIA SELECT
   async function updateStatus(id: string, newStatus: string) {
-    const { error } = await supabase
-      .from('financeiro_pro')
-      .update({ status: newStatus })
-      .eq('id', id)
-    
+    const { error } = await supabase.from('financeiro_pro').update({ status: newStatus }).eq('id', id)
     if (!error) {
-        toast.success(`Status atualizado para ${newStatus}`)
+        toast.success(`Status atualizado`)
         fetchFinanceiro()
-    } else {
-        toast.error("Erro ao atualizar status")
     }
   }
 
@@ -81,18 +87,40 @@ export default function FinanceiroPage() {
           <h1 className="text-2xl font-bold uppercase tracking-wider text-emerald-50 italic">Financeiro <span className="text-emerald-500">PRO</span></h1>
           <p className="text-gray-500 text-sm">Gestão de Fluxo e Auditoria</p>
         </div>
-        <button onClick={() => setIsModalOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all active:scale-95 shadow-lg shadow-emerald-900/20">
+        <button onClick={() => setIsModalOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-emerald-900/20">
           <IconPlus /> NOVO LANÇAMENTO
         </button>
       </header>
 
-      {/* TABELA COM SELETOR DE STATUS */}
+      {/* DASHBOARD RESTAURADO */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-[#141414] p-6 rounded-2xl border border-white/[0.05] shadow-xl">
+          <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest mb-1 text-emerald-500/50">Total Honorários</p>
+          <h2 className="text-3xl font-black text-emerald-400 font-mono">
+            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalHonorarios)}
+          </h2>
+        </div>
+        <div className="bg-[#141414] p-6 rounded-2xl border border-white/[0.05] shadow-xl text-left">
+          <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest mb-1 text-amber-500/50">Taxas Antecipadas</p>
+          <h2 className="text-3xl font-black text-amber-500 font-mono">
+            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalTaxas)}
+          </h2>
+        </div>
+        <div className="bg-[#141414] p-6 rounded-2xl border border-white/[0.05] shadow-xl">
+          <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest mb-1 text-red-500/50">Pendente de Recebimento</p>
+          <h2 className="text-3xl font-black text-red-500 font-mono">
+            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalPendente)}
+          </h2>
+        </div>
+      </div>
+
+      {/* TABELA */}
       <div className="bg-[#141414] rounded-2xl border border-white/[0.05] overflow-hidden shadow-2xl">
         <table className="w-full text-left text-sm">
-          <thead className="bg-[#1a1a1a] text-gray-500 text-[10px] font-black uppercase tracking-widest">
+          <thead className="bg-[#1a1a1a] text-gray-500 text-[10px] font-black uppercase tracking-widest text-left">
             <tr>
               <th className="p-5">Empresa / Processo</th>
-              <th className="p-5">Valor</th>
+              <th className="p-5 text-left">Valor</th>
               <th className="p-5 text-center">Status</th>
               <th className="p-5 text-right">Ações</th>
             </tr>
@@ -108,7 +136,6 @@ export default function FinanceiroPage() {
                   {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor)}
                 </td>
                 <td className="p-5 text-center">
-                  {/* SELETOR DE STATUS ESTILO FILTRO */}
                   <select 
                     value={item.status}
                     onChange={(e) => updateStatus(item.id, e.target.value)}
@@ -124,7 +151,7 @@ export default function FinanceiroPage() {
                   </select>
                 </td>
                 <td className="p-5 text-right">
-                    <button onClick={() => handleDelete(item.id)} className="p-2 hover:bg-red-500/10 rounded-lg transition-all group">
+                    <button onClick={() => handleDelete(item.id)} className="p-2 hover:bg-red-500/10 rounded-lg transition-all">
                         <IconTrash />
                     </button>
                 </td>
@@ -134,36 +161,36 @@ export default function FinanceiroPage() {
         </table>
       </div>
 
-      {/* MODAL DE CADASTRO */}
+      {/* MODAL */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4 text-left">
           <div className="bg-[#141414] border border-white/[0.1] w-full max-w-md rounded-3xl p-8 shadow-2xl">
             <h2 className="text-2xl font-black mb-6 text-emerald-400 italic uppercase">Novo Lançamento</h2>
             <form onSubmit={handleSave} className="space-y-5">
               <div>
                 <label className="block text-[10px] font-black text-gray-500 uppercase mb-2">Processo</label>
-                <select required className="w-full bg-[#0d0d0d] border border-white/[0.1] rounded-xl p-3 text-sm text-white outline-none focus:border-emerald-500/50" onChange={(e) => setFormData({...formData, processo_id: e.target.value})}>
+                <select required className="w-full bg-[#0d0d0d] border border-white/[0.1] rounded-xl p-3 text-sm text-white" onChange={(e) => setFormData({...formData, processo_id: e.target.value})}>
                   <option value="">Selecione...</option>
                   {processos.map(p => <option key={p.id} value={p.id}>{p.empresas?.razao_social} ({p.tipo})</option>)}
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-black text-gray-500 uppercase mb-2">Tipo</label>
-                  <select className="w-full bg-[#0d0d0d] border border-white/[0.1] rounded-xl p-3 text-sm text-white outline-none" onChange={(e) => setFormData({...formData, tipo_custo: e.target.value})}>
+                  <label className="block text-[10px] font-black text-gray-500 uppercase mb-2 text-left">Tipo</label>
+                  <select className="w-full bg-[#0d0d0d] border border-white/[0.1] rounded-xl p-3 text-sm text-white" onChange={(e) => setFormData({...formData, tipo_custo: e.target.value})}>
                     <option value="Honorário">Honorário</option>
                     <option value="Taxa JUCESP">Taxa JUCESP</option>
                     <option value="Taxa Prefeitura">Taxa Prefeitura</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black text-gray-500 uppercase mb-2">Valor (R$)</label>
-                  <input type="number" step="0.01" required className="w-full bg-[#0d0d0d] border border-white/[0.1] rounded-xl p-3 text-sm text-emerald-400 font-bold outline-none" onChange={(e) => setFormData({...formData, valor: e.target.value})} />
+                  <label className="block text-[10px] font-black text-gray-500 uppercase mb-2 text-left">Valor (R$)</label>
+                  <input type="number" step="0.01" required className="w-full bg-[#0d0d0d] border border-white/[0.1] rounded-xl p-3 text-sm text-emerald-400 font-bold" onChange={(e) => setFormData({...formData, valor: e.target.value})} />
                 </div>
               </div>
               <div className="flex gap-4 pt-4">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 text-gray-500 font-bold text-xs uppercase tracking-widest hover:text-white transition-colors">Cancelar</button>
-                <button type="submit" className="flex-1 bg-emerald-600 py-4 rounded-xl font-black text-xs uppercase shadow-lg shadow-emerald-900/20 hover:bg-emerald-500 transition-all">Salvar Registro</button>
+                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 text-gray-500 font-bold text-xs uppercase tracking-widest">Cancelar</button>
+                <button type="submit" className="flex-1 bg-emerald-600 py-4 rounded-xl font-black text-xs uppercase">Salvar Registro</button>
               </div>
             </form>
           </div>
