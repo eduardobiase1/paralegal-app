@@ -341,7 +341,7 @@ export default function SocietarioPage() {
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 mt-4">
                 {checklist.map((item: any, i: number) => (
                   <div key={i} className="relative group">
-                    {editingItem?.procId === p.id && editingItem.index === i ? (
+                    {editingItem !== null && editingItem.procId === p.id && editingItem.index === i ? (
                       <div className="flex flex-col gap-1">
                         <textarea
                           autoFocus
@@ -365,7 +365,7 @@ export default function SocietarioPage() {
                       </button>
                     )}
                     {/* Ações de edição/exclusão */}
-                    {!(editingItem?.procId === p.id && editingItem.index === i) && (
+                    {!(editingItem !== null && editingItem.procId === p.id && editingItem.index === i) && (
                       <div className="absolute -top-1 -right-1 hidden group-hover:flex gap-0.5 z-10">
                         <button
                           onClick={() => { setEditingItem({ procId: p.id, index: i }); setEditText(item.etapa) }}
