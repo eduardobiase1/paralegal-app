@@ -22,6 +22,13 @@ const STATUS_COLORS: Record<string, string> = {
   cancelado: 'bg-slate-100 text-slate-500 border-slate-200',
 }
 
+const STATUS_LABELS: Record<string, string> = {
+  pendente: 'Em Aberto',
+  pago: 'Pago',
+  atrasado: 'Atrasado',
+  cancelado: 'Cancelado',
+}
+
 export default function FinanceiroPage() {
   const { orgId, orgName } = useOrg()
   const [supabase] = useState(createClient())
@@ -41,7 +48,8 @@ export default function FinanceiroPage() {
     descricao: '',
     valor: '',
     tipo: 'mensal',
-    dia_vencimento: '5',
+    data_vencimento: '',
+    status: 'pendente',
     empresa_id: '',
   })
 
@@ -59,7 +67,7 @@ export default function FinanceiroPage() {
   const fetchData = useCallback(async () => {
     setLoading(true)
     const [honRes, cobRes, empRes] = await Promise.all([
-      supabase.from('honorarios').select('*, empresas(razao_social)').eq('org_id', orgId).eq('ativo', true).order('created_at', { ascending: false }),
+      supabase.from('honorarios').select('*, empresas(razao_social)').eq('org_id', orgId).eq('ativo', true).order('data_vencimento', { ascending: true }),
       supabase.from('cobrancas').select('*, honorarios(descricao), empresas(razao_social)').eq('org_id', orgId).order('data_vencimento', { ascending: false }),
       supabase.from('empresas').select('id, razao_social').order('razao_social'),
     ])
@@ -73,11 +81,11 @@ export default function FinanceiroPage() {
     if (orgId) fetchData()
   }, [orgId, fetchData])
 
-  // ── Abrir modal honorário (novo ou edição) ───────────────────────────────
+  // ── Abrir modal honorário ────────────────────────────────────────────────
 
   function openNewHon() {
     setEditingHonId(null)
-    setFormHon({ cliente_nome: '', cliente_cnpj: '', descricao: '', valor: '', tipo: 'mensal', dia_vencimento: '5', empresa_id: '' })
+    setFormHon({ cliente_nome: '', cliente_cnpj: '', descricao: '', valor: '', tipo: 'mensal', data_vencimento: '', status: 'pendente', empresa_id: '' })
     setModalHon(true)
   }
 
@@ -89,7 +97,8 @@ export default function FinanceiroPage() {
       descricao: h.descricao || '',
       valor: String(h.valor || ''),
       tipo: h.tipo || 'mensal',
-      dia_vencimento: String(h.dia_vencimento || '5'),
+      data_vencimento: h.data_vencimento || '',
+      status: h.status || 'pendente',
       empresa_id: h.empresa_id || '',
     })
     setModalHon(true)
@@ -107,7 +116,8 @@ export default function FinanceiroPage() {
       descricao: formHon.descricao.trim() || null,
       valor: parseFloat(formHon.valor),
       tipo: formHon.tipo,
-      dia_vencimento: formHon.dia_vencimento ? parseInt(formHon.dia_vencimento) : null,
+      data_vencimento: formHon.data_vencimento || null,
+      status: formHon.status,
       empresa_id: formHon.empresa_id || null,
     }
 
@@ -119,7 +129,7 @@ export default function FinanceiroPage() {
       toast.success(editingHonId ? 'Honorário atualizado!' : 'Honorário cadastrado!')
       setModalHon(false)
       setEditingHonId(null)
-      setFormHon({ cliente_nome: '', cliente_cnpj: '', descricao: '', valor: '', tipo: 'mensal', dia_vencimento: '5', empresa_id: '' })
+      setFormHon({ cliente_nome: '', cliente_cnpj: '', descricao: '', valor: '', tipo: 'mensal', data_vencimento: '', status: 'pendente', empresa_id: '' })
       fetchData()
     } else {
       toast.error(`Erro: ${error.message}`)
@@ -135,7 +145,17 @@ export default function FinanceiroPage() {
     toast.success('Honorário excluído.')
   }
 
-  // ── Abrir modal cobrança (novo ou edição) ────────────────────────────────
+  // ── Marcar honorário como pago ────────────────────────────────────────────
+
+  async function marcarPagoHon(id: string) {
+    const { error } = await supabase.from('honorarios').update({ status: 'pago' }).eq('id', id)
+    if (!error) {
+      toast.success('Honorário marcado como pago!')
+      fetchData()
+    }
+  }
+
+  // ── Abrir modal cobrança ─────────────────────────────────────────────────
 
   function openNewCob() {
     setEditingCobId(null)
@@ -210,26 +230,28 @@ export default function FinanceiroPage() {
     }
   }
 
-  // ── Estatísticas do dashboard ─────────────────────────────────────────────
+  // ── Estatísticas ─────────────────────────────────────────────────────────
+  // Honorários + cobranças consolidados na visão geral
 
-  const totalPendente = cobrancas.filter(c => c.status === 'pendente').reduce((s, c) => s + c.valor, 0)
-  const totalPago = cobrancas.filter(c => c.status === 'pago').reduce((s, c) => s + c.valor, 0)
-  const totalAtrasado = cobrancas.filter(c => c.status === 'atrasado').reduce((s, c) => s + c.valor, 0)
-  const receitaMensal = honorarios.reduce((s, h) => s + (h.tipo === 'mensal' ? h.valor : 0), 0)
+  const honPendente = honorarios.filter(h => h.status === 'pendente' || !h.status).reduce((s, h) => s + (h.valor || 0), 0)
+  const honPago = honorarios.filter(h => h.status === 'pago').reduce((s, h) => s + (h.valor || 0), 0)
+  const honAtrasado = honorarios.filter(h => h.status === 'atrasado').reduce((s, h) => s + (h.valor || 0), 0)
+  const cobPendente = cobrancas.filter(c => c.status === 'pendente').reduce((s, c) => s + (c.valor || 0), 0)
+  const cobPago = cobrancas.filter(c => c.status === 'pago').reduce((s, c) => s + (c.valor || 0), 0)
+  const cobAtrasado = cobrancas.filter(c => c.status === 'atrasado').reduce((s, c) => s + (c.valor || 0), 0)
+
+  const totalPendente = honPendente + cobPendente
+  const totalPago = honPago + cobPago
+  const totalAtrasado = honAtrasado + cobAtrasado
+  const receitaMensal = honorarios.filter(h => h.tipo === 'mensal').reduce((s, h) => s + (h.valor || 0), 0)
 
   function fmt(n: number) {
     return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
   }
 
-  // Calcula próxima data de vencimento com base no dia do mês
-  function proximaDataVenc(dia: number | null): string {
-    if (!dia) return '—'
-    const hoje = new Date()
-    const ano = hoje.getFullYear()
-    const mes = hoje.getMonth()
-    const tentativa = new Date(ano, mes, dia)
-    const data = tentativa < hoje ? new Date(ano, mes + 1, dia) : tentativa
-    return data.toLocaleDateString('pt-BR')
+  function fmtDate(d: string | null) {
+    if (!d) return '—'
+    return new Date(d + 'T00:00:00').toLocaleDateString('pt-BR')
   }
 
   return (
@@ -282,6 +304,41 @@ export default function FinanceiroPage() {
             ))}
           </div>
 
+          {/* Honorários em aberto */}
+          {honorarios.filter(h => h.status === 'pendente' || !h.status).length > 0 && (
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-100">
+                <h2 className="font-bold text-slate-800">Honorários em Aberto</h2>
+              </div>
+              <table className="w-full text-left">
+                <thead className="bg-slate-50 text-[10px] font-black uppercase text-slate-500 tracking-widest">
+                  <tr>
+                    <th className="px-6 py-3">Cliente</th>
+                    <th className="px-6 py-3">Descrição</th>
+                    <th className="px-6 py-3">Vencimento</th>
+                    <th className="px-6 py-3">Valor</th>
+                    <th className="px-6 py-3">Ação</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {honorarios.filter(h => h.status === 'pendente' || !h.status).map(h => (
+                    <tr key={h.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-6 py-4 text-sm font-bold text-slate-800">{h.cliente_nome}</td>
+                      <td className="px-6 py-4 text-xs text-slate-500">{h.descricao || '—'}</td>
+                      <td className="px-6 py-4 text-sm font-mono">{fmtDate(h.data_vencimento)}</td>
+                      <td className="px-6 py-4 text-sm font-black font-mono">{fmt(h.valor)}</td>
+                      <td className="px-6 py-4">
+                        <button onClick={() => marcarPagoHon(h.id)} className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black px-3 py-1 rounded-full hover:bg-emerald-100 transition-all">
+                          Marcar Pago
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
           {/* Cobranças pendentes */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-100">
@@ -302,7 +359,7 @@ export default function FinanceiroPage() {
                   <tr key={c.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-6 py-4 text-sm font-bold text-slate-800">{c.cliente_nome}</td>
                     <td className="px-6 py-4 text-xs text-slate-500">{c.descricao}</td>
-                    <td className="px-6 py-4 text-sm font-mono">{new Date(c.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
+                    <td className="px-6 py-4 text-sm font-mono">{fmtDate(c.data_vencimento)}</td>
                     <td className="px-6 py-4 text-sm font-black font-mono">{fmt(c.valor)}</td>
                     <td className="px-6 py-4">
                       <button onClick={() => marcarPago(c.id)} className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black px-3 py-1 rounded-full hover:bg-emerald-100 transition-all">
@@ -329,8 +386,9 @@ export default function FinanceiroPage() {
                 <th className="px-6 py-4">Cliente</th>
                 <th className="px-6 py-4">Descrição</th>
                 <th className="px-6 py-4">Tipo</th>
-                <th className="px-6 py-4">Próx. Vencimento</th>
+                <th className="px-6 py-4">Vencimento</th>
                 <th className="px-6 py-4">Valor</th>
+                <th className="px-6 py-4 text-center">Status</th>
                 <th className="px-6 py-4"></th>
               </tr>
             </thead>
@@ -343,19 +401,26 @@ export default function FinanceiroPage() {
                   </td>
                   <td className="px-6 py-4 text-xs text-slate-500">{h.descricao || '—'}</td>
                   <td className="px-6 py-4 text-[10px] font-black uppercase text-slate-600">{h.tipo}</td>
-                  <td className="px-6 py-4 text-sm font-mono text-slate-700">{proximaDataVenc(h.dia_vencimento)}</td>
+                  <td className="px-6 py-4 text-sm font-mono text-slate-700">{fmtDate(h.data_vencimento)}</td>
                   <td className="px-6 py-4 text-sm font-black font-mono text-slate-900">{fmt(h.valor)}</td>
+                  <td className="px-6 py-4 text-center">
+                    <span className={`text-[10px] font-black px-3 py-1 rounded-full border ${STATUS_COLORS[h.status ?? 'pendente'] ?? 'bg-slate-100 text-slate-500'}`}>
+                      {STATUS_LABELS[h.status ?? 'pendente'] ?? h.status}
+                    </span>
+                  </td>
                   <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {(h.status === 'pendente' || !h.status) && (
+                        <button onClick={() => marcarPagoHon(h.id)} className="text-[10px] text-emerald-600 font-bold hover:underline">Pago ✓</button>
+                      )}
                       <button onClick={() => openEditHon(h)} className="text-[10px] text-blue-500 hover:text-blue-700 font-bold transition-colors">Editar</button>
-                      <span className="text-slate-200">|</span>
                       <button onClick={() => handleDeleteHon(h.id)} className="text-[10px] text-red-300 hover:text-red-500 font-bold transition-colors">Excluir</button>
                     </div>
                   </td>
                 </tr>
               ))}
               {honorarios.length === 0 && !loading && (
-                <tr><td colSpan={6} className="px-6 py-16 text-center text-slate-400 italic">Nenhum honorário cadastrado.</td></tr>
+                <tr><td colSpan={7} className="px-6 py-16 text-center text-slate-400 italic">Nenhum honorário cadastrado.</td></tr>
               )}
             </tbody>
           </table>
@@ -382,20 +447,18 @@ export default function FinanceiroPage() {
                 <tr key={c.id} className="hover:bg-slate-50">
                   <td className="px-6 py-4 text-sm font-bold text-slate-800">{c.cliente_nome}</td>
                   <td className="px-6 py-4 text-xs text-slate-500">{c.descricao}</td>
-                  <td className="px-6 py-4 text-sm font-mono">{new Date(c.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
+                  <td className="px-6 py-4 text-sm font-mono">{fmtDate(c.data_vencimento)}</td>
                   <td className="px-6 py-4 text-sm font-black font-mono">{fmt(c.valor)}</td>
                   <td className="px-6 py-4 text-xs text-slate-500">{FORMA_LABELS[c.forma_pagamento] || '—'}</td>
                   <td className="px-6 py-4 text-center">
                     <span className={`text-[10px] font-black px-3 py-1 rounded-full border ${STATUS_COLORS[c.status] ?? 'bg-slate-100 text-slate-500'}`}>
-                      {c.status.toUpperCase()}
+                      {STATUS_LABELS[c.status] ?? c.status}
                     </span>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2 flex-wrap">
                       {c.status === 'pendente' && (
-                        <button onClick={() => marcarPago(c.id)} className="text-[10px] text-emerald-600 font-bold hover:underline">
-                          Pago ✓
-                        </button>
+                        <button onClick={() => marcarPago(c.id)} className="text-[10px] text-emerald-600 font-bold hover:underline">Pago ✓</button>
                       )}
                       <button onClick={() => openEditCob(c)} className="text-[10px] text-blue-500 hover:text-blue-700 font-bold transition-colors">Editar</button>
                       <button onClick={() => handleDeleteCob(c.id)} className="text-[10px] text-red-300 hover:text-red-500 font-bold transition-colors">Excluir</button>
@@ -458,9 +521,19 @@ export default function FinanceiroPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase">Dia de Vencimento</label>
-                  <input type="number" min="1" max="31" value={formHon.dia_vencimento} onChange={e => setFormHon({ ...formHon, dia_vencimento: e.target.value })}
+                  <label className="text-[10px] font-black text-slate-400 uppercase">Data de Vencimento</label>
+                  <input type="date" value={formHon.data_vencimento} onChange={e => setFormHon({ ...formHon, data_vencimento: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm mt-1 outline-none" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase">Status *</label>
+                  <select required value={formHon.status} onChange={e => setFormHon({ ...formHon, status: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm mt-1 outline-none">
+                    <option value="pendente">Em Aberto</option>
+                    <option value="pago">Pago</option>
+                    <option value="atrasado">Atrasado</option>
+                    <option value="cancelado">Cancelado</option>
+                  </select>
                 </div>
               </div>
               <div className="flex gap-3 pt-2">
