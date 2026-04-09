@@ -13,7 +13,15 @@ export default function EmpresasPage() {
   const [isConsulting, setIsConsulting] = useState(false)
   const [empresaSelecionada, setEmpresaSelecionada] = useState<any | null>(null)
 
-  const [formData, setFormData] = useState<any>({ cnpj: '' })
+  const initialForm = {
+    cnpj: '', razao_social: '', nome_fantasia: '', situacao: '', data_situacao_cadastral: '',
+    data_abertura: '', logradouro: '', numero: '', complemento: '', cep: '',
+    bairro: '', municipio: '', uf: '', email: '', telefone: '',
+    cnae_principal_codigo: '', cnae_principal_descricao: '', cnaes_secundarios: [],
+    natureza_juridica: '', porte: '', capital_social: 0, qsa: []
+  }
+
+  const [formData, setFormData] = useState<any>(initialForm)
 
   useEffect(() => {
     async function init() {
@@ -39,157 +47,187 @@ export default function EmpresasPage() {
   async function consultarCNPJ() {
     const cnpjLimpo = formData.cnpj.replace(/\D/g, '')
     if (cnpjLimpo.length !== 14) return toast.error("CNPJ inválido")
-    
     setIsConsulting(true)
     try {
-      const response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpjLimpo}`)
-      const data = await response.json()
-      
-      if (response.ok) {
+      const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpjLimpo}`)
+      const d = await res.json()
+      if (res.ok) {
         setFormData({
+          ...initialForm,
           cnpj: cnpjLimpo,
-          razao_social: data.razao_social || '',
-          nome_fantasia: data.nome_fantasia || 'NÃO INFORMADO',
-          situacao: data.descricao_situacao_cadastral || '',
-          data_abertura: data.data_inicio_atividade || '',
-          capital_social: data.capital_social || 0,
-          logradouro: data.logradouro || '',
-          numero: data.numero || '',
-          complemento: data.complemento || '',
-          bairro: data.bairro || '',
-          municipio: data.municipio || '',
-          uf: data.uf || '',
-          cep: data.cep || '',
-          email: data.email || '',
-          telefone: data.ddd_telefone_1 || '',
-          natureza_juridica: data.natureza_juridica || '',
-          porte: data.porte || '',
-          cnae_principal_codigo: String(data.cnae_fiscal || ''),
-          cnae_principal_descricao: data.cnae_fiscal_descricao || '',
-          cnaes_secundarios: data.cnaes_secundarios || [], 
-          qsa: data.qsa || [] 
+          razao_social: d.razao_social,
+          nome_fantasia: d.nome_fantasia || '********',
+          situacao: d.descricao_situacao_cadastral,
+          data_situacao_cadastral: d.data_situacao_cadastral,
+          data_abertura: d.data_inicio_atividade,
+          logradouro: d.logradouro,
+          numero: d.numero,
+          complemento: d.complemento || '',
+          cep: d.cep,
+          bairro: d.bairro,
+          municipio: d.municipio,
+          uf: d.uf,
+          email: d.email || '',
+          telefone: d.ddd_telefone_1 || '',
+          natureza_juridica: d.natureza_juridica,
+          porte: d.porte,
+          capital_social: d.capital_social,
+          cnae_principal_codigo: d.cnae_fiscal,
+          cnae_principal_descricao: d.cnae_fiscal_descricao,
+          cnaes_secundarios: d.cnaes_secundarios || [],
+          qsa: d.qsa || []
         })
-        toast.success("Dados da Receita carregados!")
+        toast.success("Dados importados!")
       }
     } catch (e) { toast.error("Erro na consulta") } finally { setIsConsulting(false) }
   }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
-    if (!userOrg) return
-    const { error } = await supabase.from('empresas').insert([{ ...formData, organizacao: userOrg }])
-    if (!error) { 
-      setIsModalOpen(false)
-      fetchData(userOrg)
-      toast.success("Empresa salva com sucesso!") 
-    } else { toast.error(`Erro: ${error.message}`) }
+    const { error } = await supabase.from('empresas').upsert([{ ...formData, organizacao: userOrg }])
+    if (!error) { fetchData(userOrg!); setIsModalOpen(false); setFormData(initialForm); toast.success("Salvo!"); }
+  }
+
+  async function handleExcluir(id: string) {
+    if (!confirm("Deseja realmente excluir esta empresa?")) return
+    const { error } = await supabase.from('empresas').delete().eq('id', id)
+    if (!error) { fetchData(userOrg!); toast.success("Excluída!"); }
   }
 
   return (
-    <div className="p-8 space-y-8 bg-slate-50 min-h-screen font-sans text-left">
-      <header className="flex justify-between items-center bg-white p-8 rounded-[40px] border shadow-sm">
-        <div className="text-left">
-          <h1 className="text-3xl font-black text-slate-900 tracking-tighter">Gestão de Portfólio</h1>
-          <p className="text-blue-600 text-[10px] font-black uppercase tracking-[0.4em] mt-1">{userOrg}</p>
+    <div className="p-4 md:p-8 bg-[#F8FAFC] min-h-screen font-sans text-left">
+      <header className="flex justify-between items-center mb-8 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <div>
+          <h1 className="text-xl font-bold text-slate-800">Gestão de Portfólio</h1>
+          <p className="text-[10px] font-bold text-blue-500 uppercase tracking-widest">{userOrg}</p>
         </div>
-        <button onClick={() => setIsModalOpen(true)} className="bg-blue-600 text-white px-10 py-5 rounded-3xl font-black text-[10px] uppercase tracking-widest shadow-2xl hover:scale-105 transition-all">
-          Importar Cartão CNPJ
+        <button onClick={() => { setFormData(initialForm); setIsModalOpen(true); }} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-lg shadow-blue-100">
+          + NOVO CNPJ
         </button>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      {/* LISTAGEM COMPACTA */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {empresas.map(emp => (
-          <div key={emp.id} className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm hover:shadow-2xl transition-all group text-left">
-            <span className="text-[9px] font-black px-3 py-1 rounded-full bg-slate-50 text-slate-400 border uppercase">{emp.porte}</span>
-            <h3 className="font-bold text-slate-900 text-xl mt-4 leading-tight truncate">{emp.razao_social}</h3>
-            <p className="text-slate-400 font-mono text-xs mt-2">{emp.cnpj}</p>
-            <button onClick={() => setEmpresaSelecionada(emp)} className="mt-8 w-full py-4 bg-slate-50 text-slate-900 rounded-2xl text-[10px] font-black uppercase tracking-widest group-hover:bg-blue-600 group-hover:text-white transition-all">
-              Abrir Dossiê Completo
+          <div key={emp.id} className="bg-white p-5 rounded-2xl border border-slate-200 hover:border-blue-300 transition-all shadow-sm relative group">
+            <div className="flex justify-between items-start mb-3">
+              <span className="text-[9px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-500 uppercase">{emp.situacao}</span>
+              <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button onClick={() => { setFormData(emp); setIsModalOpen(true); }} className="text-blue-500 hover:text-blue-700">✎</button>
+                <button onClick={() => handleExcluir(emp.id)} className="text-red-400 hover:text-red-600">✕</button>
+              </div>
+            </div>
+            <h3 className="font-bold text-slate-800 text-sm leading-tight mb-1 truncate uppercase">{emp.razao_social}</h3>
+            <p className="text-slate-400 font-mono text-[10px] mb-4">{emp.cnpj}</p>
+            <button onClick={() => setEmpresaSelecionada(emp)} className="w-full py-2 bg-slate-50 hover:bg-blue-50 text-slate-600 hover:text-blue-600 rounded-lg text-[10px] font-bold uppercase transition-all">
+              Ver Cartão CNPJ
             </button>
           </div>
         ))}
       </div>
 
-      {/* MODAL IMPORTAÇÃO */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xl flex items-center justify-center z-50 p-6 text-left">
-          <div className="bg-white w-full max-w-4xl rounded-[50px] p-12 shadow-2xl max-h-[90vh] overflow-y-auto border border-white">
-            <h2 className="text-3xl font-black mb-10 tracking-tighter">Consulta Automática Receita</h2>
-            <div className="flex gap-4 mb-12 bg-slate-50 p-6 rounded-[30px] border">
-              <input className="flex-1 bg-white border-none rounded-2xl p-5 text-sm font-mono outline-none shadow-inner" placeholder="00.000.000/0000-00" value={formData.cnpj} onChange={e => setFormData({...formData, cnpj: e.target.value})} />
-              <button onClick={consultarCNPJ} className="bg-slate-900 text-white px-10 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 transition-all">
-                {isConsulting ? 'Consultando...' : 'Consultar'}
-              </button>
+      {/* MODAL CARTÃO CNPJ (ESTILO RECEITA FEDERAL) */}
+      {empresaSelecionada && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white w-full max-w-4xl rounded-xl shadow-2xl max-h-[95vh] overflow-y-auto border-4 border-slate-800 relative">
+            <button onClick={() => setEmpresaSelecionada(null)} className="absolute top-4 right-4 text-slate-400 hover:text-red-500 text-2xl font-bold">✕</button>
+            
+            {/* CABEÇALHO ESTILO RECEITA */}
+            <div className="p-6 border-b-2 border-slate-800 bg-white sticky top-0 z-10">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center font-bold text-[8px] text-center uppercase">Brasão<br/>República</div>
+                <div className="text-center flex-1 mr-12">
+                  <h2 className="text-lg font-bold uppercase leading-tight">República Federativa do Brasil</h2>
+                  <h3 className="text-md font-bold uppercase border-t border-slate-300 mt-1 pt-1">Cadastro Nacional da Pessoa Jurídica</h3>
+                </div>
+              </div>
+              <div className="grid grid-cols-4 border-2 border-slate-800 text-[9px] font-bold">
+                <div className="p-2 border-r-2 border-slate-800"><p className="text-slate-500 uppercase text-[7px] mb-1">NÚMERO DE INSCRIÇÃO</p>{empresaSelecionada.cnpj}</div>
+                <div className="p-2 border-r-2 border-slate-800 col-span-2 text-center flex items-center justify-center font-black text-[11px] uppercase tracking-tighter">Comprovante de Inscrição e de Situação Cadastral</div>
+                <div className="p-2"><p className="text-slate-500 uppercase text-[7px] mb-1">DATA DE ABERTURA</p>{empresaSelecionada.data_abertura?.split('-').reverse().join('/')}</div>
+              </div>
             </div>
-            {formData.razao_social && (
-              <form onSubmit={handleSave} className="grid grid-cols-2 gap-8 text-left">
-                <div className="col-span-2 bg-blue-50/50 p-6 rounded-[30px] border border-blue-100">
-                  <label className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Razão Social Identificada</label>
-                  <p className="text-xl font-bold text-blue-900 mt-1 uppercase">{formData.razao_social}</p>
-                </div>
-                <div className="col-span-2 flex gap-4">
-                  <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-6 text-slate-400 font-black text-[10px] uppercase">Abortar</button>
-                  <button type="submit" className="flex-1 bg-blue-600 text-white py-6 rounded-3xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl">Gravar na Carteira</button>
-                </div>
-              </form>
-            )}
+
+            {/* CORPO DO CARTÃO */}
+            <div className="p-6 space-y-px bg-slate-100">
+               <div className="bg-white border-2 border-slate-800 p-2"><p className="text-[7px] text-slate-500 uppercase">NOME EMPRESARIAL</p><p className="text-[11px] font-bold uppercase">{empresaSelecionada.razao_social}</p></div>
+               
+               <div className="grid grid-cols-4 gap-px bg-slate-800 border-x-2 border-slate-800">
+                 <div className="bg-white p-2 col-span-3 border-b-2 border-slate-800"><p className="text-[7px] text-slate-500 uppercase">TÍTULO DO ESTABELECIMENTO (NOME DE FANTASIA)</p><p className="text-[10px] font-bold uppercase">{empresaSelecionada.nome_fantasia}</p></div>
+                 <div className="bg-white p-2 border-b-2 border-slate-800 border-l-2 border-slate-800"><p className="text-[7px] text-slate-500 uppercase">PORTE</p><p className="text-[10px] font-bold uppercase">{empresaSelecionada.porte}</p></div>
+               </div>
+
+               <div className="bg-white border-2 border-slate-800 p-2"><p className="text-[7px] text-slate-500 uppercase">CÓDIGO E DESCRIÇÃO DA ATIVIDADE ECONÔMICA PRINCIPAL</p><p className="text-[9px] font-bold">{empresaSelecionada.cnae_principal_codigo} - {empresaSelecionada.cnae_principal_descricao}</p></div>
+               
+               <div className="bg-white border-2 border-slate-800 border-t-0 p-2"><p className="text-[7px] text-slate-500 uppercase">CÓDIGO E DESCRIÇÃO DAS ATIVIDADES ECONÔMICAS SECUNDÁRIAS</p>
+                 <div className="max-h-32 overflow-y-auto mt-1">
+                   {empresaSelecionada.cnaes_secundarios?.map((c: any, i: number) => (
+                     <p key={i} className="text-[8px] font-medium leading-tight mb-1">{c.codigo} - {c.descricao}</p>
+                   ))}
+                 </div>
+               </div>
+
+               <div className="bg-white border-2 border-slate-800 border-t-0 p-2"><p className="text-[7px] text-slate-500 uppercase">CÓDIGO E DESCRIÇÃO DA NATUREZA JURÍDICA</p><p className="text-[9px] font-bold uppercase">{empresaSelecionada.natureza_juridica}</p></div>
+
+               <div className="grid grid-cols-6 border-2 border-slate-800 border-t-0 bg-slate-800 gap-px">
+                 <div className="bg-white p-2 col-span-4"><p className="text-[7px] text-slate-500 uppercase">LOGRADOURO</p><p className="text-[9px] font-bold uppercase">{empresaSelecionada.logradouro}</p></div>
+                 <div className="bg-white p-2 border-l-2 border-slate-800"><p className="text-[7px] text-slate-500 uppercase">NÚMERO</p><p className="text-[9px] font-bold">{empresaSelecionada.numero}</p></div>
+                 <div className="bg-white p-2 border-l-2 border-slate-800"><p className="text-[7px] text-slate-500 uppercase">COMPLEMENTO</p><p className="text-[9px] font-bold uppercase">{empresaSelecionada.complemento}</p></div>
+               </div>
+
+               <div className="grid grid-cols-4 border-2 border-slate-800 border-t-0 bg-slate-800 gap-px">
+                 <div className="bg-white p-2"><p className="text-[7px] text-slate-500 uppercase">CEP</p><p className="text-[9px] font-bold">{empresaSelecionada.cep}</p></div>
+                 <div className="bg-white p-2 border-l-2 border-slate-800"><p className="text-[7px] text-slate-500 uppercase">BAIRRO/DISTRITO</p><p className="text-[9px] font-bold uppercase">{empresaSelecionada.bairro}</p></div>
+                 <div className="bg-white p-2 border-l-2 border-slate-800"><p className="text-[7px] text-slate-500 uppercase">MUNICÍPIO</p><p className="text-[9px] font-bold uppercase">{empresaSelecionada.municipio}</p></div>
+                 <div className="bg-white p-2 border-l-2 border-slate-800"><p className="text-[7px] text-slate-500 uppercase">UF</p><p className="text-[9px] font-bold uppercase">{empresaSelecionada.uf}</p></div>
+               </div>
+
+               <div className="grid grid-cols-2 border-2 border-slate-800 border-t-0 bg-slate-800 gap-px">
+                 <div className="bg-white p-2"><p className="text-[7px] text-slate-500 uppercase">ENDEREÇO ELETRÔNICO</p><p className="text-[9px] font-bold text-blue-600">{empresaSelecionada.email}</p></div>
+                 <div className="bg-white p-2 border-l-2 border-slate-800"><p className="text-[7px] text-slate-500 uppercase">TELEFONE</p><p className="text-[9px] font-bold uppercase">{empresaSelecionada.telefone}</p></div>
+               </div>
+
+               <div className="grid grid-cols-2 border-2 border-slate-800 border-t-0 bg-slate-800 gap-px">
+                 <div className="bg-white p-2"><p className="text-[7px] text-slate-500 uppercase">SITUAÇÃO CADASTRAL</p><p className="text-[10px] font-black text-emerald-600">{empresaSelecionada.situacao}</p></div>
+                 <div className="bg-white p-2 border-l-2 border-slate-800"><p className="text-[7px] text-slate-500 uppercase">DATA DA SITUAÇÃO CADASTRAL</p><p className="text-[10px] font-bold">{empresaSelecionada.data_situacao_cadastral || empresaSelecionada.data_abertura}</p></div>
+               </div>
+            </div>
+
+            {/* SEÇÃO DE SÓCIOS (EXTRA) */}
+            <div className="p-6">
+              <h4 className="text-[10px] font-black uppercase mb-4 text-slate-400">Quadro de Sócios e Administradores (QSA)</h4>
+              <div className="grid grid-cols-2 gap-2">
+                {empresaSelecionada.qsa?.map((s: any, i: number) => (
+                  <div key={i} className="p-3 bg-slate-50 border rounded-lg">
+                    <p className="text-[9px] font-black text-slate-800 uppercase">{s.nome || s.nome_socio}</p>
+                    <p className="text-[8px] font-bold text-blue-500 uppercase">{s.qualificacao}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       )}
 
-      {/* DOSSIÊ COMPLETO (ONDE TUDO APARECE) */}
-      {empresaSelecionada && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-2xl flex items-center justify-center z-50 p-4 text-left">
-          <div className="bg-white w-full max-w-5xl rounded-[60px] p-16 shadow-2xl relative max-h-[90vh] overflow-y-auto border border-white">
-            <button onClick={() => setEmpresaSelecionada(null)} className="absolute top-12 right-12 text-slate-300 hover:text-red-500 font-black text-2xl">✕</button>
-            
-            <header className="mb-16">
-              <span className="text-blue-600 font-black text-[10px] uppercase tracking-[0.5em]">Cartão CNPJ Digital</span>
-              <h2 className="text-5xl font-black text-slate-900 mt-4 leading-none tracking-tighter">{empresaSelecionada.razao_social}</h2>
-              <div className="flex gap-4 mt-6">
-                <p className="font-mono text-slate-400 bg-slate-100 px-4 py-2 rounded-xl text-sm">{empresaSelecionada.cnpj}</p>
-                <p className="font-black text-emerald-500 text-[10px] uppercase bg-emerald-50 px-4 py-2 rounded-xl border border-emerald-100 self-center tracking-widest">{empresaSelecionada.situacao}</p>
-              </div>
-            </header>
-
-            <div className="grid grid-cols-4 gap-12 text-left mb-16">
-              <div><h4 className="text-[10px] font-black text-slate-300 uppercase mb-3">Capital Social</h4><p className="text-xl font-bold text-slate-800">R$ {Number(empresaSelecionada.capital_social || 0).toLocaleString('pt-BR')}</p></div>
-              <div><h4 className="text-[10px] font-black text-slate-300 uppercase mb-3">Abertura</h4><p className="text-xl font-bold text-slate-800">{empresaSelecionada.data_abertura?.split('-').reverse().join('/')}</p></div>
-              <div className="col-span-2"><h4 className="text-[10px] font-black text-slate-300 uppercase mb-3">Natureza Jurídica</h4><p className="text-sm font-bold text-slate-800">{empresaSelecionada.natureza_juridica}</p></div>
+      {/* MODAL NOVO/EDITAR CNPJ */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white w-full max-w-lg rounded-2xl p-8 shadow-2xl">
+            <h2 className="text-xl font-bold mb-6">{formData.id ? 'Editar Empresa' : 'Importar Empresa'}</h2>
+            <div className="flex gap-2 mb-6">
+              <input className="flex-1 bg-slate-50 border p-3 rounded-xl text-sm font-mono outline-none" placeholder="CNPJ" value={formData.cnpj} onChange={e => setFormData({...formData, cnpj: e.target.value})} />
+              <button onClick={consultarCNPJ} disabled={isConsulting} className="bg-slate-900 text-white px-6 rounded-xl font-bold text-xs uppercase transition-all">{isConsulting ? '...' : 'Importar'}</button>
             </div>
-
-            <div className="grid grid-cols-2 gap-16 border-t pt-16 text-left">
-              {/* QUADRO DE SÓCIOS */}
-              <div>
-                <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest mb-8 flex items-center gap-3"><span className="w-2 h-2 bg-blue-600 rounded-full"></span> Quadro de Sócios (QSA)</h3>
-                <div className="space-y-4">
-                  {empresaSelecionada.qsa && empresaSelecionada.qsa.length > 0 ? (
-                    empresaSelecionada.qsa.map((socio: any, i: number) => (
-                      <div key={i} className="bg-slate-50 p-6 rounded-[24px] border border-slate-100 text-left">
-                        <p className="text-xs font-black text-slate-900 uppercase">{socio.nome || socio.nome_socio}</p>
-                        <p className="text-[10px] font-bold text-blue-500 uppercase mt-1">{socio.qualificacao || socio.codigo_qualificacao_socio}</p>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-slate-400 text-xs italic">Nenhum sócio listado.</p>
-                  )}
+            {formData.razao_social && (
+              <form onSubmit={handleSave} className="space-y-4">
+                <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                  <p className="text-[8px] font-bold text-blue-400 uppercase">Empresa Identificada</p>
+                  <p className="text-sm font-bold text-blue-900 uppercase truncate">{formData.razao_social}</p>
                 </div>
-              </div>
-
-              {/* ATIVIDADES ECONÔMICAS */}
-              <div>
-                <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest mb-8 flex items-center gap-3"><span className="w-2 h-2 bg-blue-600 rounded-full"></span> Atividades Econômicas</h3>
-                <div className="bg-blue-50/30 p-6 rounded-[24px] border border-blue-100 mb-6 text-left">
-                  <p className="text-[9px] font-black text-blue-400 uppercase mb-2">Principal</p>
-                  <p className="text-xs font-bold text-blue-900 leading-tight">{empresaSelecionada.cnae_principal_descricao}</p>
-                </div>
-                <div className="space-y-3">
-                   {empresaSelecionada.cnaes_secundarios?.map((c: any, i: number) => (
-                     <div key={i} className="bg-slate-50 p-4 rounded-xl text-[10px] font-bold text-slate-500 text-left">{c.descricao}</div>
-                   ))}
-                </div>
-              </div>
-            </div>
+                <button type="submit" className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-xs uppercase shadow-lg shadow-blue-100">Confirmar e Salvar</button>
+                <button type="button" onClick={() => setIsModalOpen(false)} className="w-full py-2 text-slate-400 font-bold text-[10px] uppercase">Cancelar</button>
+              </form>
+            )}
           </div>
         </div>
       )}
