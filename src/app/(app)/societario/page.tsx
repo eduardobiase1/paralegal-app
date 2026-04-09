@@ -45,12 +45,13 @@ export default function SocietarioPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [loading, setLoading] = useState(true)
 
+  // Inicie o tipo como 'Abertura' para bater com o primeiro item do select
   const [formData, setFormData] = useState({ empresa_id: '', tipo: 'Abertura' })
 
   const fetchData = useCallback(async (org: string) => {
     setLoading(true)
     const { data: proc } = await supabase.from('processos_societarios').select('*, empresas(razao_social)').eq('organizacao', org).order('created_at', { ascending: false })
-    const { data: emp } = await supabase.from('empresas').select('id, razao_social').eq('organizacao', org)
+    const { data: emp } = await supabase.from('empresas').select('id, razao_social').eq('organizacao', org).order('razao_social')
     setProcessos(proc || [])
     setEmpresas(emp || [])
     setLoading(false)
@@ -72,7 +73,13 @@ export default function SocietarioPage() {
 
   async function handleIniciar(e: React.FormEvent) {
     e.preventDefault()
+    
+    if (!formData.empresa_id) {
+      return toast.error("Selecione uma empresa para continuar")
+    }
+
     const checklist = MODELOS_PROCESSOS[formData.tipo]
+    
     const { error } = await supabase.from('processos_societarios').insert([{
       ...formData,
       organizacao: userOrg,
@@ -83,7 +90,10 @@ export default function SocietarioPage() {
     if (!error) {
       toast.success("Processo Iniciado com Checklist Especialista!")
       setIsModalOpen(false)
-      fetchData(userOrg!)
+      setFormData({ empresa_id: '', tipo: 'Abertura' }) // Limpa o form
+      if (userOrg) fetchData(userOrg)
+    } else {
+      toast.error("Erro ao iniciar processo")
     }
   }
 
@@ -100,7 +110,7 @@ export default function SocietarioPage() {
       status: progresso === 100 ? 'Finalizado' : 'Em Andamento'
     }).eq('id', procId)
 
-    if (!error) fetchData(userOrg!)
+    if (!error && userOrg) fetchData(userOrg)
   }
 
   const getStatusColor = (status: string) => {
@@ -110,7 +120,7 @@ export default function SocietarioPage() {
   }
 
   return (
-    <div className="p-8 bg-[#F8FAFC] min-h-screen text-left font-sans">
+    <div className="p-8 bg-[#F8FAFC] min-h-screen text-left font-sans text-slate-900">
       <header className="flex justify-between items-center mb-10">
         <div>
           <h1 className="text-2xl font-black italic tracking-tighter uppercase">PARALEGAL PRO <span className="text-yellow-500">| SOCIETÁRIO</span></h1>
@@ -163,14 +173,15 @@ export default function SocietarioPage() {
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4">
           <div className="bg-white p-10 rounded-[40px] w-full max-w-md border-t-8 border-yellow-400 shadow-2xl relative text-left">
-             <button onClick={() => setIsModalOpen(false)} className="absolute top-6 right-6 font-bold text-slate-300 hover:text-red-500">FECHAR ✕</button>
-             <h2 className="text-2xl font-black mb-8 tracking-tighter">Iniciar Novo Processo</h2>
-             
-             <form onSubmit={handleIniciar} className="space-y-6">
+              <button onClick={() => setIsModalOpen(false)} className="absolute top-6 right-6 font-bold text-slate-300 hover:text-red-500">FECHAR ✕</button>
+              <h2 className="text-2xl font-black mb-8 tracking-tighter">Iniciar Novo Processo</h2>
+              
+              <form onSubmit={handleIniciar} className="space-y-6">
                 <div>
                   <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Empresa</label>
                   <select 
-                    className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl mt-1 text-sm font-bold outline-none focus:border-yellow-400"
+                    className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl mt-1 text-sm font-bold outline-none focus:border-yellow-400 text-slate-800"
+                    value={formData.empresa_id}
                     onChange={e => setFormData({...formData, empresa_id: e.target.value})}
                     required
                   >
@@ -182,17 +193,23 @@ export default function SocietarioPage() {
                 <div>
                   <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Tipo de Serviço</label>
                   <select 
-                    className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl mt-1 text-sm font-bold outline-none focus:border-yellow-400"
+                    className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl mt-1 text-sm font-bold outline-none focus:border-yellow-400 text-slate-800"
+                    value={formData.tipo}
                     onChange={e => setFormData({...formData, tipo: e.target.value})}
                   >
-                    {Object.keys(MODELOS_PROCESSOS).map(tipo => <option key={tipo} value={tipo}>{tipo}</option>)}
+                    {Object.keys(MODELOS_PROCESSOS).map(tipo => (
+                      <option key={tipo} value={tipo}>{tipo}</option>
+                    ))}
                   </select>
                 </div>
 
-                <button className="w-full bg-black text-yellow-400 py-5 rounded-3xl font-black text-xs uppercase tracking-widest shadow-xl hover:bg-slate-800 transition-all mt-4">
+                <button 
+                  type="submit" 
+                  className="w-full bg-black text-yellow-400 py-5 rounded-3xl font-black text-xs uppercase tracking-widest shadow-xl hover:bg-slate-800 transition-all mt-4"
+                >
                   INICIAR PROCESSO SOCIETÁRIO
                 </button>
-             </form>
+              </form>
           </div>
         </div>
       )}
