@@ -380,68 +380,127 @@ export default function SocietarioPage() {
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
+                  {/* Progresso compacto */}
+                  <div className="flex items-center gap-3 mb-4 p-3 bg-slate-50 rounded-xl">
+                    <div className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${porc === 100 ? 'bg-emerald-400' : 'bg-yellow-400'}`}
+                        style={{ width: `${porc}%` }}
+                      />
+                    </div>
+                    <span className="text-xs font-black text-slate-500 flex-shrink-0">{concluido}/{total} concluídas</span>
+                  </div>
+
+                  {/* Lista vertical de etapas */}
+                  <div className="flex flex-col">
                     {checklist.map((item: any, i: number) => (
-                      <div key={i} className="relative group">
+                      <div
+                        key={i}
+                        className={`group flex items-center gap-3 py-2.5 px-3 rounded-xl transition-colors hover:bg-slate-50 ${
+                          i < checklist.length - 1 ? 'border-b border-slate-100' : ''
+                        }`}
+                      >
+                        {/* Número */}
+                        <span className="text-[10px] font-bold text-slate-300 w-5 text-right flex-shrink-0 select-none">{i + 1}</span>
+
+                        {/* Botão de status (círculo colorido) */}
+                        <button
+                          onClick={() => updateEtapa(p.id, checklist, i)}
+                          title={`Clique para avançar: ${item.status}`}
+                          className={`w-5 h-5 rounded-full border-2 flex-shrink-0 transition-all hover:scale-110 ${
+                            item.status === 'Concluido'
+                              ? 'bg-emerald-500 border-emerald-500'
+                              : item.status === 'Andamento'
+                              ? 'bg-blue-500 border-blue-500'
+                              : 'bg-white border-slate-300'
+                          }`}
+                        >
+                          {item.status === 'Concluido' && (
+                            <svg className="w-3 h-3 text-white mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                          {item.status === 'Andamento' && (
+                            <span className="block w-1.5 h-1.5 bg-white rounded-full mx-auto" />
+                          )}
+                        </button>
+
+                        {/* Texto da etapa ou input de edição */}
                         {editingItem !== null && editingItem.procId === p.id && editingItem.index === i ? (
-                          <div className="flex flex-col gap-1">
-                            <textarea
+                          <div className="flex flex-1 gap-2">
+                            <input
                               autoFocus
                               value={editText}
                               onChange={e => setEditText(e.target.value)}
-                              className="w-full border-2 border-yellow-400 rounded-xl p-2 text-[9px] font-bold resize-none outline-none"
-                              rows={3}
+                              onKeyDown={e => { if (e.key === 'Enter') saveEditItem(p.id, checklist); if (e.key === 'Escape') setEditingItem(null) }}
+                              className="flex-1 border-2 border-yellow-400 rounded-lg px-2 py-1 text-sm outline-none"
                             />
-                            <div className="flex gap-1">
-                              <button onClick={() => saveEditItem(p.id, checklist)} className="flex-1 bg-yellow-400 text-black text-[8px] font-black py-1 rounded-lg">OK</button>
-                              <button onClick={() => setEditingItem(null)} className="flex-1 bg-slate-100 text-slate-500 text-[8px] font-black py-1 rounded-lg">✕</button>
-                            </div>
+                            <button onClick={() => saveEditItem(p.id, checklist)} className="bg-yellow-400 text-black text-xs font-black px-3 py-1 rounded-lg">OK</button>
+                            <button onClick={() => setEditingItem(null)} className="bg-slate-100 text-slate-500 text-xs px-2 py-1 rounded-lg">✕</button>
                           </div>
                         ) : (
-                          <button
+                          <span
                             onClick={() => updateEtapa(p.id, checklist, i)}
-                            className={`w-full p-3 rounded-xl border-2 text-[9px] font-black uppercase leading-tight transition-all text-left h-16 flex flex-col justify-between ${getStatusColor(item.status)} shadow-sm`}
+                            className={`flex-1 text-sm cursor-pointer select-none transition-colors ${
+                              item.status === 'Concluido'
+                                ? 'line-through text-slate-400'
+                                : item.status === 'Andamento'
+                                ? 'text-blue-700 font-medium'
+                                : 'text-slate-700'
+                            }`}
                           >
-                            <span className="line-clamp-3 leading-tight">{item.etapa}</span>
-                            <span className="opacity-60 text-[7px]">{item.status}</span>
-                          </button>
+                            {item.etapa}
+                          </span>
                         )}
-                        {!(editingItem !== null && editingItem.procId === p.id && editingItem.index === i) && (
-                          <div className="absolute -top-1 -right-1 hidden group-hover:flex gap-0.5 z-10">
+
+                        {/* Badge de status — visível no hover */}
+                        {editingItem === null && (
+                          <span className={`hidden group-hover:inline-flex items-center text-[9px] font-black px-2 py-0.5 rounded-full flex-shrink-0 ${
+                            item.status === 'Concluido' ? 'bg-emerald-100 text-emerald-700' :
+                            item.status === 'Andamento' ? 'bg-blue-100 text-blue-700' :
+                            'bg-slate-100 text-slate-400'
+                          }`}>
+                            {item.status}
+                          </span>
+                        )}
+
+                        {/* Ações — visíveis no hover */}
+                        {editingItem === null && (
+                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                             <button
                               onClick={() => { setEditingItem({ procId: p.id, index: i }); setEditText(item.etapa) }}
-                              className="bg-yellow-400 text-black text-[8px] w-4 h-4 rounded-full font-black flex items-center justify-center hover:bg-yellow-300"
+                              className="w-6 h-6 bg-yellow-100 hover:bg-yellow-400 text-yellow-600 hover:text-black rounded-full text-[10px] font-black flex items-center justify-center transition-all"
                             >✎</button>
                             <button
                               onClick={() => deleteItem(p.id, checklist, i)}
-                              className="bg-red-400 text-white text-[8px] w-4 h-4 rounded-full font-black flex items-center justify-center hover:bg-red-500"
+                              className="w-6 h-6 bg-red-50 hover:bg-red-400 text-red-400 hover:text-white rounded-full text-[10px] font-black flex items-center justify-center transition-all"
                             >✕</button>
                           </div>
                         )}
                       </div>
                     ))}
 
-                    {/* Adicionar etapa */}
+                    {/* Adicionar nova etapa */}
                     {addingTo === p.id ? (
-                      <div className="flex flex-col gap-1 h-16">
+                      <div className="flex items-center gap-2 mt-2 px-3">
+                        <span className="w-5 flex-shrink-0" />
+                        <span className="w-5 flex-shrink-0" />
                         <input
                           autoFocus
                           value={newItemText}
                           onChange={e => setNewItemText(e.target.value)}
                           onKeyDown={e => { if (e.key === 'Enter') addItem(p.id, checklist); if (e.key === 'Escape') { setAddingTo(null); setNewItemText('') } }}
-                          placeholder="Nome da etapa..."
-                          className="w-full border-2 border-yellow-400 rounded-xl p-2 text-[9px] outline-none"
+                          placeholder="Nome da nova etapa..."
+                          className="flex-1 border-2 border-yellow-400 rounded-lg px-3 py-2 text-sm outline-none"
                         />
-                        <div className="flex gap-1">
-                          <button onClick={() => addItem(p.id, checklist)} className="flex-1 bg-yellow-400 text-black text-[8px] font-black py-1 rounded-lg">Adicionar</button>
-                          <button onClick={() => { setAddingTo(null); setNewItemText('') }} className="flex-1 bg-slate-100 text-slate-500 text-[8px] font-black py-1 rounded-lg">✕</button>
-                        </div>
+                        <button onClick={() => addItem(p.id, checklist)} className="bg-yellow-400 text-black text-xs font-black px-3 py-2 rounded-lg">Adicionar</button>
+                        <button onClick={() => { setAddingTo(null); setNewItemText('') }} className="bg-slate-100 text-slate-500 text-xs px-2 py-2 rounded-lg">✕</button>
                       </div>
                     ) : (
                       <button
                         onClick={() => setAddingTo(p.id)}
-                        className="h-16 border-2 border-dashed border-slate-200 rounded-xl text-slate-300 hover:border-yellow-400 hover:text-yellow-500 transition-all text-xl flex items-center justify-center"
-                      >+</button>
+                        className="mt-2 mx-3 py-2 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 hover:border-yellow-400 hover:text-yellow-500 transition-all text-sm font-bold"
+                      >+ Adicionar etapa</button>
                     )}
                   </div>
                 </div>

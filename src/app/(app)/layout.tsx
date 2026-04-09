@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { OrgProvider, OrgRole } from '@/lib/org-context'
-import Sidebar from '@/components/layout/Sidebar'
+import AppShell from '@/components/layout/AppShell'
 import InactivityLogout from '@/components/InactivityLogout'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -27,14 +27,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <OrgProvider orgId={org.id} orgName={org.name} role={role}>
       <InactivityLogout />
-      <div className="flex h-screen overflow-hidden">
-        <Sidebar />
-        <div className="flex-1 flex flex-col min-w-0 ml-64">
-          <main className="flex-1 overflow-y-auto">
-            {children}
-          </main>
-        </div>
-      </div>
+      <AppShell>{children}</AppShell>
     </OrgProvider>
   )
 }

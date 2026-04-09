@@ -43,7 +43,7 @@ const navigation = [
   },
 ]
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen = true, onToggle }: { isOpen?: boolean; onToggle?: () => void }) {
   const pathname = usePathname()
   const router = useRouter()
   const [supabase] = useState(createClient)
@@ -69,8 +69,12 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="fixed inset-y-0 left-0 w-64 bg-[#0d0d0d] border-r border-white/[0.06] flex flex-col z-10">
-      {/* Logo */}
+    <aside
+      className={`fixed inset-y-0 left-0 w-64 bg-[#0d0d0d] border-r border-white/[0.06] flex flex-col z-30 transition-transform duration-300 ${
+        isOpen ? 'translate-x-0' : '-translate-x-full'
+      }`}
+    >
+      {/* Logo + collapse button */}
       <div className="flex items-center gap-3 px-5 py-4 border-b border-white/[0.06]">
         <div className="relative w-9 h-9 flex-shrink-0">
           <Image
@@ -81,12 +85,24 @@ export default function Sidebar() {
             priority
           />
         </div>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="font-bold text-white text-sm leading-tight tracking-wide">
             PARALEGAL <span className="text-amber-400">PRO</span>
           </p>
           <p className="text-[10px] text-gray-500 tracking-widest uppercase">Gestão para Escritórios</p>
         </div>
+        {onToggle && (
+          <button
+            onClick={onToggle}
+            className="text-gray-500 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10 flex-shrink-0"
+            aria-label="Recolher menu"
+            title="Recolher menu"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+            </svg>
+          </button>
+        )}
       </div>
 
       {/* Org Badge */}
