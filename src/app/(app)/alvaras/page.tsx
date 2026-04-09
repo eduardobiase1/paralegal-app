@@ -2,51 +2,28 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import toast from 'react-hot-toast'
+import { useOrg } from '@/lib/org-context'
 
 export default function AlvarasPage() {
+  const { orgName } = useOrg()
   const [supabase] = useState(createClient())
   const [dados, setDados] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [userOrg, setUserOrg] = useState<string | null>(null)
 
   useEffect(() => {
     async function loadInitialData() {
-      try {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
-
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('organizacao')
-          .eq('id', user.id)
-          .single()
-
-        if (profile?.organizacao) {
-          setUserOrg(profile.organizacao)
-          
-          const { data, error } = await supabase
-            .from('alvaras')
-            .select('*, empresas(razao_social)')
-            .eq('organizacao', profile.organizacao)
-
-          if (error) throw error
-          setDados(data || [])
-        }
-      } catch (err: any) {
-        console.error("Erro técnico:", err.message)
-        // Se der erro de coluna, ele avisa mas não trava a tela
-        if (err.message.includes("column \"organizacao\" does not exist")) {
-          toast.error("Erro: A coluna 'organizacao' falta no banco. Rode o SQL.")
-        }
-      } finally {
-        setLoading(false)
-      }
+      // RLS isolates data by org automatically — no manual filter needed
+      const { data } = await supabase
+        .from('alvaras')
+        .select('*, empresas(razao_social)')
+        .order('data_vencimento', { ascending: true })
+      setDados(data || [])
+      setLoading(false)
     }
     loadInitialData()
   }, [supabase])
 
-  if (loading) return <div className="p-10 font-sans text-slate-400">Verificando banco de dados...</div>
+  if (loading) return <div className="p-10 font-sans text-slate-400">Carregando...</div>
 
   return (
     <div className="p-8 space-y-6 bg-slate-50 min-h-screen text-left font-sans">
@@ -54,7 +31,7 @@ export default function AlvarasPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Alvarás de Funcionamento</h1>
           <p className="text-[10px] font-black uppercase text-blue-600 tracking-widest mt-1">
-            Escritório: {userOrg || 'Aguardando Perfil'}
+            Escritório: {orgName}
           </p>
         </div>
       </header>
@@ -84,7 +61,7 @@ export default function AlvarasPage() {
             )) : (
               <tr>
                 <td colSpan={3} className="px-6 py-12 text-center text-slate-400 italic">
-                  Nenhum alvará encontrado para {userOrg}.
+                  Nenhum alvará encontrado.
                 </td>
               </tr>
             )}

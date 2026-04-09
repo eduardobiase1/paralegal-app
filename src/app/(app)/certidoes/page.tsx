@@ -2,31 +2,29 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useOrg } from '@/lib/org-context'
 
 export default function CertidoesPage() {
+  const { orgName } = useOrg()
   const [supabase] = useState(createClient())
   const [data, setData] = useState<any[]>([])
-  const [userOrg, setUserOrg] = useState<string | null>(null)
 
   useEffect(() => {
     async function init() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        const { data: profile } = await supabase.from('profiles').select('organizacao').eq('id', user.id).single()
-        if (profile?.organizacao) {
-          setUserOrg(profile.organizacao)
-          const { data: res } = await supabase.from('certidoes').select('*, empresas(razao_social)').eq('organizacao', profile.organizacao)
-          setData(res || [])
-        }
-      }
+      // RLS isolates data by org automatically — no manual filter needed
+      const { data: res } = await supabase
+        .from('certidoes')
+        .select('*, empresas(razao_social)')
+        .order('data_vencimento', { ascending: true })
+      setData(res || [])
     }
     init()
-  }, [])
+  }, [supabase])
 
   return (
     <div className="p-6 text-left font-sans">
       <h1 className="text-2xl font-bold">Certidões Negativas</h1>
-      <p className="text-[10px] font-black uppercase text-blue-600 mb-6 tracking-widest italic">{userOrg}</p>
+      <p className="text-[10px] font-black uppercase text-blue-600 mb-6 tracking-widest italic">{orgName}</p>
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
         <table className="w-full text-left">
           <thead className="bg-slate-50 border-b text-[10px] font-black uppercase text-slate-500">

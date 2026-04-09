@@ -6,6 +6,7 @@ import { useState } from 'react'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
+import { useOrg } from '@/lib/org-context'
 
 const navigation = [
   {
@@ -47,11 +48,24 @@ export default function Sidebar() {
   const router = useRouter()
   const [supabase] = useState(createClient)
   const [loggingOut, setLoggingOut] = useState(false)
+  const [editingOrg, setEditingOrg] = useState(false)
+  const [orgNameInput, setOrgNameInput] = useState('')
+  const [savingOrg, setSavingOrg] = useState(false)
+  const { orgName, orgId, isAdmin } = useOrg()
 
   async function handleLogout() {
     setLoggingOut(true)
     await supabase.auth.signOut()
     router.push('/login')
+  }
+
+  async function handleSaveOrg() {
+    if (!orgNameInput.trim()) return
+    setSavingOrg(true)
+    await supabase.from('organizations').update({ name: orgNameInput.trim() }).eq('id', orgId)
+    setSavingOrg(false)
+    setEditingOrg(false)
+    router.refresh()
   }
 
   return (
@@ -73,6 +87,39 @@ export default function Sidebar() {
           </p>
           <p className="text-[10px] text-gray-500 tracking-widest uppercase">Gestão para Escritórios</p>
         </div>
+      </div>
+
+      {/* Org Badge */}
+      <div className="px-4 py-3 border-b border-white/[0.06]">
+        {editingOrg ? (
+          <div className="flex gap-1">
+            <input
+              autoFocus
+              value={orgNameInput}
+              onChange={e => setOrgNameInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleSaveOrg(); if (e.key === 'Escape') setEditingOrg(false) }}
+              className="flex-1 bg-white/10 text-white text-xs px-2 py-1 rounded outline-none border border-amber-500/40 min-w-0"
+            />
+            <button onClick={handleSaveOrg} disabled={savingOrg} className="text-amber-400 text-xs px-1.5 hover:text-amber-300">
+              {savingOrg ? '...' : '✓'}
+            </button>
+            <button onClick={() => setEditingOrg(false)} className="text-gray-500 text-xs px-1 hover:text-gray-300">✕</button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 group">
+            <div className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0" />
+            <p className="text-[11px] text-gray-300 font-medium truncate flex-1 min-w-0">{orgName}</p>
+            {isAdmin && (
+              <button
+                onClick={() => { setOrgNameInput(orgName); setEditingOrg(true) }}
+                className="opacity-0 group-hover:opacity-100 text-gray-600 hover:text-amber-400 transition-all text-[10px]"
+                title="Editar nome da organização"
+              >
+                ✎
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Nav */}
