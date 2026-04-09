@@ -4,168 +4,202 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
 
-// Ícones
-const IconPlus = () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
-const IconSearch = () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-
 export default function EmpresasPage() {
   const [supabase] = useState(createClient())
   const [empresas, setEmpresas] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
   const [userOrg, setUserOrg] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [searchTerm, setSearchTerm] = useState('')
+  const [isConsulting, setIsConsulting] = useState(false)
 
+  // Estado do Formulário com os campos da Receita
   const [formData, setFormData] = useState({
     razao_social: '',
+    nome_fantasia: '',
     cnpj: '',
-    status: 'Ativa'
+    logradouro: '',
+    numero: '',
+    bairro: '',
+    municipio: '',
+    uf: '',
+    cep: '',
+    situacao: ''
   })
 
   useEffect(() => {
     async function init() {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
-        const { data: perfil } = await supabase
-          .from('perfis')
-          .select('organizacao')
-          .eq('id', user.id)
-          .single()
-
-        if (perfil) {
-          setUserOrg(perfil.organizacao)
-          fetchEmpresas(perfil.organizacao)
+        const { data: profile } = await supabase.from('profiles').select('organizacao').eq('id', user.id).single()
+        if (profile?.organizacao) {
+          setUserOrg(profile.organizacao)
+          fetchData(profile.organizacao)
         }
       }
     }
     init()
   }, [])
 
-  async function fetchEmpresas(org: string) {
+  async function fetchData(org: string) {
     setLoading(true)
-    const { data, error } = await supabase
-      .from('empresas')
-      .select('*')
-      .eq('organizacao', org)
-      .order('razao_social', { ascending: true })
-
-    if (!error) setEmpresas(data || [])
+    const { data } = await supabase.from('empresas').select('*').eq('organizacao', org).order('razao_social')
+    setEmpresas(data || [])
     setLoading(false)
+  }
+
+  // FUNÇÃO MÁGICA: Consulta o CNPJ na API
+  async function consultarCNPJ() {
+    const cnpjLimpo = formData.cnpj.replace(/\D/g, '')
+    if (cnpjLimpo.length !== 14) {
+      return toast.error("Digite um CNPJ válido com 14 dígitos")
+    }
+
+    setIsConsulting(true)
+    try {
+      const response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpjLimpo}`)
+      const data = await response.json()
+
+      if (response.ok) {
+        setFormData({
+          ...formData,
+          razao_social: data.razao_social || '',
+          nome_fantasia: data.nome_fantasia || '',
+          logradouro: data.logradouro || '',
+          numero: data.numero || '',
+          bairro: data.bairro || '',
+          municipio: data.municipio || '',
+          uf: data.uf || '',
+          cep: data.cep || '',
+          situacao: data.descricao_situacao_cadastral || 'ATIVA'
+        })
+        toast.success("Dados importados da Receita Federal!")
+      } else {
+        toast.error("CNPJ não encontrado ou API instável")
+      }
+    } catch (error) {
+      toast.error("Erro ao conectar com o serviço da Receita")
+    } finally {
+      setIsConsulting(false)
+    }
   }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
-    if (!userOrg) return toast.error("Organização não identificada")
-
-    const payload = {
-      ...formData,
-      organizacao: userOrg // Carimbo automático da empresa logada
-    }
-
-    const { error } = await supabase.from('empresas').insert([payload])
-
+    if (!userOrg) return
+    
+    // Salva com todos os dados da receita + carimbo da organização
+    const { error } = await supabase.from('empresas').insert([{ ...formData, organizacao: userOrg }])
+    
     if (!error) {
-      setIsModalOpen(false)
-      fetchEmpresas(userOrg)
-      setFormData({ razao_social: '', cnpj: '', status: 'Ativa' })
       toast.success("Empresa cadastrada com sucesso!")
+      setIsModalOpen(false)
+      fetchData(userOrg)
     } else {
-      toast.error("Erro ao cadastrar empresa")
+      toast.error("Erro ao salvar no banco de dados")
     }
   }
 
-  const filteredEmpresas = empresas.filter(emp => 
-    emp.razao_social.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    emp.cnpj.includes(searchTerm)
-  )
-
   return (
-    <div className="p-6 space-y-6 bg-slate-50 min-h-screen font-sans text-left">
-      <header className="flex justify-between items-center bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+    <div className="p-6 space-y-6 bg-slate-50 min-h-screen text-left font-sans">
+      <header className="flex justify-between items-center bg-white p-6 rounded-xl border shadow-sm">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Carteira de Clientes</h1>
-          <p className="text-slate-500 text-sm">Escritório Responsável: <span className="font-bold text-slate-800 uppercase">{userOrg || 'Carregando...'}</span></p>
+          <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">{userOrg}</p>
         </div>
-        <button 
-          onClick={() => setIsModalOpen(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-bold text-sm shadow-sm flex items-center gap-2 transition-all"
-        >
-          <IconPlus /> Nova Empresa
+        <button onClick={() => setIsModalOpen(true)} className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold shadow-md hover:bg-blue-700 transition-all">
+          + Nova Empresa (Auto)
         </button>
       </header>
 
-      {/* Barra de Busca */}
-      <div className="relative max-w-md">
-        <span className="absolute inset-y-0 left-3 flex items-center text-slate-400">
-          <IconSearch />
-        </span>
-        <input 
-          type="text" 
-          placeholder="Buscar por Razão Social ou CNPJ..." 
-          className="w-full bg-white border border-slate-200 rounded-lg py-2.5 pl-10 pr-4 text-sm outline-none focus:ring-2 focus:ring-blue-500/10 transition-all"
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-      </div>
-
-      <section className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden text-left">
+      {/* Tabela de exibição */}
+      <div className="bg-white rounded-xl border overflow-hidden shadow-sm">
         <table className="w-full text-left">
-          <thead className="bg-slate-50 border-b border-slate-200">
-            <tr className="text-slate-600 text-[11px] font-bold uppercase tracking-wider">
-              <th className="px-6 py-4">Razão Social / Identificação</th>
-              <th className="px-6 py-4">Documento (CNPJ)</th>
+          <thead className="bg-slate-50 border-b text-[10px] font-black uppercase text-slate-500 tracking-widest">
+            <tr>
+              <th className="px-6 py-4">Razão Social / CNPJ</th>
+              <th className="px-6 py-4">Localização</th>
               <th className="px-6 py-4 text-center">Status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {filteredEmpresas.map((emp) => (
-              <tr key={emp.id} className="hover:bg-slate-50 transition-colors">
+            {empresas.map(emp => (
+              <tr key={emp.id} className="hover:bg-slate-50">
                 <td className="px-6 py-4">
-                  <p className="text-sm font-semibold text-slate-800">{emp.razao_social}</p>
-                  <p className="text-[10px] text-slate-400 uppercase font-bold tracking-tight">ID: {emp.id.split('-')[0]}</p>
+                  <p className="text-sm font-bold text-slate-800">{emp.razao_social}</p>
+                  <p className="text-[11px] text-slate-400 font-mono">{emp.cnpj}</p>
                 </td>
-                <td className="px-6 py-4 text-sm text-slate-600 font-mono tracking-tighter">
-                  {emp.cnpj}
+                <td className="px-6 py-4 text-xs text-slate-600 uppercase">
+                  {emp.municipio} - {emp.uf}
                 </td>
                 <td className="px-6 py-4 text-center">
-                  <span className={`text-[10px] font-bold px-3 py-1 rounded-full border ${
-                    emp.status === 'Ativa' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'
-                  }`}>
-                    {emp.status.toUpperCase()}
+                  <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-black px-2 py-1 rounded-full italic">
+                    {emp.situacao || 'ATIVA'}
                   </span>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-        {filteredEmpresas.length === 0 && !loading && (
-          <div className="p-20 text-center text-slate-400 italic">Nenhuma empresa encontrada para este escritório.</div>
-        )}
-      </section>
+      </div>
 
+      {/* MODAL DE CADASTRO AUTOMÁTICO */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-6 text-left">
-          <div className="bg-white w-full max-w-md rounded-2xl p-8 shadow-2xl border border-slate-200">
-            <h2 className="text-xl font-bold text-slate-900 mb-6 text-left">Adicionar à base: {userOrg}</h2>
-            <form onSubmit={handleSave} className="space-y-4">
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-500 uppercase ml-1">Razão Social</label>
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 text-left">
+          <div className="bg-white w-full max-w-2xl rounded-2xl p-8 border shadow-2xl max-h-[90vh] overflow-y-auto">
+            <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+              <span className="bg-blue-600 w-2 h-6 rounded-full inline-block"></span>
+              Importar Empresa via Receita
+            </h2>
+            
+            <div className="flex gap-2 mb-8 bg-slate-50 p-4 rounded-xl border border-slate-200">
+              <div className="flex-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase ml-1 text-left">Digite o CNPJ</label>
                 <input 
-                  required 
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500/10 outline-none" 
-                  onChange={(e) => setFormData({...formData, razao_social: e.target.value})}
+                  className="w-full bg-white border border-slate-300 rounded-lg p-3 text-sm font-mono focus:ring-2 focus:ring-blue-500/20 outline-none" 
+                  placeholder="00.000.000/0000-00"
+                  value={formData.cnpj}
+                  onChange={e => setFormData({...formData, cnpj: e.target.value})}
                 />
               </div>
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-500 uppercase ml-1">CNPJ</label>
-                <input 
-                  required 
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm font-mono outline-none focus:ring-2 focus:ring-blue-500/10" 
-                  onChange={(e) => setFormData({...formData, cnpj: e.target.value})}
-                />
+              <button 
+                type="button"
+                onClick={consultarCNPJ}
+                disabled={isConsulting}
+                className="mt-5 bg-slate-800 text-white px-6 rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-black disabled:opacity-50"
+              >
+                {isConsulting ? 'Consultando...' : 'Consultar'}
+              </button>
+            </div>
+
+            <form onSubmit={handleSave} className="grid grid-cols-2 gap-4">
+              <div className="col-span-2 text-left">
+                <label className="text-[10px] font-black text-slate-400 uppercase">Razão Social (Importado)</label>
+                <input required readOnly className="w-full bg-slate-50 border p-3 rounded-lg text-sm font-bold text-slate-600 outline-none" value={formData.razao_social} />
               </div>
-              <div className="flex gap-3 pt-4">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 text-slate-400 font-bold text-xs uppercase">Cancelar</button>
-                <button type="submit" className="flex-[2] bg-blue-600 text-white py-3 rounded-lg font-bold text-xs uppercase shadow-md shadow-blue-500/20">Cadastrar Cliente</button>
+              
+              <div className="text-left">
+                <label className="text-[10px] font-black text-slate-400 uppercase">Cidade</label>
+                <input readOnly className="w-full bg-slate-50 border p-3 rounded-lg text-sm text-slate-600 outline-none" value={formData.municipio} />
+              </div>
+              <div className="text-left">
+                <label className="text-[10px] font-black text-slate-400 uppercase">Estado / UF</label>
+                <input readOnly className="w-full bg-slate-50 border p-3 rounded-lg text-sm text-slate-600 outline-none" value={formData.uf} />
+              </div>
+
+              <div className="col-span-2 flex gap-4 mt-6">
+                <button 
+                  type="button" 
+                  onClick={() => setIsModalOpen(false)}
+                  className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-bold text-xs uppercase tracking-widest"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="submit" 
+                  className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-100 hover:bg-blue-700"
+                >
+                  Cadastrar Cliente
+                </button>
               </div>
             </form>
           </div>
