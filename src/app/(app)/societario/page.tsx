@@ -45,13 +45,13 @@ export default function SocietarioPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [loading, setLoading] = useState(true)
 
-  // Inicie o tipo como 'Abertura' para bater com o primeiro item do select
   const [formData, setFormData] = useState({ empresa_id: '', tipo: 'Abertura' })
 
   const fetchData = useCallback(async (org: string) => {
     setLoading(true)
-    const { data: proc } = await supabase.from('processos_societarios').select('*, empresas(razao_social)').eq('organizacao', org).order('created_at', { ascending: false })
-    const { data: emp } = await supabase.from('empresas').select('id, razao_social').eq('organizacao', org).order('razao_social')
+    const { data: proc, error: errorProc } = await supabase.from('processos_societarios').select('*, empresas(razao_social)').eq('organizacao', org).order('created_at', { ascending: false })
+    const { data: emp, error: errorEmp } = await supabase.from('empresas').select('id, razao_social').eq('organizacao', org).order('razao_social')
+    
     setProcessos(proc || [])
     setEmpresas(emp || [])
     setLoading(false)
@@ -78,22 +78,29 @@ export default function SocietarioPage() {
       return toast.error("Selecione uma empresa para continuar")
     }
 
+    if (!userOrg) {
+      return toast.error("Organização não identificada. Tente logar novamente.")
+    }
+
     const checklist = MODELOS_PROCESSOS[formData.tipo]
     
+    // Enviamos os dados mapeados para garantir que nada vá vazio
     const { error } = await supabase.from('processos_societarios').insert([{
-      ...formData,
+      empresa_id: formData.empresa_id,
+      tipo: formData.tipo,
       organizacao: userOrg,
       checklist: checklist,
       status: 'Em Andamento'
     }])
 
     if (!error) {
-      toast.success("Processo Iniciado com Checklist Especialista!")
+      toast.success("Processo Iniciado com Sucesso!")
       setIsModalOpen(false)
-      setFormData({ empresa_id: '', tipo: 'Abertura' }) // Limpa o form
-      if (userOrg) fetchData(userOrg)
+      setFormData({ empresa_id: '', tipo: 'Abertura' })
+      fetchData(userOrg)
     } else {
-      toast.error("Erro ao iniciar processo")
+      console.error("Erro Supabase:", error)
+      toast.error(`Erro ao iniciar: ${error.message}`)
     }
   }
 
@@ -169,12 +176,11 @@ export default function SocietarioPage() {
         })}
       </div>
 
-      {/* MODAL DE CADASTRO */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4">
           <div className="bg-white p-10 rounded-[40px] w-full max-w-md border-t-8 border-yellow-400 shadow-2xl relative text-left">
-              <button onClick={() => setIsModalOpen(false)} className="absolute top-6 right-6 font-bold text-slate-300 hover:text-red-500">FECHAR ✕</button>
-              <h2 className="text-2xl font-black mb-8 tracking-tighter">Iniciar Novo Processo</h2>
+              <button onClick={() => setIsModalOpen(false)} className="absolute top-6 right-6 font-bold text-slate-300 hover:text-red-500 transition-colors">FECHAR ✕</button>
+              <h2 className="text-2xl font-black mb-8 tracking-tighter text-slate-900">Iniciar Novo Processo</h2>
               
               <form onSubmit={handleIniciar} className="space-y-6">
                 <div>
