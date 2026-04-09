@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
 
-// DEFINIÇÃO TÉCNICA DOS PROCESSOS (Checklist Especialista)
+// DEFINIÇÃO TÉCNICA DOS PROCESSOS
 const MODELOS_PROCESSOS: any = {
   "Abertura": [
     { etapa: "Viabilidade", status: "Pendente" },
@@ -49,8 +49,8 @@ export default function SocietarioPage() {
 
   const fetchData = useCallback(async (org: string) => {
     setLoading(true)
-    const { data: proc, error: errorProc } = await supabase.from('processos_societarios').select('*, empresas(razao_social)').eq('organizacao', org).order('created_at', { ascending: false })
-    const { data: emp, error: errorEmp } = await supabase.from('empresas').select('id, razao_social').eq('organizacao', org).order('razao_social')
+    const { data: proc } = await supabase.from('processos_societarios').select('*, empresas(razao_social)').eq('organizacao', org).order('created_at', { ascending: false })
+    const { data: emp } = await supabase.from('empresas').select('id, razao_social').eq('organizacao', org).order('razao_social')
     
     setProcessos(proc || [])
     setEmpresas(emp || [])
@@ -79,50 +79,51 @@ export default function SocietarioPage() {
     }
 
     if (!userOrg) {
-      return toast.error("Organização não identificada. Tente logar novamente.")
+      return toast.error("Organização não identificada.")
     }
 
     const checklist = MODELOS_PROCESSOS[formData.tipo]
     
-    // Enviamos os dados mapeados para garantir que nada vá vazio
+    // Simplificamos o status para 'Andamento' para evitar erros de Constraint do Banco
     const { error } = await supabase.from('processos_societarios').insert([{
       empresa_id: formData.empresa_id,
       tipo: formData.tipo,
       organizacao: userOrg,
       checklist: checklist,
-      status: 'Em Andamento'
+      status: 'Andamento' 
     }])
 
     if (!error) {
-      toast.success("Processo Iniciado com Sucesso!")
+      toast.success("Processo Iniciado!")
       setIsModalOpen(false)
       setFormData({ empresa_id: '', tipo: 'Abertura' })
       fetchData(userOrg)
     } else {
       console.error("Erro Supabase:", error)
-      toast.error(`Erro ao iniciar: ${error.message}`)
+      toast.error(`Erro: ${error.message}`)
     }
   }
 
   async function updateEtapa(procId: string, checklist: any[], index: number) {
-    const statusCycle: any = { "Pendente": "Em Andamento", "Em Andamento": "Concluído", "Concluído": "Pendente" }
+    // Ciclo de status simples
+    const statusCycle: any = { "Pendente": "Andamento", "Andamento": "Concluido", "Concluido": "Pendente" }
     const newChecklist = [...checklist]
-    newChecklist[index].status = statusCycle[newChecklist[index].status]
+    newChecklist[index].status = statusCycle[newChecklist[index].status] || "Pendente"
 
-    const concluidos = newChecklist.filter(i => i.status === "Concluído").length
+    const concluidos = newChecklist.filter(i => i.status === "Concluido").length
     const progresso = Math.round((concluidos / newChecklist.length) * 100)
 
     const { error } = await supabase.from('processos_societarios').update({ 
       checklist: newChecklist,
-      status: progresso === 100 ? 'Finalizado' : 'Em Andamento'
+      status: progresso === 100 ? 'Finalizado' : 'Andamento'
     }).eq('id', procId)
 
     if (!error && userOrg) fetchData(userOrg)
   }
 
   const getStatusColor = (status: string) => {
-    if (status === "Concluído") return "bg-emerald-500 border-emerald-600 text-white"
-    if (status === "Em Andamento") return "bg-blue-500 border-blue-600 text-white"
+    if (status === "Concluido") return "bg-emerald-500 border-emerald-600 text-white"
+    if (status === "Andamento") return "bg-blue-500 border-blue-600 text-white"
     return "bg-white border-slate-200 text-slate-400"
   }
 
@@ -140,7 +141,7 @@ export default function SocietarioPage() {
 
       <div className="space-y-8">
         {processos.map(p => {
-          const concluido = p.checklist?.filter((i:any) => i.status === "Concluído").length || 0
+          const concluido = p.checklist?.filter((i:any) => i.status === "Concluido").length || 0
           const total = p.checklist?.length || 1
           const porc = Math.round((concluido / total) * 100)
 
@@ -184,7 +185,7 @@ export default function SocietarioPage() {
               
               <form onSubmit={handleIniciar} className="space-y-6">
                 <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Empresa</label>
+                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1 font-sans">Empresa</label>
                   <select 
                     className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl mt-1 text-sm font-bold outline-none focus:border-yellow-400 text-slate-800"
                     value={formData.empresa_id}
@@ -197,7 +198,7 @@ export default function SocietarioPage() {
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Tipo de Serviço</label>
+                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1 font-sans">Tipo de Serviço</label>
                   <select 
                     className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl mt-1 text-sm font-bold outline-none focus:border-yellow-400 text-slate-800"
                     value={formData.tipo}
