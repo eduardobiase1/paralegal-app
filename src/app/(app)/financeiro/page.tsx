@@ -77,6 +77,7 @@ export default function FinanceiroPage() {
     e.preventDefault()
     const payload: any = {
       org_id: orgId,
+      ativo: true,
       cliente_nome: formHon.cliente_nome.trim(),
       cliente_cnpj: formHon.cliente_cnpj.trim() || null,
       descricao: formHon.descricao.trim() || null,

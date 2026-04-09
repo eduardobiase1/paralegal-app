@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useOrg } from '@/lib/org-context'
 import toast from 'react-hot-toast'
 
 export default function EmpresasPage() {
+  const { orgId, orgName } = useOrg()
   const [supabase] = useState(createClient())
   const [empresas, setEmpresas] = useState<any[]>([])
-  const [userOrg, setUserOrg] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isConsulting, setIsConsulting] = useState(false)
@@ -24,39 +25,46 @@ export default function EmpresasPage() {
   const [formData, setFormData] = useState<any>(initialForm)
 
   useEffect(() => {
-    async function init() {
-      try {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (user) {
-          const { data: profile } = await supabase.from('profiles').select('organizacao').eq('id', user.id).single()
-          if (profile?.organizacao) {
-            setUserOrg(profile.organizacao)
-            fetchData(profile.organizacao)
-          }
-        }
-      } catch (err) {
-        setLoading(false)
-      }
-    }
-    init()
-  }, [supabase])
+    console.log('🔍 useOrg() →', { orgId, orgName })
+    if (orgId && orgName) fetchData()
+  }, [orgId, orgName])
 
-  async function fetchData(org: string) {
+  async function fetchData() {
     setLoading(true)
-    const { data, error } = await supabase.from('empresas').select('*').eq('organizacao', org).order('razao_social')
-    if (!error) setEmpresas(data || [])
+
+    // Tenta primeiro por org_id (UUID — registros novos e pós-migração)
+    const { data: byId } = await supabase
+      .from('empresas')
+      .select('*')
+      .eq('org_id', orgId)
+      .order('razao_social')
+
+    if (byId && byId.length > 0) {
+      setEmpresas(byId)
+      setLoading(false)
+      return
+    }
+
+    // Fallback: filtra por nome da organização (campo texto — registros legados)
+    const { data: byName } = await supabase
+      .from('empresas')
+      .select('*')
+      .eq('organizacao', orgName)
+      .order('razao_social')
+
+    setEmpresas(byName || [])
     setLoading(false)
   }
 
   async function consultarCNPJ() {
     const cnpjLimpo = formData.cnpj.replace(/\D/g, '')
     if (cnpjLimpo.length !== 14) return toast.error("CNPJ inválido (mínimo 14 números)")
-    
+
     setIsConsulting(true)
     try {
       const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpjLimpo}`)
       const d = await res.json()
-      
+
       if (res.ok) {
         setFormData({
           ...initialForm,
@@ -96,15 +104,18 @@ export default function EmpresasPage() {
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
-    if (!userOrg) return
-    const { error } = await supabase.from('empresas').upsert([{ ...formData, organizacao: userOrg }])
+    const { error } = await supabase.from('empresas').upsert([{
+      ...formData,
+      org_id: orgId,
+      organizacao: orgName,
+    }])
     if (!error) {
-      fetchData(userOrg)
+      fetchData()
       setIsModalOpen(false)
       setFormData(initialForm)
       toast.success("Empresa salva!")
     } else {
-      toast.error("Erro ao salvar")
+      toast.error("Erro ao salvar: " + error.message)
     }
   }
 
@@ -112,7 +123,7 @@ export default function EmpresasPage() {
     if (!confirm("Excluir empresa permanentemente?")) return
     const { error } = await supabase.from('empresas').delete().eq('id', id)
     if (!error) {
-      fetchData(userOrg!)
+      fetchData()
       toast.success("Empresa removida")
     }
   }
@@ -124,7 +135,6 @@ export default function EmpresasPage() {
       <header className="flex justify-between items-center mb-8 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
         <div>
           <h1 className="text-xl font-bold text-slate-800">Gestão de Portfólio</h1>
-          <p className="text-[10px] font-bold text-blue-500 uppercase tracking-widest">{userOrg}</p>
         </div>
         <button onClick={() => { setFormData(initialForm); setIsModalOpen(true); }} className="bg-black text-yellow-400 px-6 py-3 rounded-xl text-xs font-bold transition-all hover:bg-slate-800">
           + NOVO CNPJ
@@ -149,16 +159,19 @@ export default function EmpresasPage() {
             </button>
           </div>
         ))}
+        {empresas.length === 0 && (
+          <div className="col-span-4 py-20 text-center text-slate-400 italic">Nenhuma empresa cadastrada.</div>
+        )}
       </div>
 
       {/* MODAL CARTÃO PARALEGAL PRO */}
       {empresaSelecionada && (
         <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
           <div className="bg-white w-full max-w-4xl rounded-xl shadow-2xl max-h-[95vh] overflow-y-auto border-4 border-black relative">
-            
+
             {/* BOTÃO FECHAR CARTÃO */}
             <button onClick={() => setEmpresaSelecionada(null)} className="absolute top-2 right-2 z-[110] bg-red-600 text-white w-10 h-10 rounded-full font-black flex items-center justify-center shadow-lg hover:scale-110 transition-all">✕</button>
-            
+
             <div className="p-6 border-b-2 border-black bg-black text-yellow-400 sticky top-0 z-[105]">
               <div className="text-center">
                 <h2 className="text-3xl font-black italic tracking-tighter">PARALEGAL PRO</h2>
@@ -230,10 +243,10 @@ export default function EmpresasPage() {
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 text-left">
           <div className="bg-white w-full max-w-lg rounded-2xl p-8 shadow-2xl relative">
-            
+
             {/* BOTÃO FECHAR CADASTRO */}
             <button onClick={() => setIsModalOpen(false)} className="absolute top-4 right-4 text-slate-400 hover:text-red-500 font-black">FECHAR ✕</button>
-            
+
             <h2 className="text-xl font-bold mb-6 text-slate-800">{formData.id ? 'Atualizar Empresa' : 'Importar Empresa'}</h2>
             <div className="flex gap-2 mb-6 text-left">
               <input className="flex-1 bg-slate-50 border p-3 rounded-xl text-sm font-mono outline-none" placeholder="00.000.000/0000-00" value={formData.cnpj} onChange={e => setFormData({...formData, cnpj: e.target.value})} />
