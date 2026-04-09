@@ -32,6 +32,8 @@ export default function FinanceiroPage() {
   const [loading, setLoading] = useState(true)
   const [modalHon, setModalHon] = useState(false)
   const [modalCob, setModalCob] = useState(false)
+  const [editingHonId, setEditingHonId] = useState<string | null>(null)
+  const [editingCobId, setEditingCobId] = useState<string | null>(null)
 
   const [formHon, setFormHon] = useState({
     cliente_nome: '',
@@ -71,6 +73,28 @@ export default function FinanceiroPage() {
     if (orgId) fetchData()
   }, [orgId, fetchData])
 
+  // ── Abrir modal honorário (novo ou edição) ───────────────────────────────
+
+  function openNewHon() {
+    setEditingHonId(null)
+    setFormHon({ cliente_nome: '', cliente_cnpj: '', descricao: '', valor: '', tipo: 'mensal', dia_vencimento: '5', empresa_id: '' })
+    setModalHon(true)
+  }
+
+  function openEditHon(h: any) {
+    setEditingHonId(h.id)
+    setFormHon({
+      cliente_nome: h.cliente_nome || '',
+      cliente_cnpj: h.cliente_cnpj || '',
+      descricao: h.descricao || '',
+      valor: String(h.valor || ''),
+      tipo: h.tipo || 'mensal',
+      dia_vencimento: String(h.dia_vencimento || '5'),
+      empresa_id: h.empresa_id || '',
+    })
+    setModalHon(true)
+  }
+
   // ── Salvar honorário ─────────────────────────────────────────────────────
 
   async function handleSaveHon(e: React.FormEvent) {
@@ -84,18 +108,54 @@ export default function FinanceiroPage() {
       valor: parseFloat(formHon.valor),
       tipo: formHon.tipo,
       dia_vencimento: formHon.dia_vencimento ? parseInt(formHon.dia_vencimento) : null,
+      empresa_id: formHon.empresa_id || null,
     }
-    if (formHon.empresa_id) payload.empresa_id = formHon.empresa_id
 
-    const { error } = await supabase.from('honorarios').insert([payload])
+    const { error } = editingHonId
+      ? await supabase.from('honorarios').update(payload).eq('id', editingHonId)
+      : await supabase.from('honorarios').insert([payload])
+
     if (!error) {
-      toast.success('Honorário cadastrado!')
+      toast.success(editingHonId ? 'Honorário atualizado!' : 'Honorário cadastrado!')
       setModalHon(false)
+      setEditingHonId(null)
       setFormHon({ cliente_nome: '', cliente_cnpj: '', descricao: '', valor: '', tipo: 'mensal', dia_vencimento: '5', empresa_id: '' })
       fetchData()
     } else {
       toast.error(`Erro: ${error.message}`)
     }
+  }
+
+  // ── Excluir honorário ────────────────────────────────────────────────────
+
+  async function handleDeleteHon(id: string) {
+    if (!confirm('Excluir este honorário?')) return
+    await supabase.from('honorarios').update({ ativo: false }).eq('id', id)
+    setHonorarios(prev => prev.filter(h => h.id !== id))
+    toast.success('Honorário excluído.')
+  }
+
+  // ── Abrir modal cobrança (novo ou edição) ────────────────────────────────
+
+  function openNewCob() {
+    setEditingCobId(null)
+    setFormCob({ honorario_id: '', cliente_nome: '', descricao: '', valor: '', data_vencimento: '', forma_pagamento: 'pix', observacoes: '', empresa_id: '' })
+    setModalCob(true)
+  }
+
+  function openEditCob(c: any) {
+    setEditingCobId(c.id)
+    setFormCob({
+      honorario_id: c.honorario_id || '',
+      cliente_nome: c.cliente_nome || '',
+      descricao: c.descricao || '',
+      valor: String(c.valor || ''),
+      data_vencimento: c.data_vencimento || '',
+      forma_pagamento: c.forma_pagamento || 'pix',
+      observacoes: c.observacoes || '',
+      empresa_id: c.empresa_id || '',
+    })
+    setModalCob(true)
   }
 
   // ── Salvar cobrança ───────────────────────────────────────────────────────
@@ -110,20 +170,33 @@ export default function FinanceiroPage() {
       data_vencimento: formCob.data_vencimento,
       forma_pagamento: formCob.forma_pagamento,
       observacoes: formCob.observacoes.trim() || null,
-      status: 'pendente',
+      honorario_id: formCob.honorario_id || null,
+      empresa_id: formCob.empresa_id || null,
     }
-    if (formCob.honorario_id) payload.honorario_id = formCob.honorario_id
-    if (formCob.empresa_id) payload.empresa_id = formCob.empresa_id
+    if (!editingCobId) payload.status = 'pendente'
 
-    const { error } = await supabase.from('cobrancas').insert([payload])
+    const { error } = editingCobId
+      ? await supabase.from('cobrancas').update(payload).eq('id', editingCobId)
+      : await supabase.from('cobrancas').insert([payload])
+
     if (!error) {
-      toast.success('Cobrança registrada!')
+      toast.success(editingCobId ? 'Cobrança atualizada!' : 'Cobrança registrada!')
       setModalCob(false)
+      setEditingCobId(null)
       setFormCob({ honorario_id: '', cliente_nome: '', descricao: '', valor: '', data_vencimento: '', forma_pagamento: 'pix', observacoes: '', empresa_id: '' })
       fetchData()
     } else {
       toast.error(`Erro: ${error.message}`)
     }
+  }
+
+  // ── Excluir cobrança ─────────────────────────────────────────────────────
+
+  async function handleDeleteCob(id: string) {
+    if (!confirm('Excluir esta cobrança?')) return
+    await supabase.from('cobrancas').delete().eq('id', id)
+    setCobrancas(prev => prev.filter(c => c.id !== id))
+    toast.success('Cobrança excluída.')
   }
 
   // ── Marcar cobrança como paga ─────────────────────────────────────────────
@@ -148,6 +221,17 @@ export default function FinanceiroPage() {
     return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
   }
 
+  // Calcula próxima data de vencimento com base no dia do mês
+  function proximaDataVenc(dia: number | null): string {
+    if (!dia) return '—'
+    const hoje = new Date()
+    const ano = hoje.getFullYear()
+    const mes = hoje.getMonth()
+    const tentativa = new Date(ano, mes, dia)
+    const data = tentativa < hoje ? new Date(ano, mes + 1, dia) : tentativa
+    return data.toLocaleDateString('pt-BR')
+  }
+
   return (
     <div className="p-8 space-y-6 bg-slate-50 min-h-screen font-sans">
       {/* Header */}
@@ -159,10 +243,10 @@ export default function FinanceiroPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => setModalHon(true)} className="bg-blue-600 text-white px-4 py-2 rounded-xl font-bold text-sm hover:bg-blue-700 transition-all shadow-sm">
+          <button onClick={openNewHon} className="bg-blue-600 text-white px-4 py-2 rounded-xl font-bold text-sm hover:bg-blue-700 transition-all shadow-sm">
             + Honorário
           </button>
-          <button onClick={() => setModalCob(true)} className="bg-slate-900 text-white px-4 py-2 rounded-xl font-bold text-sm hover:bg-slate-800 transition-all shadow-sm">
+          <button onClick={openNewCob} className="bg-slate-900 text-white px-4 py-2 rounded-xl font-bold text-sm hover:bg-slate-800 transition-all shadow-sm">
             + Cobrança
           </button>
         </div>
@@ -245,8 +329,9 @@ export default function FinanceiroPage() {
                 <th className="px-6 py-4">Cliente</th>
                 <th className="px-6 py-4">Descrição</th>
                 <th className="px-6 py-4">Tipo</th>
-                <th className="px-6 py-4">Vencimento</th>
+                <th className="px-6 py-4">Próx. Vencimento</th>
                 <th className="px-6 py-4">Valor</th>
+                <th className="px-6 py-4"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -258,12 +343,19 @@ export default function FinanceiroPage() {
                   </td>
                   <td className="px-6 py-4 text-xs text-slate-500">{h.descricao || '—'}</td>
                   <td className="px-6 py-4 text-[10px] font-black uppercase text-slate-600">{h.tipo}</td>
-                  <td className="px-6 py-4 text-sm">Dia {h.dia_vencimento || '—'}</td>
+                  <td className="px-6 py-4 text-sm font-mono text-slate-700">{proximaDataVenc(h.dia_vencimento)}</td>
                   <td className="px-6 py-4 text-sm font-black font-mono text-slate-900">{fmt(h.valor)}</td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => openEditHon(h)} className="text-[10px] text-blue-500 hover:text-blue-700 font-bold transition-colors">Editar</button>
+                      <span className="text-slate-200">|</span>
+                      <button onClick={() => handleDeleteHon(h.id)} className="text-[10px] text-red-300 hover:text-red-500 font-bold transition-colors">Excluir</button>
+                    </div>
+                  </td>
                 </tr>
               ))}
               {honorarios.length === 0 && !loading && (
-                <tr><td colSpan={5} className="px-6 py-16 text-center text-slate-400 italic">Nenhum honorário cadastrado.</td></tr>
+                <tr><td colSpan={6} className="px-6 py-16 text-center text-slate-400 italic">Nenhum honorário cadastrado.</td></tr>
               )}
             </tbody>
           </table>
@@ -299,11 +391,15 @@ export default function FinanceiroPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    {c.status === 'pendente' && (
-                      <button onClick={() => marcarPago(c.id)} className="text-[10px] text-emerald-600 font-bold hover:underline">
-                        Pago ✓
-                      </button>
-                    )}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {c.status === 'pendente' && (
+                        <button onClick={() => marcarPago(c.id)} className="text-[10px] text-emerald-600 font-bold hover:underline">
+                          Pago ✓
+                        </button>
+                      )}
+                      <button onClick={() => openEditCob(c)} className="text-[10px] text-blue-500 hover:text-blue-700 font-bold transition-colors">Editar</button>
+                      <button onClick={() => handleDeleteCob(c.id)} className="text-[10px] text-red-300 hover:text-red-500 font-bold transition-colors">Excluir</button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -319,7 +415,7 @@ export default function FinanceiroPage() {
       {modalHon && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-6">
           <div className="bg-white w-full max-w-lg rounded-3xl p-8 border border-slate-200 shadow-2xl">
-            <h2 className="text-xl font-bold mb-6 text-slate-900">Cadastrar Honorário</h2>
+            <h2 className="text-xl font-bold mb-6 text-slate-900">{editingHonId ? 'Editar Honorário' : 'Cadastrar Honorário'}</h2>
             <form onSubmit={handleSaveHon} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
@@ -368,8 +464,8 @@ export default function FinanceiroPage() {
                 </div>
               </div>
               <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setModalHon(false)} className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-bold text-sm">Cancelar</button>
-                <button type="submit" className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-bold text-sm hover:bg-blue-700 transition-all">Salvar</button>
+                <button type="button" onClick={() => { setModalHon(false); setEditingHonId(null) }} className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-bold text-sm">Cancelar</button>
+                <button type="submit" className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-bold text-sm hover:bg-blue-700 transition-all">{editingHonId ? 'Atualizar' : 'Salvar'}</button>
               </div>
             </form>
           </div>
@@ -380,7 +476,7 @@ export default function FinanceiroPage() {
       {modalCob && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-6">
           <div className="bg-white w-full max-w-lg rounded-3xl p-8 border border-slate-200 shadow-2xl">
-            <h2 className="text-xl font-bold mb-6 text-slate-900">Registrar Cobrança</h2>
+            <h2 className="text-xl font-bold mb-6 text-slate-900">{editingCobId ? 'Editar Cobrança' : 'Registrar Cobrança'}</h2>
             <form onSubmit={handleSaveCob} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
@@ -427,8 +523,8 @@ export default function FinanceiroPage() {
                 </div>
               </div>
               <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setModalCob(false)} className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-bold text-sm">Cancelar</button>
-                <button type="submit" className="flex-1 bg-slate-900 text-white py-3 rounded-xl font-bold text-sm hover:bg-slate-800 transition-all">Salvar</button>
+                <button type="button" onClick={() => { setModalCob(false); setEditingCobId(null) }} className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-bold text-sm">Cancelar</button>
+                <button type="submit" className="flex-1 bg-slate-900 text-white py-3 rounded-xl font-bold text-sm hover:bg-slate-800 transition-all">{editingCobId ? 'Atualizar' : 'Salvar'}</button>
               </div>
             </form>
           </div>
