@@ -5,10 +5,20 @@ import { createClient } from '@/lib/supabase/client'
 import { useOrg } from '@/lib/org-context'
 import toast from 'react-hot-toast'
 
+// ─── Labels de exibição para os tipos do banco ───────────────────────────────
+
+const TIPO_LABELS: Record<string, string> = {
+  abertura: 'Abertura',
+  alteracao_contratual: 'Alteração Contratual',
+  encerramento: 'Encerramento',
+  transferencia_entrada: 'Transferência (Entrada)',
+  transferencia_saida: 'Transferência (Saída)',
+}
+
 // ─── Checklists operacionais por tipo de processo ────────────────────────────
 
 const MODELOS_PROCESSOS: Record<string, { etapa: string; status: string }[]> = {
-  Abertura: [
+  abertura: [
     { etapa: 'O.S.', status: 'Pendente' },
     { etapa: 'Verificar Regularidade com a ELOS', status: 'Pendente' },
     { etapa: 'Fatura (salvar na pasta Financeiro Elos após assinaturas)', status: 'Pendente' },
@@ -60,7 +70,7 @@ const MODELOS_PROCESSOS: Record<string, { etapa: string; status: string }[]> = {
     { etapa: 'Enviar E-mail de Apresentação do Responsável pelo Monitoramento de Satisfação', status: 'Pendente' },
     { etapa: 'Informar ao Cliente sobre o Certificado Digital A-1 PJ', status: 'Pendente' },
   ],
-  Alteração: [
+  alteracao_contratual: [
     { etapa: 'O.S.', status: 'Pendente' },
     { etapa: 'Verificar Regularidade com a ELOS', status: 'Pendente' },
     { etapa: 'Fatura (salvar na pasta Financeiro Elos após assinaturas)', status: 'Pendente' },
@@ -116,16 +126,7 @@ const MODELOS_PROCESSOS: Record<string, { etapa: string; status: string }[]> = {
     { etapa: 'Procedimento de Acompanhamento pós 60 dias', status: 'Pendente' },
     { etapa: 'Informar ao Cliente sobre o Certificado Digital A-1 PJ', status: 'Pendente' },
   ],
-  Transformação: [
-    { etapa: 'O.S.', status: 'Pendente' },
-    { etapa: 'Ata de Transformação / Contrato Social', status: 'Pendente' },
-    { etapa: 'DBE de Natureza Jurídica', status: 'Pendente' },
-    { etapa: 'Protocolo Junta Comercial', status: 'Pendente' },
-    { etapa: 'Enquadramento ME/EPP', status: 'Pendente' },
-    { etapa: 'Comunicado ao Cliente', status: 'Pendente' },
-    { etapa: 'Salvar Processo em PDF', status: 'Pendente' },
-  ],
-  Encerramento: [
+  encerramento: [
     { etapa: 'O.S.', status: 'Pendente' },
     { etapa: 'Distrato Social', status: 'Pendente' },
     { etapa: 'Certidões de Baixa', status: 'Pendente' },
@@ -133,6 +134,28 @@ const MODELOS_PROCESSOS: Record<string, { etapa: string; status: string }[]> = {
     { etapa: 'Protocolo de Baixa', status: 'Pendente' },
     { etapa: 'Baixa na Prefeitura/Estado', status: 'Pendente' },
     { etapa: 'Comunicado ao Cliente', status: 'Pendente' },
+    { etapa: 'Salvar Processo em PDF', status: 'Pendente' },
+  ],
+  transferencia_entrada: [
+    { etapa: 'O.S.', status: 'Pendente' },
+    { etapa: 'Verificar Regularidade com a ELOS', status: 'Pendente' },
+    { etapa: 'Análise de Atividade e Tributária', status: 'Pendente' },
+    { etapa: 'Minuta da Alteração Contratual (Transferência)', status: 'Pendente' },
+    { etapa: 'Contrato/Instrumento de Cessão de Quotas', status: 'Pendente' },
+    { etapa: 'Protocolo Junta Comercial', status: 'Pendente' },
+    { etapa: 'Comunicado (Junta, Receita e Estado)', status: 'Pendente' },
+    { etapa: 'Enviar Documentos Registrados ao Cliente por E-mail', status: 'Pendente' },
+    { etapa: 'Salvar Processo em PDF', status: 'Pendente' },
+  ],
+  transferencia_saida: [
+    { etapa: 'O.S.', status: 'Pendente' },
+    { etapa: 'Verificar Regularidade com a ELOS', status: 'Pendente' },
+    { etapa: 'Análise de Atividade e Tributária', status: 'Pendente' },
+    { etapa: 'Minuta da Alteração Contratual (Retirada)', status: 'Pendente' },
+    { etapa: 'Contrato/Instrumento de Cessão de Quotas', status: 'Pendente' },
+    { etapa: 'Protocolo Junta Comercial', status: 'Pendente' },
+    { etapa: 'Comunicado (Junta, Receita e Estado)', status: 'Pendente' },
+    { etapa: 'Enviar Documentos Registrados ao Cliente por E-mail', status: 'Pendente' },
     { etapa: 'Salvar Processo em PDF', status: 'Pendente' },
   ],
 }
@@ -166,7 +189,7 @@ export default function SocietarioPage() {
   const [formData, setFormData] = useState({
     empresa_id: '',
     cliente_nome: '',
-    tipo: 'Abertura',
+    tipo: 'abertura',
   })
 
   const fetchData = useCallback(async () => {
@@ -312,7 +335,7 @@ export default function SocietarioPage() {
               {/* Cabeçalho do processo */}
               <div className="flex justify-between items-start mb-4">
                 <div>
-                  <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">{p.tipo}</span>
+                  <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">{TIPO_LABELS[p.tipo] ?? p.tipo}</span>
                   <h3 className="text-xl font-black text-slate-800 uppercase mt-1">{nomeExibido}</h3>
                   <span className={`text-[9px] font-black px-2 py-0.5 rounded-full mt-1 inline-block ${
                     p.status === 'Finalizado' ? 'bg-emerald-100 text-emerald-700' :
@@ -441,7 +464,7 @@ export default function SocietarioPage() {
                   onChange={e => setFormData({ ...formData, tipo: e.target.value })}
                 >
                   {Object.keys(MODELOS_PROCESSOS).map(tipo => (
-                    <option key={tipo} value={tipo}>{tipo}</option>
+                    <option key={tipo} value={tipo}>{TIPO_LABELS[tipo] ?? tipo}</option>
                   ))}
                 </select>
               </div>
