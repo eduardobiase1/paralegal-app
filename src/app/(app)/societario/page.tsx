@@ -15,148 +15,124 @@ const TIPO_LABELS: Record<string, string> = {
   transferencia_saida: 'Transferência (Saída)',
 }
 
-// ─── Checklists por tipo ──────────────────────────────────────────────────────
+// ─── Etapas (documentos) por tipo de processo ────────────────────────────────
 
 const MODELOS_PROCESSOS: Record<string, { etapa: string; status: string }[]> = {
   abertura: [
-    { etapa: 'O.S.', status: 'Pendente' },
-    { etapa: 'Verificar Regularidade com a ELOS', status: 'Pendente' },
-    { etapa: 'Fatura (salvar na pasta Financeiro Elos após assinaturas)', status: 'Pendente' },
-    { etapa: 'Análise de Atividade e Tributária', status: 'Pendente' },
-    { etapa: 'Solicitar Documentos do Imóvel', status: 'Pendente' },
-    { etapa: 'Busca de Nome JUCESP', status: 'Pendente' },
-    { etapa: 'Certidão de Uso do Solo (Viabilidade)', status: 'Pendente' },
-    { etapa: 'Definição de Mensalidade', status: 'Pendente' },
-    { etapa: 'Verificar se o Profissional é Habilitado (Conselho Regional)', status: 'Pendente' },
-    { etapa: 'Verificar Numeração Oficial', status: 'Pendente' },
-    { etapa: 'Busca de Endereço no Correio', status: 'Pendente' },
-    { etapa: 'Busca de Nome INPI', status: 'Pendente' },
-    { etapa: 'Definir Endereço de Correspondência', status: 'Pendente' },
-    { etapa: 'Salvar Senha Redesim — Vincular Contador (Elos)', status: 'Pendente' },
-    { etapa: 'Minuta do Contrato', status: 'Pendente' },
-    { etapa: 'FCPJ Receita Federal (Com Inclusão de Contador)', status: 'Pendente' },
-    { etapa: 'VRE Jucesp', status: 'Pendente' },
-    { etapa: 'Salvar Processo + Taxas em PDF (Junta)', status: 'Pendente' },
-    { etapa: 'Solicitar Codificação (Abertura ou Alteração de Razão Social)', status: 'Pendente' },
-    { etapa: 'Comunicado (Junta, Receita e Estado)', status: 'Pendente' },
-    { etapa: 'Enviar Documentos Registrados para o Cliente por E-mail', status: 'Pendente' },
-    { etapa: 'Cadastrar no Conselho Regional (incluir na Relação de Renovação)', status: 'Pendente' },
-    { etapa: 'Termo de Abertura', status: 'Pendente' },
-    { etapa: 'Cadastrar ou Alterar na Prosoft (CPD nº)', status: 'Pendente' },
-    { etapa: 'Opção do Simples Nacional (Passar Comunicado)', status: 'Pendente' },
-    { etapa: 'Opção do Simples Nacional (Informar a Prefeitura)', status: 'Pendente' },
-    { etapa: 'Prefeitura (Alvará de Funcionamento)', status: 'Pendente' },
-    { etapa: 'Prefeitura (Certificado de Licenciamento Integrado)', status: 'Pendente' },
-    { etapa: 'Prefeitura (Incluir na Prosoft)', status: 'Pendente' },
-    { etapa: 'Vigilância Sanitária (Salvar Anexo V + Taxa no Scanner)', status: 'Pendente' },
-    { etapa: 'Comunicado (Concluiu a Abertura)', status: 'Pendente' },
-    { etapa: 'Senha da Prefeitura (Incluir na Relação)', status: 'Pendente' },
-    { etapa: 'Emitir Taxa de TFE e Encaminhar para o Cliente', status: 'Pendente' },
-    { etapa: 'Enviar Todas as Senhas (Aliny, Paulo e Cliente)', status: 'Pendente' },
-    { etapa: 'Incluir nas Relações: E-mail, Certidões e Alvará', status: 'Pendente' },
-    { etapa: 'Enviar SEFIP (Cadastrar FGTS Automático)', status: 'Pendente' },
-    { etapa: 'Cadastro FGTS', status: 'Pendente' },
-    { etapa: 'Acrescentar na VERI de Certidões', status: 'Pendente' },
-    { etapa: 'Procuração Eletrônica', status: 'Pendente' },
-    { etapa: 'Procuração Padrão', status: 'Pendente' },
-    { etapa: 'Contrato de Prestação de Serviços e Termo LGPD para Assinatura', status: 'Pendente' },
-    { etapa: 'Pasta do Scanner', status: 'Pendente' },
-    { etapa: 'Pasta Arquivo', status: 'Pendente' },
-    { etapa: 'Cadastrar WhatsApp do Cliente na MultiPlataforma', status: 'Pendente' },
-    { etapa: 'Termo Sindicato (Somente Abertura)', status: 'Pendente' },
-    { etapa: 'Informativos Iniciais', status: 'Pendente' },
-    { etapa: 'Libercon (Incluir na Relação)', status: 'Pendente' },
-    { etapa: 'Salvar Processo em PDF', status: 'Pendente' },
-    { etapa: 'Enviar E-mail de Apresentação do Responsável pelo Monitoramento de Satisfação', status: 'Pendente' },
-    { etapa: 'Informar ao Cliente sobre o Certificado Digital A-1 PJ', status: 'Pendente' },
+    // ── Documentos do Cliente ──
+    { etapa: 'RG / CNH (frente e verso) — todos os sócios', status: 'Pendente' },
+    { etapa: 'CPF — todos os sócios', status: 'Pendente' },
+    { etapa: 'Comprovante de Residência — sócios (máx. 90 dias)', status: 'Pendente' },
+    { etapa: 'Certidão de Estado Civil — sócios', status: 'Pendente' },
+    { etapa: 'IPTU do Imóvel (sede da empresa)', status: 'Pendente' },
+    { etapa: 'Contrato de Locação do Imóvel (ou Escritura de Propriedade)', status: 'Pendente' },
+    { etapa: 'Conta de Energia ou Água do Imóvel', status: 'Pendente' },
+    { etapa: 'Definição da Atividade (CNAE) — acordado com o cliente', status: 'Pendente' },
+    { etapa: 'Definição do Capital Social', status: 'Pendente' },
+    { etapa: 'Nome Empresarial — aprovado pelo cliente', status: 'Pendente' },
+    // ── Etapas Institucionais ──
+    { etapa: 'Consulta de Viabilidade (Uso do Solo) — emitida', status: 'Pendente' },
+    { etapa: 'Busca de Nome — JUCESP aprovada', status: 'Pendente' },
+    { etapa: 'Busca de Nome — INPI verificado', status: 'Pendente' },
+    { etapa: 'Contrato Social — minuta aprovada e assinada pelos sócios', status: 'Pendente' },
+    { etapa: 'DBE — Receita Federal protocolado', status: 'Pendente' },
+    { etapa: 'VRE — JUCESP protocolado', status: 'Pendente' },
+    { etapa: 'Taxa de Registro — JUCESP paga', status: 'Pendente' },
+    { etapa: 'CNPJ — emitido', status: 'Pendente' },
+    { etapa: 'Inscrição Estadual — emitida (se aplicável)', status: 'Pendente' },
+    { etapa: 'Alvará de Funcionamento — Prefeitura emitido', status: 'Pendente' },
+    { etapa: 'Inscrição Municipal (ISS) — emitida', status: 'Pendente' },
+    { etapa: 'Certificado de Licenciamento Integrado — emitido', status: 'Pendente' },
+    { etapa: 'Licença Sanitária VISA — emitida (se aplicável)', status: 'Pendente' },
+    { etapa: 'Opção pelo Simples Nacional — solicitada (se aplicável)', status: 'Pendente' },
+    { etapa: 'Cadastro FGTS — realizado', status: 'Pendente' },
+    { etapa: 'Procuração Eletrônica — emitida', status: 'Pendente' },
+    { etapa: 'Certificado Digital A-1 PJ — informado ao cliente', status: 'Pendente' },
+    { etapa: 'Contrato de Prestação de Serviços — assinado', status: 'Pendente' },
+    { etapa: 'Todos os documentos entregues ao cliente por e-mail', status: 'Pendente' },
   ],
   alteracao_contratual: [
-    { etapa: 'O.S.', status: 'Pendente' },
-    { etapa: 'Verificar Regularidade com a ELOS', status: 'Pendente' },
-    { etapa: 'Fatura (salvar na pasta Financeiro Elos após assinaturas)', status: 'Pendente' },
-    { etapa: 'Análise de Atividade e Tributária', status: 'Pendente' },
-    { etapa: 'Verificar se o Profissional é Habilitado (Se Tiver Conselho Regional)', status: 'Pendente' },
-    { etapa: 'Solicitar Documentos do Imóvel', status: 'Pendente' },
-    { etapa: 'Verificar Numeração Oficial', status: 'Pendente' },
-    { etapa: 'Certidão de Uso do Solo (Viabilidade)', status: 'Pendente' },
-    { etapa: 'Busca de Endereço no Correio', status: 'Pendente' },
-    { etapa: 'Busca de Nome JUCESP', status: 'Pendente' },
-    { etapa: 'Busca de Nome INPI', status: 'Pendente' },
-    { etapa: 'Definir Endereço de Correspondência', status: 'Pendente' },
-    { etapa: 'Salvar Senha Redesim — Vincular Contador (Elos)', status: 'Pendente' },
-    { etapa: 'Minuta do Contrato', status: 'Pendente' },
-    { etapa: 'FCPJ Receita Federal (Com Inclusão de Contador)', status: 'Pendente' },
-    { etapa: 'VRE Jucesp', status: 'Pendente' },
-    { etapa: 'Salvar Processo + Taxas em PDF (Junta)', status: 'Pendente' },
-    { etapa: 'Solicitar Codificação (Abertura ou Alteração de Razão Social)', status: 'Pendente' },
-    { etapa: 'Comunicado (Junta, Receita e Estado)', status: 'Pendente' },
-    { etapa: 'Enviar Documentos Registrados para o Cliente por E-mail', status: 'Pendente' },
-    { etapa: 'Termo de Abertura / Alteração', status: 'Pendente' },
-    { etapa: 'Cadastrar no Conselho Regional (incluir na Relação de Renovação)', status: 'Pendente' },
-    { etapa: 'Cadastrar ou Alterar na Prosoft (CPD nº)', status: 'Pendente' },
-    { etapa: 'Opção do Simples Nacional (Se mudar o regime — Passar Comunicado)', status: 'Pendente' },
-    { etapa: 'Opção do Simples Nacional (Informar a Prefeitura)', status: 'Pendente' },
-    { etapa: 'Prefeitura (Alvará de Funcionamento)', status: 'Pendente' },
-    { etapa: 'Vigilância Sanitária (Salvar Anexo V + Taxa no Scanner)', status: 'Pendente' },
-    { etapa: 'Prefeitura (Certificado de Licenciamento Integrado)', status: 'Pendente' },
-    { etapa: 'Comunicado (Concluiu a Abertura/Alteração Prefeitura)', status: 'Pendente' },
-    { etapa: 'Senha da Prefeitura (Incluir na Relação)', status: 'Pendente' },
-    { etapa: 'Enviar Todas as Senhas (Aliny, Paulo e Cliente)', status: 'Pendente' },
-    { etapa: 'Emitir Taxa de TFE e Encaminhar para o Cliente', status: 'Pendente' },
-    { etapa: 'Prefeitura (Incluir na Prosoft)', status: 'Pendente' },
-    { etapa: 'Prefeitura (Cancelar de Outro Município)', status: 'Pendente' },
-    { etapa: 'Comunicado (Concluiu Cancelamento Prefeitura)', status: 'Pendente' },
-    { etapa: 'Incluir nas Relações: E-mail, Certidões e Alvará', status: 'Pendente' },
-    { etapa: 'Procuração Eletrônica (Informar para a Liliana)', status: 'Pendente' },
-    { etapa: 'Procuração Padrão', status: 'Pendente' },
-    { etapa: 'Pasta do Scanner', status: 'Pendente' },
-    { etapa: 'Pasta Arquivo', status: 'Pendente' },
-    { etapa: 'Cadastro FGTS', status: 'Pendente' },
-    { etapa: 'Enviar SEFIP (Cadastrar FGTS Automático)', status: 'Pendente' },
-    { etapa: 'Libercon (Incluir na Relação)', status: 'Pendente' },
-    { etapa: 'Salvar Processo em PDF', status: 'Pendente' },
-    { etapa: 'Acrescentar ou Alterar a Empresa no Sistema VERI de Certidões', status: 'Pendente' },
-    { etapa: 'Reunião com o Cliente (Falar com a Renata)', status: 'Pendente' },
-    { etapa: 'EM CASO DE ALTERAÇÃO/EXCLUSÃO DE SÓCIOS: Questionar transferência, compra/venda de quotas, doação e ITCMD', status: 'Pendente' },
-    { etapa: 'Enviar E-mail para Análise do Contábil (Copiar Paulo ou Claudomiro)', status: 'Pendente' },
-    { etapa: 'Fazer o Termo de Responsabilidade (informar o procedimento)', status: 'Pendente' },
-    { etapa: 'Verificar Procedimento: Declaração de ITCMD ou Venda de Quotas', status: 'Pendente' },
-    { etapa: 'Salvar na Pasta do Cliente: E-mail Contábil e Documentos Comprobatórios', status: 'Pendente' },
-    { etapa: 'Apresentação/Reunião de Alinhamento', status: 'Pendente' },
-    { etapa: 'Procedimento de Acompanhamento pós 60 dias', status: 'Pendente' },
-    { etapa: 'Informar ao Cliente sobre o Certificado Digital A-1 PJ', status: 'Pendente' },
+    // ── Documentos do Cliente ──
+    { etapa: 'Contrato Social original (última versão registrada)', status: 'Pendente' },
+    { etapa: 'RG / CNH — sócios envolvidos na alteração', status: 'Pendente' },
+    { etapa: 'CPF — sócios envolvidos na alteração', status: 'Pendente' },
+    { etapa: 'Comprovante de Residência — sócios (máx. 90 dias)', status: 'Pendente' },
+    { etapa: 'Certidão de Estado Civil — sócios (se alteração de quadro societário)', status: 'Pendente' },
+    { etapa: 'IPTU ou Contrato de Locação — novo endereço (se mudança de sede)', status: 'Pendente' },
+    { etapa: 'Conta de Energia do novo imóvel (se mudança de sede)', status: 'Pendente' },
+    { etapa: 'Instrumento de Cessão de Quotas — assinado (se transferência de quotas)', status: 'Pendente' },
+    { etapa: 'Comprovante de pagamento das quotas (se cessão onerosa)', status: 'Pendente' },
+    { etapa: 'Declaração de ITCMD ou comprovante de isenção (se cessão)', status: 'Pendente' },
+    // ── Etapas Institucionais ──
+    { etapa: 'Consulta de Viabilidade — novo endereço (se mudança de sede)', status: 'Pendente' },
+    { etapa: 'Busca de Nome JUCESP (se alteração de razão social)', status: 'Pendente' },
+    { etapa: 'Minuta de Alteração Contratual — aprovada e assinada', status: 'Pendente' },
+    { etapa: 'DBE Atualizado — Receita Federal protocolado', status: 'Pendente' },
+    { etapa: 'VRE — JUCESP protocolado', status: 'Pendente' },
+    { etapa: 'Taxa de Registro — JUCESP paga', status: 'Pendente' },
+    { etapa: 'Inscrições atualizadas — Municipal e Estadual', status: 'Pendente' },
+    { etapa: 'Novo Alvará de Funcionamento (se mudança de endereço ou atividade)', status: 'Pendente' },
+    { etapa: 'Procuração Eletrônica atualizada (se necessário)', status: 'Pendente' },
+    { etapa: 'Todos os documentos registrados entregues ao cliente', status: 'Pendente' },
   ],
   encerramento: [
-    { etapa: 'O.S.', status: 'Pendente' },
-    { etapa: 'Distrato Social', status: 'Pendente' },
-    { etapa: 'Certidões de Baixa', status: 'Pendente' },
-    { etapa: 'DBE de Extinção', status: 'Pendente' },
-    { etapa: 'Protocolo de Baixa', status: 'Pendente' },
-    { etapa: 'Baixa na Prefeitura/Estado', status: 'Pendente' },
-    { etapa: 'Comunicado ao Cliente', status: 'Pendente' },
-    { etapa: 'Salvar Processo em PDF', status: 'Pendente' },
+    // ── Documentos do Cliente ──
+    { etapa: 'Contrato Social original (última versão registrada)', status: 'Pendente' },
+    { etapa: 'RG / CNH e CPF — todos os sócios', status: 'Pendente' },
+    { etapa: 'Comprovante de Residência — todos os sócios', status: 'Pendente' },
+    { etapa: 'Distrato Social — assinado por todos os sócios', status: 'Pendente' },
+    // ── Certidões e Regularidade ──
+    { etapa: 'Certidão Negativa de Débitos — Receita Federal (CND Federal)', status: 'Pendente' },
+    { etapa: 'Certidão Negativa de Débitos — Estadual', status: 'Pendente' },
+    { etapa: 'Certidão Negativa de Débitos — Municipal', status: 'Pendente' },
+    { etapa: 'Certidão de Regularidade do FGTS — CRF', status: 'Pendente' },
+    { etapa: 'Certidão Negativa Trabalhista — CNDT', status: 'Pendente' },
+    // ── Baixas ──
+    { etapa: 'Baixa SIMPLES Nacional — solicitada (se optante)', status: 'Pendente' },
+    { etapa: 'Baixa ICMS / Inscrição Estadual — concluída', status: 'Pendente' },
+    { etapa: 'Baixa ISS / Inscrição Municipal — concluída', status: 'Pendente' },
+    { etapa: 'Baixa INSS — concluída', status: 'Pendente' },
+    { etapa: 'Baixa FGTS — concluída', status: 'Pendente' },
+    { etapa: 'Taxa de Baixa — JUCESP paga', status: 'Pendente' },
+    { etapa: 'Protocolo de Baixa — JUCESP registrado', status: 'Pendente' },
+    { etapa: 'Baixa do CNPJ — Receita Federal concluída', status: 'Pendente' },
+    { etapa: 'Comprovantes de encerramento entregues ao cliente', status: 'Pendente' },
   ],
   transferencia_entrada: [
-    { etapa: 'O.S.', status: 'Pendente' },
-    { etapa: 'Verificar Regularidade com a ELOS', status: 'Pendente' },
-    { etapa: 'Análise de Atividade e Tributária', status: 'Pendente' },
-    { etapa: 'Minuta da Alteração Contratual (Transferência)', status: 'Pendente' },
-    { etapa: 'Contrato/Instrumento de Cessão de Quotas', status: 'Pendente' },
-    { etapa: 'Protocolo Junta Comercial', status: 'Pendente' },
-    { etapa: 'Comunicado (Junta, Receita e Estado)', status: 'Pendente' },
-    { etapa: 'Enviar Documentos Registrados ao Cliente por E-mail', status: 'Pendente' },
-    { etapa: 'Salvar Processo em PDF', status: 'Pendente' },
+    // ── Documentos do Sócio Entrante ──
+    { etapa: 'RG / CNH (frente e verso) — sócio entrante', status: 'Pendente' },
+    { etapa: 'CPF — sócio entrante', status: 'Pendente' },
+    { etapa: 'Comprovante de Residência — sócio entrante (máx. 90 dias)', status: 'Pendente' },
+    { etapa: 'Certidão de Estado Civil — sócio entrante', status: 'Pendente' },
+    // ── Documentos da Operação ──
+    { etapa: 'Contrato Social vigente (última versão)', status: 'Pendente' },
+    { etapa: 'Instrumento de Cessão de Quotas — assinado pelas partes', status: 'Pendente' },
+    { etapa: 'Comprovante de pagamento das quotas (se cessão onerosa)', status: 'Pendente' },
+    { etapa: 'Declaração de ITCMD ou comprovante de isenção', status: 'Pendente' },
+    // ── Etapas Institucionais ──
+    { etapa: 'Minuta de Alteração Contratual (Transferência) — aprovada e assinada', status: 'Pendente' },
+    { etapa: 'DBE Atualizado — Receita Federal protocolado', status: 'Pendente' },
+    { etapa: 'VRE — JUCESP protocolado', status: 'Pendente' },
+    { etapa: 'Taxa de Registro — JUCESP paga', status: 'Pendente' },
+    { etapa: 'Documentos registrados entregues ao cliente', status: 'Pendente' },
   ],
   transferencia_saida: [
-    { etapa: 'O.S.', status: 'Pendente' },
-    { etapa: 'Verificar Regularidade com a ELOS', status: 'Pendente' },
-    { etapa: 'Análise de Atividade e Tributária', status: 'Pendente' },
-    { etapa: 'Minuta da Alteração Contratual (Retirada)', status: 'Pendente' },
-    { etapa: 'Contrato/Instrumento de Cessão de Quotas', status: 'Pendente' },
-    { etapa: 'Protocolo Junta Comercial', status: 'Pendente' },
-    { etapa: 'Comunicado (Junta, Receita e Estado)', status: 'Pendente' },
-    { etapa: 'Enviar Documentos Registrados ao Cliente por E-mail', status: 'Pendente' },
-    { etapa: 'Salvar Processo em PDF', status: 'Pendente' },
+    // ── Documentos do Sócio Sainte ──
+    { etapa: 'RG / CNH (frente e verso) — sócio sainte', status: 'Pendente' },
+    { etapa: 'CPF — sócio sainte', status: 'Pendente' },
+    { etapa: 'Comprovante de Residência — sócio sainte (máx. 90 dias)', status: 'Pendente' },
+    { etapa: 'Certidão de Estado Civil — sócio sainte', status: 'Pendente' },
+    // ── Documentos da Operação ──
+    { etapa: 'Contrato Social vigente (última versão)', status: 'Pendente' },
+    { etapa: 'Instrumento de Cessão de Quotas — assinado pelas partes', status: 'Pendente' },
+    { etapa: 'Comprovante de pagamento das quotas (se cessão onerosa)', status: 'Pendente' },
+    { etapa: 'Declaração de ITCMD ou comprovante de isenção', status: 'Pendente' },
+    // ── Etapas Institucionais ──
+    { etapa: 'Minuta de Alteração Contratual (Retirada) — aprovada e assinada', status: 'Pendente' },
+    { etapa: 'DBE Atualizado — Receita Federal protocolado', status: 'Pendente' },
+    { etapa: 'VRE — JUCESP protocolado', status: 'Pendente' },
+    { etapa: 'Taxa de Registro — JUCESP paga', status: 'Pendente' },
+    { etapa: 'Documentos registrados entregues ao cliente', status: 'Pendente' },
   ],
 }
 
@@ -185,8 +161,10 @@ export default function SocietarioPage() {
   const [addingTo, setAddingTo] = useState<string | null>(null)
   const [newItemText, setNewItemText] = useState('')
   const [filtroStatus, setFiltroStatus] = useState<'todos' | 'Andamento' | 'Finalizado'>('Andamento')
+  const [editingTituloId, setEditingTituloId] = useState<string | null>(null)
+  const [tituloText, setTituloText] = useState('')
 
-  const [formData, setFormData] = useState({ empresa_id: '', cliente_nome: '', tipo: 'abertura' })
+  const [formData, setFormData] = useState({ empresa_id: '', cliente_nome: '', tipo: 'abertura', titulo: '' })
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -211,7 +189,13 @@ export default function SocietarioPage() {
       return toast.error('Selecione uma empresa ou informe o nome do cliente.')
 
     const checklist = MODELOS_PROCESSOS[formData.tipo] ?? []
-    const payload: any = { org_id: orgId, tipo: formData.tipo, checklist, status: 'Andamento' }
+    const payload: any = {
+      org_id: orgId,
+      tipo: formData.tipo,
+      checklist,
+      status: 'Andamento',
+      titulo: formData.titulo.trim() || null,
+    }
     if (formData.empresa_id) payload.empresa_id = formData.empresa_id
     else payload.cliente_nome = formData.cliente_nome.trim()
 
@@ -219,12 +203,20 @@ export default function SocietarioPage() {
     if (!error && data) {
       toast.success('Processo iniciado!')
       setIsModalOpen(false)
-      setFormData({ empresa_id: '', cliente_nome: '', tipo: 'abertura' })
+      setFormData({ empresa_id: '', cliente_nome: '', tipo: 'abertura', titulo: '' })
       setExpandedId(data.id)
       fetchData()
     } else {
       toast.error(`Erro: ${error?.message}`)
     }
+  }
+
+  // ── Salvar título / O.S. ──────────────────────────────────────────────────
+
+  async function saveTitulo(procId: string) {
+    await supabase.from('processos_societarios').update({ titulo: tituloText.trim() || null }).eq('id', procId)
+    setProcessos(prev => prev.map(p => p.id === procId ? { ...p, titulo: tituloText.trim() || null } : p))
+    setEditingTituloId(null)
   }
 
   // ── Ciclar etapa ──────────────────────────────────────────────────────────
@@ -333,45 +325,83 @@ export default function SocietarioPage() {
             <div key={p.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
 
               {/* Linha de resumo — clicável */}
-              <button
-                onClick={() => setExpandedId(isOpen ? null : p.id)}
-                className="w-full flex items-center gap-4 px-6 py-4 hover:bg-slate-50 transition-colors text-left"
-              >
-                {/* Tipo badge */}
-                <span className={`text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-wide flex-shrink-0 ${
-                  p.status === 'Finalizado' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
-                }`}>
-                  {TIPO_LABELS[p.tipo] ?? p.tipo}
-                </span>
+              <div className="w-full">
+                <button
+                  onClick={() => setExpandedId(isOpen ? null : p.id)}
+                  className="w-full flex items-center gap-3 px-4 md:px-6 py-4 hover:bg-slate-50 transition-colors text-left"
+                >
+                  {/* Tipo badge */}
+                  <span className={`text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-wide flex-shrink-0 ${
+                    p.status === 'Finalizado' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
+                  }`}>
+                    {TIPO_LABELS[p.tipo] ?? p.tipo}
+                  </span>
 
-                {/* Nome */}
-                <span className="font-black text-slate-800 text-sm flex-1 min-w-0 truncate">{nomeExibido}</span>
-
-                {/* Barra de progresso */}
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all ${porc === 100 ? 'bg-emerald-400' : 'bg-yellow-400'}`}
-                      style={{ width: `${porc}%` }}
-                    />
+                  {/* Nome + Título */}
+                  <div className="flex-1 min-w-0">
+                    <span className="font-black text-slate-800 text-sm block truncate">{nomeExibido}</span>
+                    {p.titulo && (
+                      <span className="text-[11px] text-yellow-600 font-bold block truncate">{p.titulo}</span>
+                    )}
                   </div>
-                  <span className="text-[10px] font-black text-slate-400 w-8">{porc}%</span>
+
+                  {/* Barra de progresso */}
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <div className="w-16 md:w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${porc === 100 ? 'bg-emerald-400' : 'bg-yellow-400'}`}
+                        style={{ width: `${porc}%` }}
+                      />
+                    </div>
+                    <span className="text-[10px] font-black text-slate-400 w-8">{porc}%</span>
+                  </div>
+
+                  {/* Etapas */}
+                  <span className="text-[10px] text-slate-400 flex-shrink-0 hidden sm:block">
+                    {concluido}/{total} etapas
+                  </span>
+
+                  {/* Seta */}
+                  <span className={`text-slate-300 transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`}>▼</span>
+                </button>
+
+                {/* Título / O.S. editável (sempre visível abaixo do card) */}
+                <div className="px-4 md:px-6 pb-3 flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                  {editingTituloId === p.id ? (
+                    <div className="flex items-center gap-2 flex-1">
+                      <input
+                        autoFocus
+                        value={tituloText}
+                        onChange={e => setTituloText(e.target.value)}
+                        onBlur={() => saveTitulo(p.id)}
+                        onKeyDown={e => { if (e.key === 'Enter') saveTitulo(p.id); if (e.key === 'Escape') setEditingTituloId(null) }}
+                        placeholder="Ex: O.S. 001/2026 — Abertura Padaria Central"
+                        className="flex-1 text-xs border-2 border-yellow-400 rounded-lg px-3 py-1.5 outline-none bg-yellow-50 font-medium"
+                      />
+                      <button onClick={() => saveTitulo(p.id)} className="bg-yellow-400 text-black text-[10px] font-black px-3 py-1.5 rounded-lg">OK</button>
+                      <button onClick={() => setEditingTituloId(null)} className="text-slate-400 text-[10px] px-2 py-1.5">✕</button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => { setTituloText(p.titulo || ''); setEditingTituloId(p.id) }}
+                      className={`text-xs font-bold rounded-lg px-3 py-1 transition-all ${
+                        p.titulo
+                          ? 'bg-yellow-50 text-yellow-700 border border-yellow-200 hover:bg-yellow-100'
+                          : 'text-slate-300 hover:text-yellow-500 border border-dashed border-slate-200 hover:border-yellow-300'
+                      }`}
+                    >
+                      {p.titulo ? `✎ ${p.titulo}` : '+ Definir O.S. / Título'}
+                    </button>
+                  )}
                 </div>
-
-                {/* Etapas */}
-                <span className="text-[10px] text-slate-400 flex-shrink-0 hidden sm:block">
-                  {concluido}/{total} etapas
-                </span>
-
-                {/* Seta */}
-                <span className={`text-slate-300 transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`}>▼</span>
-              </button>
+              </div>
 
               {/* Checklist expandido */}
               {isOpen && (
                 <div className="border-t border-slate-100 px-6 pb-6 pt-4">
-                  {/* Ações do processo */}
-                  <div className="flex justify-end mb-4">
+                  {/* Header da seção de etapas */}
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Etapas do Processo</h3>
                     <button
                       onClick={() => deleteProcesso(p.id)}
                       className="text-[10px] text-red-300 hover:text-red-500 font-bold transition-colors"
@@ -500,7 +530,7 @@ export default function SocietarioPage() {
                       <button
                         onClick={() => setAddingTo(p.id)}
                         className="mt-2 mx-3 py-2 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 hover:border-yellow-400 hover:text-yellow-500 transition-all text-sm font-bold"
-                      >+ Adicionar etapa</button>
+                      >+ Adicionar Etapa</button>
                     )}
                   </div>
                 </div>
@@ -522,9 +552,19 @@ export default function SocietarioPage() {
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4">
           <div className="bg-white p-6 md:p-10 rounded-[40px] w-full max-w-md border-t-8 border-yellow-400 shadow-2xl relative max-h-[90vh] overflow-y-auto">
-            <button onClick={() => setIsModalOpen(false)} className="absolute top-6 right-6 font-bold text-slate-300 hover:text-red-500">FECHAR ✕</button>
+            <button onClick={() => { setIsModalOpen(false); setFormData({ empresa_id: '', cliente_nome: '', tipo: 'abertura', titulo: '' }) }} className="absolute top-6 right-6 font-bold text-slate-300 hover:text-red-500">FECHAR ✕</button>
             <h2 className="text-2xl font-black mb-8 tracking-tighter text-slate-900">Iniciar Novo Processo</h2>
             <form onSubmit={handleIniciar} className="space-y-5">
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Título / Nº O.S.</label>
+                <input
+                  type="text"
+                  placeholder="Ex: O.S. 001/2026 — Abertura Padaria Central"
+                  className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl mt-1 text-sm font-bold outline-none focus:border-yellow-400"
+                  value={formData.titulo}
+                  onChange={e => setFormData({ ...formData, titulo: e.target.value })}
+                />
+              </div>
               <div>
                 <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Tipo de Serviço</label>
                 <select
