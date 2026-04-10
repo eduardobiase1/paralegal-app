@@ -279,10 +279,10 @@ export default function SocietarioPage() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="p-8 bg-[#F8FAFC] min-h-screen font-sans text-slate-900">
+    <div className="p-4 md:p-8 bg-[#F8FAFC] min-h-screen font-sans text-slate-900">
 
       {/* Cabeçalho */}
-      <header className="flex justify-between items-center mb-8">
+      <header className="flex flex-wrap justify-between items-center gap-3 mb-6 md:mb-8">
         <div>
           <h1 className="text-2xl font-black italic tracking-tighter uppercase">
             PARALEGAL PRO <span className="text-yellow-500">| SOCIETÁRIO</span>
@@ -521,7 +521,7 @@ export default function SocietarioPage() {
       {/* ── Modal novo processo ─────────────────────────────────────────────── */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-10 rounded-[40px] w-full max-w-md border-t-8 border-yellow-400 shadow-2xl relative">
+          <div className="bg-white p-6 md:p-10 rounded-[40px] w-full max-w-md border-t-8 border-yellow-400 shadow-2xl relative max-h-[90vh] overflow-y-auto">
             <button onClick={() => setIsModalOpen(false)} className="absolute top-6 right-6 font-bold text-slate-300 hover:text-red-500">FECHAR ✕</button>
             <h2 className="text-2xl font-black mb-8 tracking-tighter text-slate-900">Iniciar Novo Processo</h2>
             <form onSubmit={handleIniciar} className="space-y-5">

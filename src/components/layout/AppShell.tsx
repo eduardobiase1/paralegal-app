@@ -27,7 +27,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Main content */}
       <div
-        className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${
+        className={`flex-1 flex flex-col min-w-0 transition-all duration-300 overflow-hidden ${
           open ? 'md:ml-64' : 'ml-0'
         }`}
       >

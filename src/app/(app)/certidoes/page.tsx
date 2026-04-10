@@ -71,19 +71,19 @@ export default function CertidoesPage() {
   }
 
   return (
-    <div className="p-8 space-y-6 bg-slate-50 min-h-screen font-sans">
-      <header className="flex justify-between items-center bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+    <div className="p-4 md:p-8 space-y-4 md:space-y-6 bg-slate-50 min-h-screen font-sans">
+      <header className="flex flex-wrap justify-between items-center gap-3 bg-white p-4 md:p-6 rounded-2xl border border-slate-200 shadow-sm">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Certidões Negativas</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-slate-900">Certidões Negativas</h1>
           <p className="text-[10px] font-black uppercase text-blue-600 tracking-widest mt-1">{orgName}</p>
         </div>
-        <button onClick={() => setModal(true)} className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-800 transition-all">
+        <button onClick={() => setModal(true)} className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-800 transition-all whitespace-nowrap">
           + Nova Certidão
         </button>
       </header>
 
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <table className="w-full text-left">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
+        <table className="w-full text-left min-w-[600px]">
           <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-black uppercase text-slate-500">
             <tr>
               <th className="px-6 py-4">Empresa</th>
@@ -117,8 +117,8 @@ export default function CertidoesPage() {
       </div>
 
       {modal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-6">
-          <div className="bg-white w-full max-w-lg rounded-3xl p-8 border border-slate-200 shadow-2xl">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white w-full max-w-lg rounded-3xl p-6 md:p-8 border border-slate-200 shadow-2xl max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold mb-6 text-slate-900">Nova Certidão Negativa</h2>
             <form onSubmit={handleSave} className="space-y-4">
               <div>
@@ -129,7 +129,7 @@ export default function CertidoesPage() {
                   {empresas.map(e => <option key={e.id} value={e.id}>{e.razao_social}</option>)}
                 </select>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-[10px] font-black text-slate-400 uppercase">Tipo *</label>
                   <input required value={form.tipo} onChange={e => setForm({ ...form, tipo: e.target.value })}

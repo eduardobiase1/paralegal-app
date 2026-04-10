@@ -50,10 +50,10 @@ export default function DashboardPage() {
   if (loading) return <div className="p-10 text-slate-400 font-sans italic">Carregando...</div>
 
   return (
-    <div className="p-8 space-y-8 bg-slate-50 min-h-screen font-sans text-left">
-      <header className="flex justify-between items-end border-b border-slate-200 pb-6">
+    <div className="p-4 md:p-8 space-y-6 md:space-y-8 bg-slate-50 min-h-screen font-sans text-left">
+      <header className="flex justify-between items-end border-b border-slate-200 pb-4 md:pb-6">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Dashboard</h1>
+          <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Dashboard</h1>
           <p className="text-slate-500 font-medium text-xs uppercase tracking-[0.2em] mt-1">
             Escritório: <span className="text-blue-600 font-black">{orgName}</span>
           </p>
@@ -61,31 +61,31 @@ export default function DashboardPage() {
       </header>
 
       {/* Cards de estatísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
+        <div className="bg-white p-5 md:p-8 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
           <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">Carteira de Clientes</p>
-          <h2 className="text-4xl font-black text-slate-900 mt-2">{stats.empresas}</h2>
+          <h2 className="text-3xl md:text-4xl font-black text-slate-900 mt-2">{stats.empresas}</h2>
         </div>
 
         {/* Card Processos com breakdown */}
-        <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow col-span-1 md:col-span-2">
+        <div className="bg-white p-5 md:p-8 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow col-span-2">
           <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-3">Processos Societários</p>
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4 md:gap-6">
             <div>
               <p className="text-[9px] font-black uppercase text-blue-400 tracking-widest">Em Andamento</p>
-              <h2 className="text-4xl font-black text-blue-600">{stats.processosAndamento}</h2>
+              <h2 className="text-3xl md:text-4xl font-black text-blue-600">{stats.processosAndamento}</h2>
             </div>
-            <div className="w-px h-12 bg-slate-200" />
+            <div className="w-px h-10 bg-slate-200" />
             <div>
               <p className="text-[9px] font-black uppercase text-emerald-400 tracking-widest">Finalizados</p>
-              <h2 className="text-4xl font-black text-emerald-600">{stats.processosFinalizado}</h2>
+              <h2 className="text-3xl md:text-4xl font-black text-emerald-600">{stats.processosFinalizado}</h2>
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+        <div className="bg-white p-5 md:p-8 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
           <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">Cobranças Pendentes</p>
-          <h2 className="text-4xl font-black text-orange-500 mt-2">{stats.cobrancas}</h2>
+          <h2 className="text-3xl md:text-4xl font-black text-orange-500 mt-2">{stats.cobrancas}</h2>
         </div>
       </div>
 
@@ -96,13 +96,13 @@ export default function DashboardPage() {
             <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">Processos em Andamento</h3>
             <Link href="/societario" className="text-blue-600 text-xs font-bold hover:underline">Ver todos →</Link>
           </div>
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <table className="w-full text-left">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
+            <table className="w-full text-left min-w-[400px]">
               <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-black uppercase text-slate-500">
                 <tr>
-                  <th className="px-6 py-4">Cliente / Empresa</th>
-                  <th className="px-6 py-4">Tipo</th>
-                  <th className="px-6 py-4 text-right">Ação</th>
+                  <th className="px-4 md:px-6 py-4">Cliente / Empresa</th>
+                  <th className="px-4 md:px-6 py-4">Tipo</th>
+                  <th className="px-4 md:px-6 py-4 text-right">Ação</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -132,14 +132,14 @@ export default function DashboardPage() {
       {/* Documentos com vencimento próximo */}
       <section className="space-y-4">
         <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest ml-1">Documentos com Vencimento Próximo</h3>
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          <table className="w-full text-left">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
+          <table className="w-full text-left min-w-[500px]">
             <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-black uppercase text-slate-500">
               <tr>
-                <th className="px-6 py-4">Empresa</th>
-                <th className="px-6 py-4">Documento</th>
-                <th className="px-6 py-4">Vencimento</th>
-                <th className="px-6 py-4 text-right">Ação</th>
+                <th className="px-4 md:px-6 py-4">Empresa</th>
+                <th className="px-4 md:px-6 py-4">Documento</th>
+                <th className="px-4 md:px-6 py-4">Vencimento</th>
+                <th className="px-4 md:px-6 py-4 text-right">Ação</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">

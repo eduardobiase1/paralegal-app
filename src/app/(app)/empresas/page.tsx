@@ -177,7 +177,7 @@ export default function EmpresasPage() {
                 <h2 className="text-3xl font-black italic tracking-tighter">PARALEGAL PRO</h2>
                 <h3 className="text-[10px] font-bold uppercase text-white mt-1 tracking-[0.3em]">Gestão de Dados Empresariais</h3>
               </div>
-              <div className="grid grid-cols-4 border-2 border-yellow-400 mt-4 text-[10px] bg-white text-black">
+              <div className="grid grid-cols-2 sm:grid-cols-4 border-2 border-yellow-400 mt-4 text-[10px] bg-white text-black">
                 <div className="p-2 border-r-2 border-yellow-400">
                    <p className="text-[7px] text-slate-400 font-bold uppercase">CNPJ</p>
                    {empresaSelecionada.cnpj}
@@ -226,7 +226,7 @@ export default function EmpresasPage() {
 
             <div className="p-6">
               <h4 className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-4">SÓCIOS E ADMINISTRADORES</h4>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {empresaSelecionada.qsa?.map((s: any, i: number) => (
                   <div key={i} className="p-3 bg-slate-50 border-l-4 border-yellow-400 rounded-r-lg">
                     <p className="text-[9px] font-black uppercase">{s.nome || s.nome_socio}</p>

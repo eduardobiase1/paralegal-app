@@ -255,9 +255,9 @@ export default function FinanceiroPage() {
   }
 
   return (
-    <div className="p-8 space-y-6 bg-slate-50 min-h-screen font-sans">
+    <div className="p-4 md:p-8 space-y-4 md:space-y-6 bg-slate-50 min-h-screen font-sans">
       {/* Header */}
-      <div className="flex justify-between items-center bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+      <div className="flex flex-wrap justify-between items-center gap-3 bg-white p-4 md:p-6 rounded-2xl border border-slate-200 shadow-sm">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Financeiro</h1>
           <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mt-1">
@@ -340,8 +340,8 @@ export default function FinanceiroPage() {
           )}
 
           {/* Cobranças pendentes */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
+            <div className="px-4 md:px-6 py-4 border-b border-slate-100">
               <h2 className="font-bold text-slate-800">Cobranças Pendentes</h2>
             </div>
             <table className="w-full text-left">
@@ -379,8 +379,8 @@ export default function FinanceiroPage() {
 
       {/* ── Honorários ── */}
       {tab === 'honorarios' && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          <table className="w-full text-left">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
+          <table className="w-full text-left min-w-[600px]">
             <thead className="bg-slate-50 text-[10px] font-black uppercase text-slate-500 tracking-widest">
               <tr>
                 <th className="px-6 py-4">Cliente</th>
@@ -429,8 +429,8 @@ export default function FinanceiroPage() {
 
       {/* ── Cobranças ── */}
       {tab === 'cobrancas' && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          <table className="w-full text-left">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
+          <table className="w-full text-left min-w-[600px]">
             <thead className="bg-slate-50 text-[10px] font-black uppercase text-slate-500 tracking-widest">
               <tr>
                 <th className="px-6 py-4">Cliente</th>
@@ -476,11 +476,11 @@ export default function FinanceiroPage() {
 
       {/* ── Modal Honorário ──────────────────────────────────────────────────── */}
       {modalHon && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-6">
-          <div className="bg-white w-full max-w-lg rounded-3xl p-8 border border-slate-200 shadow-2xl">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white w-full max-w-lg rounded-3xl p-6 md:p-8 border border-slate-200 shadow-2xl max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold mb-6 text-slate-900">{editingHonId ? 'Editar Honorário' : 'Cadastrar Honorário'}</h2>
             <form onSubmit={handleSaveHon} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="col-span-2">
                   <label className="text-[10px] font-black text-slate-400 uppercase">Nome do Cliente *</label>
                   <input required value={formHon.cliente_nome} onChange={e => setFormHon({ ...formHon, cliente_nome: e.target.value })}
@@ -547,11 +547,11 @@ export default function FinanceiroPage() {
 
       {/* ── Modal Cobrança ──────────────────────────────────────────────────── */}
       {modalCob && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-6">
-          <div className="bg-white w-full max-w-lg rounded-3xl p-8 border border-slate-200 shadow-2xl">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white w-full max-w-lg rounded-3xl p-6 md:p-8 border border-slate-200 shadow-2xl max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold mb-6 text-slate-900">{editingCobId ? 'Editar Cobrança' : 'Registrar Cobrança'}</h2>
             <form onSubmit={handleSaveCob} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="col-span-2">
                   <label className="text-[10px] font-black text-slate-400 uppercase">Nome do Cliente *</label>
                   <input required value={formCob.cliente_nome} onChange={e => setFormCob({ ...formCob, cliente_nome: e.target.value })}
