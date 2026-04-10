@@ -327,12 +327,12 @@ export default function SocietarioPage() {
       </header>
 
       {/* Filtros de status */}
-      <div className="flex gap-2 mb-6">
+      <div className="flex flex-wrap gap-2 mb-6">
         {([['Andamento', 'Em Andamento'], ['Finalizado', 'Finalizados'], ['todos', 'Todos']] as const).map(([val, label]) => (
           <button
             key={val}
             onClick={() => setFiltroStatus(val)}
-            className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wide transition-all ${
+            className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wide transition-all whitespace-nowrap ${
               filtroStatus === val
                 ? 'bg-black text-yellow-400'
                 : 'bg-white text-slate-400 border border-slate-200 hover:bg-slate-50'
@@ -369,41 +369,30 @@ export default function SocietarioPage() {
                     setExpandedId(next)
                     if (next && !notas[next]) loadNotas(next)
                   }}
-                  className="w-full flex items-center gap-3 px-4 md:px-6 py-4 hover:bg-slate-50 transition-colors text-left"
+                  className="w-full flex flex-col px-4 md:px-6 py-4 hover:bg-slate-50 transition-colors text-left gap-2"
                 >
-                  {/* Tipo badge */}
-                  <span className={`text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-wide flex-shrink-0 ${
-                    p.status === 'Finalizado' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
-                  }`}>
-                    {TIPO_LABELS[p.tipo] ?? p.tipo}
-                  </span>
-
-                  {/* Nome + Título */}
-                  <div className="flex-1 min-w-0">
-                    <span className="font-black text-slate-800 text-sm block truncate">{nomeExibido}</span>
-                    {p.titulo && (
-                      <span className="text-[11px] text-yellow-600 font-bold block truncate">{p.titulo}</span>
-                    )}
+                  {/* Linha 1: badge + nome + seta */}
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-wide flex-shrink-0 ${
+                      p.status === 'Finalizado' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
+                    }`}>
+                      {TIPO_LABELS[p.tipo] ?? p.tipo}
+                    </span>
+                    <span className="font-black text-slate-800 text-sm flex-1 min-w-0 truncate">{nomeExibido}</span>
+                    <span className={`text-slate-300 transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`}>▼</span>
                   </div>
 
-                  {/* Barra de progresso */}
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <div className="w-16 md:w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  {/* Linha 2: barra de progresso */}
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                       <div
                         className={`h-full rounded-full transition-all ${porc === 100 ? 'bg-emerald-400' : 'bg-yellow-400'}`}
                         style={{ width: `${porc}%` }}
                       />
                     </div>
-                    <span className="text-[10px] font-black text-slate-400 w-8">{porc}%</span>
+                    <span className="text-[10px] font-black text-slate-400 flex-shrink-0">{porc}% · {concluido}/{total} etapas</span>
                   </div>
 
-                  {/* Etapas */}
-                  <span className="text-[10px] text-slate-400 flex-shrink-0 hidden sm:block">
-                    {concluido}/{total} etapas
-                  </span>
-
-                  {/* Seta */}
-                  <span className={`text-slate-300 transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`}>▼</span>
                 </button>
 
                 {/* Título / O.S. editável (sempre visível abaixo do card) */}
