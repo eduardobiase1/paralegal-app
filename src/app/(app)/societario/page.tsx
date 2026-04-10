@@ -163,6 +163,9 @@ export default function SocietarioPage() {
   const [filtroStatus, setFiltroStatus] = useState<'todos' | 'Andamento' | 'Finalizado'>('Andamento')
   const [editingTituloId, setEditingTituloId] = useState<string | null>(null)
   const [tituloText, setTituloText] = useState('')
+  const [notas, setNotas] = useState<Record<string, any[]>>({})
+  const [notaInput, setNotaInput] = useState<Record<string, string>>({})
+  const [savingNota, setSavingNota] = useState(false)
 
   const [formData, setFormData] = useState({ empresa_id: '', cliente_nome: '', tipo: 'abertura', titulo: '' })
 
@@ -217,6 +220,40 @@ export default function SocietarioPage() {
     await supabase.from('processos_societarios').update({ titulo: tituloText.trim() || null }).eq('id', procId)
     setProcessos(prev => prev.map(p => p.id === procId ? { ...p, titulo: tituloText.trim() || null } : p))
     setEditingTituloId(null)
+  }
+
+  // ── Notas / Anotações ────────────────────────────────────────────────────
+
+  async function loadNotas(procId: string) {
+    const { data } = await supabase
+      .from('processo_notas')
+      .select('*')
+      .eq('processo_id', procId)
+      .order('created_at', { ascending: false })
+    setNotas(prev => ({ ...prev, [procId]: data || [] }))
+  }
+
+  async function addNota(procId: string) {
+    const texto = (notaInput[procId] || '').trim()
+    if (!texto) return
+    setSavingNota(true)
+    const { data, error } = await supabase
+      .from('processo_notas')
+      .insert([{ processo_id: procId, org_id: orgId, texto }])
+      .select()
+      .single()
+    if (!error && data) {
+      setNotas(prev => ({ ...prev, [procId]: [data, ...(prev[procId] || [])] }))
+      setNotaInput(prev => ({ ...prev, [procId]: '' }))
+    } else {
+      toast.error('Erro ao salvar anotação.')
+    }
+    setSavingNota(false)
+  }
+
+  async function deleteNota(notaId: string, procId: string) {
+    await supabase.from('processo_notas').delete().eq('id', notaId)
+    setNotas(prev => ({ ...prev, [procId]: (prev[procId] || []).filter(n => n.id !== notaId) }))
   }
 
   // ── Ciclar etapa ──────────────────────────────────────────────────────────
@@ -327,7 +364,11 @@ export default function SocietarioPage() {
               {/* Linha de resumo — clicável */}
               <div className="w-full">
                 <button
-                  onClick={() => setExpandedId(isOpen ? null : p.id)}
+                  onClick={() => {
+                    const next = isOpen ? null : p.id
+                    setExpandedId(next)
+                    if (next && !notas[next]) loadNotas(next)
+                  }}
                   className="w-full flex items-center gap-3 px-4 md:px-6 py-4 hover:bg-slate-50 transition-colors text-left"
                 >
                   {/* Tipo badge */}
@@ -533,6 +574,54 @@ export default function SocietarioPage() {
                       >+ Adicionar Etapa</button>
                     )}
                   </div>
+
+                  {/* ── Anotações / Andamento ── */}
+                  <div className="mt-6 border-t border-slate-100 pt-5">
+                    <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-4">Anotações do Processo</h3>
+
+                    {/* Input para nova anotação */}
+                    <div className="flex flex-col sm:flex-row gap-2 mb-4">
+                      <textarea
+                        rows={2}
+                        value={notaInput[p.id] || ''}
+                        onChange={e => setNotaInput(prev => ({ ...prev, [p.id]: e.target.value }))}
+                        onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) addNota(p.id) }}
+                        placeholder="Registre o que aconteceu, o que foi feito, próximos passos... (Ctrl+Enter para salvar)"
+                        className="flex-1 border-2 border-slate-200 focus:border-yellow-400 rounded-xl px-3 py-2 text-sm outline-none resize-none"
+                      />
+                      <button
+                        onClick={() => addNota(p.id)}
+                        disabled={savingNota || !(notaInput[p.id] || '').trim()}
+                        className="bg-black text-yellow-400 px-5 py-2 rounded-xl text-xs font-black uppercase tracking-wide disabled:opacity-40 hover:bg-slate-800 transition-all sm:self-start sm:mt-0 whitespace-nowrap"
+                      >
+                        Registrar
+                      </button>
+                    </div>
+
+                    {/* Feed de notas */}
+                    <div className="space-y-2">
+                      {!notas[p.id] ? (
+                        <p className="text-xs text-slate-400 italic">Carregando...</p>
+                      ) : notas[p.id].length === 0 ? (
+                        <p className="text-xs text-slate-400 italic">Nenhuma anotação ainda.</p>
+                      ) : notas[p.id].map((nota: any) => (
+                        <div key={nota.id} className="group flex gap-3 bg-slate-50 rounded-xl px-4 py-3 border border-slate-100">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-slate-700 whitespace-pre-wrap break-words">{nota.texto}</p>
+                            <p className="text-[10px] text-slate-400 font-mono mt-1">
+                              {new Date(nota.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => deleteNota(nota.id, p.id)}
+                            className="opacity-0 group-hover:opacity-100 text-red-300 hover:text-red-500 text-xs font-black flex-shrink-0 transition-all self-start"
+                            title="Excluir anotação"
+                          >✕</button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
                 </div>
               )}
             </div>
