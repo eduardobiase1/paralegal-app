@@ -4,7 +4,7 @@ import { useState, useCallback, useRef } from 'react'
 import { PDFDocument } from 'pdf-lib'
 import {
   FilePlus2, Scissors, Minimize2, ImagePlus, FileImage,
-  Lock, Upload, X, Download, ChevronLeft, Loader2, FileText, CheckCircle2
+  Lock, Upload, X, Download, Loader2, FileText, CheckCircle2, FileType2
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -45,6 +45,12 @@ const TOOLS = [
     id: 'protect', title: 'PROTEGER PDF',
     description: 'Adicione senha ao seu PDF para restringir o acesso não autorizado.',
     icon: Lock, color: 'text-purple-600', bg: 'bg-purple-50',
+    accept: '.pdf', multiple: false,
+  },
+  {
+    id: 'pdf-to-word', title: 'PDF PARA WORD',
+    description: 'Extraia o texto do PDF e gere um documento Word (.docx) editável.',
+    icon: FileType2, color: 'text-indigo-600', bg: 'bg-indigo-50',
     accept: '.pdf', multiple: false,
   },
 ] as const
@@ -136,9 +142,57 @@ async function pdfToJPGs(file: File): Promise<{ name: string; data: Blob }[]> {
   return results
 }
 
+async function pdfToWord(file: File): Promise<Blob> {
+  // 1. Extrair texto com pdfjs-dist
+  const pdfjsLib = await import('pdfjs-dist')
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`
+
+  const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise
+  const pageTexts: string[] = []
+
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i)
+    const content = await page.getTextContent()
+    let lastY: number | null = null
+    let pageText = ''
+    for (const item of content.items as any[]) {
+      if (lastY !== null && Math.abs(item.transform[5] - lastY) > 5) pageText += '\n'
+      pageText += item.str
+      lastY = item.transform[5]
+    }
+    pageTexts.push(pageText)
+  }
+
+  // 2. Criar .docx com o texto extraído
+  const { Document, Packer, Paragraph, TextRun, HeadingLevel } = await import('docx')
+
+  const children: InstanceType<typeof Paragraph>[] = []
+  pageTexts.forEach((text, i) => {
+    children.push(new Paragraph({
+      text: `Página ${i + 1}`,
+      heading: HeadingLevel.HEADING_2,
+      spacing: { before: i > 0 ? 400 : 0, after: 200 },
+    }))
+    text.split('\n').forEach(line => {
+      children.push(new Paragraph({
+        children: [new TextRun({ text: line.trim(), size: 24 })],
+        spacing: { after: 80 },
+      }))
+    })
+  })
+
+  const doc = new Document({
+    sections: [{ children }],
+  })
+
+  return Packer.toBlob(doc)
+}
+
 function downloadBlob(data: Uint8Array | Blob, filename: string) {
+  const isWord = filename.endsWith('.docx')
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const blob = data instanceof Uint8Array ? new Blob([data as any], { type: 'application/pdf' }) : data
+  const blob = data instanceof Uint8Array ? new Blob([data as any], { type: isWord ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : 'application/pdf' }) : data
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url; a.download = filename; a.click()
@@ -214,6 +268,13 @@ export default function PDFToolsPage() {
       } else if (activeTool === 'protect') {
         toast('Proteção com senha requer servidor. Em breve!', { icon: '🔒' })
         setProcessing(false); return
+
+      } else if (activeTool === 'pdf-to-word') {
+        toast.loading('Extraindo texto...', { id: 'word' })
+        const blob = await pdfToWord(files[0])
+        toast.dismiss('word')
+        const name = files[0].name.replace(/\.pdf$/i, '.docx')
+        setResults([{ name, data: blob }])
       }
 
       toast.success('Processamento concluído!')
