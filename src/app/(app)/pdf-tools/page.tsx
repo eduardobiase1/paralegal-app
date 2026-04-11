@@ -137,7 +137,8 @@ async function pdfToJPGs(file: File): Promise<{ name: string; data: Blob }[]> {
 }
 
 function downloadBlob(data: Uint8Array | Blob, filename: string) {
-  const blob = data instanceof Uint8Array ? new Blob([data], { type: 'application/pdf' }) : data
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const blob = data instanceof Uint8Array ? new Blob([data as any], { type: 'application/pdf' }) : data
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url; a.download = filename; a.click()
