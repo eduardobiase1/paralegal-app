@@ -142,6 +142,49 @@ async function pdfToJPGs(file: File): Promise<{ name: string; data: Blob }[]> {
   return results
 }
 
+async function protectPDF(file: File, userPassword: string): Promise<Blob> {
+  // 1. Renderizar páginas com pdfjs
+  const pdfjsLib = await import('pdfjs-dist')
+  pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs'
+
+  const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise
+  const canvases: HTMLCanvasElement[] = []
+
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i)
+    const viewport = page.getViewport({ scale: 2 })
+    const canvas = document.createElement('canvas')
+    canvas.width = viewport.width
+    canvas.height = viewport.height
+    await page.render({ canvasContext: canvas.getContext('2d')!, viewport }).promise
+    canvases.push(canvas)
+  }
+
+  // 2. Recriar PDF com senha via jsPDF
+  const { jsPDF } = await import('jspdf')
+  const first = canvases[0]
+  const w = first.width / 2
+  const h = first.height / 2
+
+  const doc = new jsPDF({
+    orientation: w > h ? 'l' : 'p',
+    unit: 'px',
+    format: [w, h],
+    encryption: {
+      userPassword,
+      ownerPassword: userPassword + '_adm',
+      userPermissions: ['print'],
+    } as any,
+  })
+
+  canvases.forEach((canvas, i) => {
+    if (i > 0) doc.addPage([canvas.width / 2, canvas.height / 2])
+    doc.addImage(canvas.toDataURL('image/jpeg', 0.85), 'JPEG', 0, 0, canvas.width / 2, canvas.height / 2)
+  })
+
+  return new Blob([doc.output('arraybuffer')], { type: 'application/pdf' })
+}
+
 async function pdfToWord(file: File): Promise<Blob> {
   // 1. Extrair texto com pdfjs-dist
   const pdfjsLib = await import('pdfjs-dist')
@@ -266,8 +309,11 @@ export default function PDFToolsPage() {
         setResults(imgs)
 
       } else if (activeTool === 'protect') {
-        toast('Proteção com senha requer servidor. Em breve!', { icon: '🔒' })
-        setProcessing(false); return
+        if (!password.trim()) throw new Error('Digite uma senha para proteger o PDF')
+        toast.loading('Criptografando...', { id: 'protect' })
+        const blob = await protectPDF(files[0], password)
+        toast.dismiss('protect')
+        setResults([{ name: `protegido_${files[0].name}`, data: blob }])
 
       } else if (activeTool === 'pdf-to-word') {
         toast.loading('Extraindo texto...', { id: 'word' })
@@ -415,19 +461,21 @@ export default function PDFToolsPage() {
 
               {/* Opções: Protect */}
               {files.length > 0 && activeTool === 'protect' && (
-                <div className="mt-4 bg-amber-50 border border-amber-200 rounded-xl p-4">
-                  <div className="flex items-start gap-3">
-                    <Lock className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-bold text-amber-800">Recurso em desenvolvimento</p>
-                      <p className="text-xs text-amber-600 mt-0.5">A proteção por senha requer processamento server-side. Será disponibilizado em breve.</p>
-                    </div>
-                  </div>
+                <div className="mt-4 bg-white border border-slate-200 rounded-xl p-4">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Senha de acesso</label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder="Digite a senha para o PDF"
+                    className="w-full bg-slate-50 border-2 border-slate-200 focus:border-yellow-400 rounded-xl px-4 py-2.5 text-sm outline-none transition-colors"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1.5">O PDF gerado exigirá esta senha para ser aberto</p>
                 </div>
               )}
 
               {/* Botão processar */}
-              {files.length > 0 && activeTool !== 'protect' && (
+              {files.length > 0 && (
                 <button
                   onClick={handleProcess}
                   disabled={processing}
