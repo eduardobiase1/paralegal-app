@@ -19,6 +19,7 @@
     "jspdf": "^2.5.1",
     "jspdf-autotable": "^3.8.2",
     "jszip": "^3.10.1",
+    "lucide-react": "^1.8.0",
     "mammoth": "^1.8.0",
     "next": "^16.2.2",
     "pdf-lib": "^1.17.1",
