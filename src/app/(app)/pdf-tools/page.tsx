@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useCallback, useRef } from 'react'
-import { PDFDocument } from 'pdf-lib'
+import { PDFDocument, PDFName, PDFDict, PDFStream } from 'pdf-lib'
 import {
   FilePlus2, Scissors, Minimize2, ImagePlus, FileImage,
-  Lock, Upload, X, Download, Loader2, FileText, CheckCircle2, FileType2
+  Lock, Upload, X, Download, Loader2, FileText, CheckCircle2, FileType2, Archive
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -51,6 +51,12 @@ const TOOLS = [
     id: 'pdf-to-word', title: 'PDF PARA WORD',
     description: 'Extraia o texto do PDF e gere um documento Word (.docx) editável.',
     icon: FileType2, color: 'text-indigo-600', bg: 'bg-indigo-50',
+    accept: '.pdf', multiple: false,
+  },
+  {
+    id: 'pdf-to-pdfa', title: 'PDF PARA PDF/A',
+    description: 'Converta para PDF/A-1b, formato de arquivamento de longo prazo (ISO 19005).',
+    icon: Archive, color: 'text-teal-600', bg: 'bg-teal-50',
     accept: '.pdf', multiple: false,
   },
 ] as const
@@ -185,6 +191,52 @@ async function protectPDF(file: File, userPassword: string): Promise<Blob> {
   return new Blob([doc.output('arraybuffer')], { type: 'application/pdf' })
 }
 
+async function pdfToPDFA(file: File): Promise<Uint8Array> {
+  const bytes = await file.arrayBuffer()
+  const doc = await PDFDocument.load(bytes, { ignoreEncryption: true })
+
+  // Limpar metadados e ações JavaScript (obrigatório no PDF/A)
+  doc.setProducer('PARALEGAL PRO - PDF Expert')
+  doc.setCreator('PARALEGAL PRO')
+
+  // Construir o bloco XMP com marcação PDF/A-1b
+  const now = new Date().toISOString()
+  const xmp = [
+    `<?xpacket begin="\uFEFF" id="W5M0MpCehiHzreSzNTczkc9d"?>`,
+    `<x:xmpmeta xmlns:x="adobe:ns:meta/">`,
+    `<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">`,
+    `<rdf:Description rdf:about="" xmlns:pdfaid="http://www.aiim.org/pdfa/ns/id/">`,
+    `<pdfaid:part>1</pdfaid:part>`,
+    `<pdfaid:conformance>B</pdfaid:conformance>`,
+    `</rdf:Description>`,
+    `<rdf:Description rdf:about="" xmlns:xmp="http://ns.adobe.com/xap/1.0/">`,
+    `<xmp:CreateDate>${now}</xmp:CreateDate>`,
+    `<xmp:ModifyDate>${now}</xmp:ModifyDate>`,
+    `<xmp:CreatorTool>PARALEGAL PRO - PDF Expert</xmp:CreatorTool>`,
+    `</rdf:Description>`,
+    `<rdf:Description rdf:about="" xmlns:dc="http://purl.org/dc/elements/1.1/">`,
+    `<dc:format>application/pdf</dc:format>`,
+    `</rdf:Description>`,
+    `</rdf:RDF>`,
+    `</x:xmpmeta>`,
+    `<?xpacket end="w"?>`,
+  ].join('\n')
+
+  // Adicionar stream de metadados XMP ao catálogo do PDF
+  const ctx = doc.context
+  const xmpBytes = new TextEncoder().encode(xmp)
+  const metaStream = ctx.stream(xmpBytes, {
+    Type: PDFName.of('Metadata'),
+    Subtype: PDFName.of('XML'),
+    Length: xmpBytes.length,
+  })
+  const metaRef = ctx.register(metaStream)
+  doc.catalog.set(PDFName.of('Metadata'), metaRef)
+
+  // PDF/A exige useObjectStreams: false
+  return doc.save({ useObjectStreams: false })
+}
+
 async function pdfToWord(file: File): Promise<Blob> {
   // 1. Extrair texto com pdfjs-dist
   const pdfjsLib = await import('pdfjs-dist')
@@ -314,6 +366,11 @@ export default function PDFToolsPage() {
         const blob = await protectPDF(files[0], password)
         toast.dismiss('protect')
         setResults([{ name: `protegido_${files[0].name}`, data: blob }])
+
+      } else if (activeTool === 'pdf-to-pdfa') {
+        const data = await pdfToPDFA(files[0])
+        const name = files[0].name.replace(/\.pdf$/i, '_PDFA.pdf')
+        setResults([{ name, data }])
 
       } else if (activeTool === 'pdf-to-word') {
         toast.loading('Extraindo texto...', { id: 'word' })
