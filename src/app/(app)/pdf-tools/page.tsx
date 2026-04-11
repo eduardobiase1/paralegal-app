@@ -124,7 +124,7 @@ async function imagesToPDF(files: File[]): Promise<Uint8Array> {
 async function pdfToJPGs(file: File): Promise<{ name: string; data: Blob }[]> {
   const pdfjsLib = await import('pdfjs-dist')
   pdfjsLib.GlobalWorkerOptions.workerSrc =
-    `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`
+    '/pdf.worker.min.mjs'
 
   const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise
   const results: { name: string; data: Blob }[] = []
@@ -146,7 +146,7 @@ async function pdfToWord(file: File): Promise<Blob> {
   // 1. Extrair texto com pdfjs-dist
   const pdfjsLib = await import('pdfjs-dist')
   pdfjsLib.GlobalWorkerOptions.workerSrc =
-    `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`
+    '/pdf.worker.min.mjs'
 
   const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise
   const pageTexts: string[] = []
