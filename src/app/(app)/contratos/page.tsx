@@ -8,12 +8,13 @@ import Modal from '@/components/ui/Modal'
 import ContratoWizard from '@/components/modules/ContratoWizard'
 import ContratoReverse from '@/components/modules/ContratoReverse'
 import TemplateUpload from '@/components/modules/TemplateUpload'
+import SLUWizard from '@/components/modules/SLUWizard'
 import toast from 'react-hot-toast'
 import { useSearchParams } from 'next/navigation'
 
 function ContratosPageInner() {
   const searchParams = useSearchParams()
-  const [tab, setTab] = useState<'gerar' | 'reversa' | 'historico' | 'templates' | 'clausulas'>('gerar')
+  const [tab, setTab] = useState<'slu' | 'gerar' | 'reversa' | 'historico' | 'templates' | 'clausulas'>('slu')
   const [templates, setTemplates] = useState<ContractTemplate[]>([])
   const [contratos, setContratos] = useState<Contrato[]>([])
   const [empresas, setEmpresas] = useState<Empresa[]>([])
@@ -70,7 +71,8 @@ function ContratosPageInner() {
   useEffect(() => { load() }, [])
 
   const TABS = [
-    { key: 'gerar',     label: 'Gerar Contrato' },
+    { key: 'slu',       label: '✦ Assistente SLU' },
+    { key: 'gerar',     label: 'Gerar por Template' },
     { key: 'reversa',   label: 'Nova via PDF' },
     { key: 'historico', label: 'Histórico' },
     { key: 'templates', label: 'Templates' },
@@ -94,7 +96,14 @@ function ContratosPageInner() {
         ))}
       </div>
 
-      {/* ── Gerar ── */}
+      {/* ── Assistente SLU ── */}
+      {tab === 'slu' && (
+        <div className="card p-6">
+          <SLUWizard />
+        </div>
+      )}
+
+      {/* ── Gerar por Template ── */}
       {tab === 'gerar' && (
         <div>
           <p className="text-sm text-gray-600 mb-4">Selecione um template para iniciar o assistente de geração:</p>
