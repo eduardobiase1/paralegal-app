@@ -9,6 +9,7 @@ export interface OrgContextValue {
   orgName: string
   role: OrgRole
   isAdmin: boolean
+  mustChangePassword: boolean
 }
 
 const OrgContext = createContext<OrgContextValue | null>(null)
@@ -17,15 +18,17 @@ export function OrgProvider({
   orgId,
   orgName,
   role,
+  mustChangePassword = false,
   children,
 }: {
   orgId: string
   orgName: string
   role: OrgRole
+  mustChangePassword?: boolean
   children: ReactNode
 }) {
   return (
-    <OrgContext.Provider value={{ orgId, orgName, role, isAdmin: role === 'admin' }}>
+    <OrgContext.Provider value={{ orgId, orgName, role, isAdmin: role === 'admin', mustChangePassword }}>
       {children}
     </OrgContext.Provider>
   )

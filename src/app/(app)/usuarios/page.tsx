@@ -53,8 +53,10 @@ export default function UsuariosPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [supabase] = useState(createClient)
   const [inviteEmail, setInviteEmail] = useState('')
+  const [invitePassword, setInvitePassword] = useState('')
   const [inviteRole, setInviteRole] = useState<OrgRole>('operador')
   const [inviting, setInviting] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
 
   async function load() {
     setLoading(true)
@@ -79,28 +81,35 @@ export default function UsuariosPage() {
     load()
   }
 
-  async function handleInvite(e: React.FormEvent) {
+  function closeModal() {
+    setModalOpen(false)
+    setInviteEmail('')
+    setInvitePassword('')
+    setInviteRole('operador')
+    setShowPassword(false)
+  }
+
+  async function handleCreateUser(e: React.FormEvent) {
     e.preventDefault()
-    if (!inviteEmail.trim()) return
+    if (!inviteEmail.trim() || !invitePassword.trim()) return
     setInviting(true)
     try {
-      const res = await fetch('/api/invite', {
+      const res = await fetch('/api/create-user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: inviteEmail.trim(), role: inviteRole, orgId }),
+        body: JSON.stringify({
+          email: inviteEmail.trim(),
+          password: invitePassword,
+          role: inviteRole,
+          orgId,
+        }),
       })
       const data = await res.json()
       if (!res.ok) {
-        toast.error(data.error ?? 'Erro ao convidar usuário.')
+        toast.error(data.error ?? 'Erro ao criar usuário.')
       } else {
-        toast.success(
-          data.existing
-            ? `Usuário existente adicionado à organização como ${ROLE_LABELS[inviteRole]}!`
-            : `Convite enviado para ${inviteEmail}! O usuário receberá um e-mail para definir a senha.`
-        )
-        setModalOpen(false)
-        setInviteEmail('')
-        setInviteRole('operador')
+        toast.success(`Usuário criado! No primeiro acesso, ${inviteEmail} deverá definir uma nova senha.`)
+        closeModal()
         load()
       }
     } catch {
@@ -132,7 +141,7 @@ export default function UsuariosPage() {
         </div>
         {isAdmin && (
           <button onClick={() => setModalOpen(true)} className="btn-primary">
-            + Convidar Usuário
+            + Cadastrar Usuário
           </button>
         )}
       </div>
@@ -214,13 +223,14 @@ export default function UsuariosPage() {
         )}
       </div>
 
-      {/* Modal de convite */}
-      <Modal open={modalOpen} onClose={() => { setModalOpen(false); setInviteEmail(''); setInviteRole('operador') }} title="Convidar Usuário">
-        <form onSubmit={handleInvite} className="space-y-5">
+      {/* Modal de criar usuário */}
+      <Modal open={modalOpen} onClose={closeModal} title="Cadastrar Novo Usuário">
+        <form onSubmit={handleCreateUser} className="space-y-5">
+
           {/* E-mail */}
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">
-              E-mail do usuário
+              E-mail
             </label>
             <input
               type="email"
@@ -229,11 +239,44 @@ export default function UsuariosPage() {
               value={inviteEmail}
               onChange={e => setInviteEmail(e.target.value)}
               placeholder="usuario@empresa.com.br"
-              className="w-full border-2 border-gray-200 focus:border-blue-500 rounded-xl px-4 py-3 text-sm outline-none transition-colors"
+              className="w-full border-2 border-gray-200 focus:border-amber-400 rounded-xl px-4 py-3 text-sm outline-none transition-colors"
             />
           </div>
 
-          {/* Papel */}
+          {/* Senha temporária */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">
+              Senha temporária
+            </label>
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                required
+                value={invitePassword}
+                onChange={e => setInvitePassword(e.target.value)}
+                placeholder="Mínimo 6 caracteres"
+                minLength={6}
+                className="w-full border-2 border-gray-200 focus:border-amber-400 rounded-xl px-4 py-3 text-sm outline-none transition-colors pr-11"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(v => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  {showPassword
+                    ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                    : <><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></>
+                  }
+                </svg>
+              </button>
+            </div>
+            <p className="text-[11px] text-gray-400 mt-1.5">
+              No primeiro acesso o usuário será obrigado a criar uma senha própria.
+            </p>
+          </div>
+
+          {/* Nível de acesso */}
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
               Nível de acesso
@@ -243,9 +286,7 @@ export default function UsuariosPage() {
                 <label
                   key={r}
                   className={`flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
-                    inviteRole === r
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300'
+                    inviteRole === r ? 'border-amber-400 bg-amber-50' : 'border-gray-200 hover:border-gray-300'
                   }`}
                 >
                   <input
@@ -254,14 +295,12 @@ export default function UsuariosPage() {
                     value={r}
                     checked={inviteRole === r}
                     onChange={() => setInviteRole(r)}
-                    className="mt-0.5 accent-blue-600"
+                    className="mt-0.5 accent-amber-500"
                   />
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs font-black px-2 py-0.5 rounded-full ${ROLE_COLORS[r]}`}>
-                        {ROLE_LABELS[r]}
-                      </span>
-                    </div>
+                    <span className={`text-xs font-black px-2 py-0.5 rounded-full ${ROLE_COLORS[r]}`}>
+                      {ROLE_LABELS[r]}
+                    </span>
                     <p className="text-xs text-gray-500 mt-0.5">{ROLE_DESCRIPTIONS[r]}</p>
                   </div>
                 </label>
@@ -269,26 +308,15 @@ export default function UsuariosPage() {
             </div>
           </div>
 
-          {/* Info */}
-          <div className="bg-gray-50 rounded-xl p-3 text-xs text-gray-500 flex gap-2">
-            <span className="flex-shrink-0">📧</span>
-            <span>O usuário receberá um e-mail com link para definir a senha e acessar o sistema.</span>
-          </div>
-
           {/* Botões */}
           <div className="flex gap-3 pt-1">
-            <button
-              type="button"
-              onClick={() => { setModalOpen(false); setInviteEmail(''); setInviteRole('operador') }}
-              className="flex-1 btn-secondary justify-center"
-              disabled={inviting}
-            >
+            <button type="button" onClick={closeModal} className="flex-1 btn-secondary justify-center" disabled={inviting}>
               Cancelar
             </button>
             <button
               type="submit"
-              disabled={inviting || !inviteEmail.trim()}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold rounded-xl px-4 py-2.5 text-sm transition-colors flex items-center justify-center gap-2"
+              disabled={inviting || !inviteEmail.trim() || invitePassword.length < 6}
+              className="flex-1 bg-black hover:bg-slate-800 disabled:opacity-50 text-amber-400 font-black rounded-xl px-4 py-2.5 text-sm transition-colors flex items-center justify-center gap-2 uppercase tracking-wide"
             >
               {inviting ? (
                 <>
@@ -296,11 +324,9 @@ export default function UsuariosPage() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
                   </svg>
-                  Enviando...
+                  Criando...
                 </>
-              ) : (
-                <>✉️ Enviar Convite</>
-              )}
+              ) : 'Cadastrar Usuário'}
             </button>
           </div>
         </form>
