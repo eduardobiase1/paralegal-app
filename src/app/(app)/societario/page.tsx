@@ -238,6 +238,12 @@ export default function SocietarioPage() {
   const [editingTituloId, setEditingTituloId] = useState<string | null>(null)
   const [tituloText, setTituloText] = useState('')
 
+  // ── Documentos checklist (edição admin) ─────────────────────────────────
+  const [editingDocIndex, setEditingDocIndex] = useState<number | null>(null)
+  const [editDocText, setEditDocText] = useState('')
+  const [addingDoc, setAddingDoc] = useState(false)
+  const [newDocText, setNewDocText] = useState('')
+
   // ── Anotações ────────────────────────────────────────────────────────────
   const [notas, setNotas] = useState<Record<string, any[]>>({})
   const [notaInput, setNotaInput] = useState('')
@@ -315,6 +321,29 @@ export default function SocietarioPage() {
       await supabase.from('processos_societarios').update({ docs_solicitados: updated }).eq('id', procId)
       setProcessos(prev => prev.map(p => p.id === procId ? { ...p, docs_solicitados: updated } : p))
     } catch { toast.error('Erro ao salvar. Execute a migração SQL.') }
+  }
+
+  async function saveEditDoc(procId: string, docs: any[], index: number) {
+    if (!editDocText.trim()) { setEditingDocIndex(null); return }
+    const updated = [...docs]
+    updated[index] = { ...updated[index], doc: editDocText.trim() }
+    await supabase.from('processos_societarios').update({ docs_solicitados: updated }).eq('id', procId)
+    setProcessos(prev => prev.map(p => p.id === procId ? { ...p, docs_solicitados: updated } : p))
+    setEditingDocIndex(null)
+  }
+
+  async function deleteDoc(procId: string, docs: any[], index: number) {
+    const updated = docs.filter((_, i) => i !== index)
+    await supabase.from('processos_societarios').update({ docs_solicitados: updated }).eq('id', procId)
+    setProcessos(prev => prev.map(p => p.id === procId ? { ...p, docs_solicitados: updated } : p))
+  }
+
+  async function addDoc(procId: string, docs: any[]) {
+    if (!newDocText.trim()) { setAddingDoc(false); return }
+    const updated = [...docs, { doc: newDocText.trim(), recebido: false }]
+    await supabase.from('processos_societarios').update({ docs_solicitados: updated }).eq('id', procId)
+    setProcessos(prev => prev.map(p => p.id === procId ? { ...p, docs_solicitados: updated } : p))
+    setNewDocText(''); setAddingDoc(false)
   }
 
   async function saveTitulo(procId: string) {
@@ -587,16 +616,53 @@ export default function SocietarioPage() {
                     }`}>
                     {d.recebido && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
                   </button>
-                  <span className={`flex-1 text-sm transition-colors ${d.recebido ? 'line-through text-slate-400' : 'text-slate-700'}`}>{d.doc}</span>
-                  <span className={`text-[9px] font-black px-2 py-0.5 rounded-full flex-shrink-0 ${d.recebido ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-50 text-amber-600'}`}>
-                    {d.recebido ? 'Recebido' : 'Pendente'}
-                  </span>
+                  {role === 'admin' && editingDocIndex === i ? (
+                    <div className="flex flex-1 gap-2">
+                      <input autoFocus value={editDocText} onChange={e => setEditDocText(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') saveEditDoc(p.id, docs, i); if (e.key === 'Escape') setEditingDocIndex(null) }}
+                        className="flex-1 border-2 border-yellow-400 rounded-lg px-2 py-1 text-sm outline-none bg-yellow-50" />
+                      <button onClick={() => saveEditDoc(p.id, docs, i)} className="bg-yellow-400 text-black text-xs font-black px-3 py-1 rounded-lg">OK</button>
+                      <button onClick={() => setEditingDocIndex(null)} className="bg-slate-100 text-slate-500 text-xs px-2 py-1 rounded-lg">✕</button>
+                    </div>
+                  ) : (
+                    <span className={`flex-1 text-sm transition-colors ${d.recebido ? 'line-through text-slate-400' : 'text-slate-700'}`}>{d.doc}</span>
+                  )}
+                  {!(role === 'admin' && editingDocIndex === i) && (
+                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-full flex-shrink-0 ${d.recebido ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-50 text-amber-600'}`}>
+                      {d.recebido ? 'Recebido' : 'Pendente'}
+                    </span>
+                  )}
+                  {role === 'admin' && editingDocIndex !== i && (
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                      <button onClick={() => { setEditingDocIndex(i); setEditDocText(d.doc) }} className="w-6 h-6 bg-yellow-100 hover:bg-yellow-400 text-yellow-600 hover:text-black rounded-full text-[10px] font-black flex items-center justify-center transition-all" title="Editar">✎</button>
+                      <button onClick={() => deleteDoc(p.id, docs, i)} className="w-6 h-6 bg-red-50 hover:bg-red-400 text-red-400 hover:text-white rounded-full text-[10px] font-black flex items-center justify-center transition-all" title="Excluir">✕</button>
+                    </div>
+                  )}
                 </div>
               ))}
               {docs.length === 0 && (
                 <p className="text-sm text-slate-400 italic text-center py-8">Nenhum documento configurado para este tipo de processo.</p>
               )}
             </div>
+            {role === 'admin' && (
+              <div className="mt-3 pt-3 border-t border-slate-100">
+                {addingDoc ? (
+                  <div className="flex items-center gap-2">
+                    <input autoFocus value={newDocText} onChange={e => setNewDocText(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') addDoc(p.id, docs); if (e.key === 'Escape') { setAddingDoc(false); setNewDocText('') } }}
+                      placeholder="Nome do documento..."
+                      className="flex-1 border-2 border-yellow-400 rounded-xl px-3 py-2 text-sm outline-none bg-yellow-50" />
+                    <button onClick={() => addDoc(p.id, docs)} className="bg-black text-yellow-400 text-xs font-black px-4 py-2 rounded-xl hover:bg-slate-800 transition-all">Adicionar</button>
+                    <button onClick={() => { setAddingDoc(false); setNewDocText('') }} className="bg-slate-100 text-slate-500 text-xs px-3 py-2 rounded-xl">Cancelar</button>
+                  </div>
+                ) : (
+                  <button onClick={() => setAddingDoc(true)} className="flex items-center gap-2 text-xs font-black text-slate-400 hover:text-yellow-600 transition-colors px-2 py-1 rounded-lg hover:bg-yellow-50">
+                    <span className="w-5 h-5 bg-slate-100 hover:bg-yellow-100 rounded-full flex items-center justify-center text-base leading-none">+</span>
+                    Adicionar documento
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         )}
 
