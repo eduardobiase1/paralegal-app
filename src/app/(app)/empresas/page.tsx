@@ -173,8 +173,21 @@ export default function EmpresasPage() {
   }
 
   function openMaps(emp: any) {
-    const addr = [emp.logradouro, emp.numero, emp.complemento, emp.bairro, emp.municipio, emp.uf, 'Brasil'].filter(Boolean).join(', ')
-    window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}`, '_blank')
+    // Format CEP with hyphen (e.g. 01234-567)
+    const cepFmt = (emp.cep || '').replace(/\D/g, '').replace(/^(\d{5})(\d{3})$/, '$1-$2')
+    // Full Brazilian address: logradouro, número, complemento, bairro, cidade - UF, CEP, Brasil
+    const parts = [
+      emp.logradouro,
+      emp.numero,
+      emp.complemento,
+      emp.bairro,
+      emp.municipio && emp.uf ? `${emp.municipio} - ${emp.uf}` : (emp.municipio || emp.uf),
+      cepFmt,
+      'Brasil',
+    ].filter(Boolean)
+    const addr = parts.join(', ')
+    // &layer=c opens Street View mode directly
+    window.open(`https://maps.google.com/maps?q=${encodeURIComponent(addr)}&layer=c`, '_blank')
   }
 
   async function loadDocumentos(empId: string) {
@@ -344,7 +357,7 @@ export default function EmpresasPage() {
                             title="Documentos & Vencimentos"
                             className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase transition-all ${isOpen && activeTab === 'documentos' ? 'bg-black text-yellow-400' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
                           >Docs</button>
-                          <button onClick={() => openMaps(emp)} title="Ver no Google Maps" className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-blue-100 text-slate-500 hover:text-blue-600 flex items-center justify-center transition-all">
+                          <button onClick={() => openMaps(emp)} title="Abrir Street View" className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-blue-100 text-slate-500 hover:text-blue-600 flex items-center justify-center transition-all">
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
