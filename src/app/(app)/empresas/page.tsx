@@ -172,10 +172,10 @@ export default function EmpresasPage() {
     return `${dias}d`
   }
 
-  function openMaps(emp: any) {
+  async function openMaps(emp: any) {
     // Format CEP with hyphen (e.g. 01234-567)
     const cepFmt = (emp.cep || '').replace(/\D/g, '').replace(/^(\d{5})(\d{3})$/, '$1-$2')
-    // Full Brazilian address: logradouro, número, complemento, bairro, cidade - UF, CEP, Brasil
+    // Full Brazilian address for geocoding
     const parts = [
       emp.logradouro,
       emp.numero,
@@ -186,8 +186,28 @@ export default function EmpresasPage() {
       'Brasil',
     ].filter(Boolean)
     const addr = parts.join(', ')
-    // &layer=c opens Street View mode directly
-    window.open(`https://maps.google.com/maps?q=${encodeURIComponent(addr)}&layer=c`, '_blank')
+    const fallbackUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}`
+
+    // Open window immediately (synchronous) to avoid popup blocker
+    const win = window.open('about:blank', '_blank')
+
+    try {
+      // Free geocoding via Nominatim (OpenStreetMap) — no API key needed
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(addr)}&format=json&limit=1&countrycodes=br`,
+        { headers: { 'Accept-Language': 'pt-BR' } }
+      )
+      const data = await res.json()
+      if (data && data.length > 0) {
+        const { lat, lon } = data[0]
+        // cbll = Street View center coordinates; cbp = heading/tilt/zoom
+        if (win) win.location.href = `https://maps.google.com/maps?q=&layer=c&cbll=${lat},${lon}&cbp=12,0,,0,0`
+      } else {
+        if (win) win.location.href = fallbackUrl
+      }
+    } catch {
+      if (win) win.location.href = fallbackUrl
+    }
   }
 
   async function loadDocumentos(empId: string) {
