@@ -58,32 +58,57 @@ export async function POST(req: NextRequest) {
       email_confirm: true, // confirma o e-mail automaticamente
     })
 
+    // ── Se o e-mail já existe, busca o usuário e apenas vincula à org ──────────
+    let userId: string | null = null
+
     if (createError) {
-      if (createError.message?.toLowerCase().includes('already registered') ||
-          createError.message?.toLowerCase().includes('already exists')) {
-        return NextResponse.json({ error: 'Já existe um usuário com este e-mail.' }, { status: 409 })
+      const msg = createError.message?.toLowerCase() ?? ''
+      if (msg.includes('already registered') || msg.includes('already exists') || msg.includes('email address has already')) {
+        // Busca o usuário existente pelo e-mail
+        const { data: list } = await adminClient.auth.admin.listUsers({ perPage: 1000 })
+        const existing = list?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase())
+        if (!existing) {
+          return NextResponse.json({ error: 'Usuário já existe mas não foi possível localizá-lo.' }, { status: 409 })
+        }
+        userId = existing.id
+
+        // Verifica se já é membro desta org
+        const { data: existingMember } = await adminClient
+          .from('organization_members')
+          .select('id')
+          .eq('org_id', orgId)
+          .eq('user_id', userId)
+          .single()
+        if (existingMember) {
+          return NextResponse.json({ error: 'Este usuário já é membro desta organização.' }, { status: 409 })
+        }
+
+        // Atualiza a senha para a temporária fornecida pelo admin
+        await adminClient.auth.admin.updateUserById(userId, { password })
+      } else {
+        return NextResponse.json({ error: createError.message }, { status: 400 })
       }
-      return NextResponse.json({ error: createError.message }, { status: 400 })
+    } else {
+      userId = created?.user?.id ?? null
     }
 
-    const newUser = created?.user
-    if (!newUser) {
-      return NextResponse.json({ error: 'Erro ao criar usuário.' }, { status: 500 })
+    if (!userId) {
+      return NextResponse.json({ error: 'Erro ao obter ID do usuário.' }, { status: 500 })
     }
 
     // ── Vincula à organização ─────────────────────────────────────────────────
     const { error: memberError } = await adminClient
       .from('organization_members')
-      .insert({ org_id: orgId, user_id: newUser.id, role })
+      .insert({ org_id: orgId, user_id: userId, role })
     if (memberError) {
-      return NextResponse.json({ error: `Usuário criado, mas erro ao vincular à org: ${memberError.message}` }, { status: 500 })
+      return NextResponse.json({ error: `Erro ao vincular usuário à organização: ${memberError.message}` }, { status: 500 })
     }
 
-    // ── Cria perfil com must_change_password = true ───────────────────────────
+    // ── Cria/atualiza perfil com must_change_password = true ──────────────────
     await adminClient
       .from('profiles')
       .upsert(
-        { id: newUser.id, email, nome: email.split('@')[0], ativo: true, must_change_password: true },
+        { id: userId, email, nome: email.split('@')[0], ativo: true, must_change_password: true },
         { onConflict: 'id' }
       )
 
