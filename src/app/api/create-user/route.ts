@@ -75,11 +75,18 @@ export async function POST(req: NextRequest) {
         // Verifica se já é membro desta org
         const { data: existingMember } = await adminClient
           .from('organization_members')
-          .select('id')
+          .select('id, role')
           .eq('org_id', orgId)
           .eq('user_id', userId)
           .single()
         if (existingMember) {
+          // Garante que o perfil existe mesmo assim (corrige tabela vazia)
+          await adminClient.from('profiles').upsert(
+            { id: userId, email, nome: email.split('@')[0], ativo: true, must_change_password: true },
+            { onConflict: 'id' }
+          )
+          // Atualiza a senha mesmo assim para o admin ter controle
+          await adminClient.auth.admin.updateUserById(userId, { password })
           return NextResponse.json({ error: 'Este usuário já é membro desta organização.' }, { status: 409 })
         }
 

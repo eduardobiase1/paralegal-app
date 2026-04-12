@@ -68,7 +68,7 @@ export default function UsuariosPage() {
     setLoading(true)
     const { data } = await supabase
       .from('organization_members')
-      .select('id, user_id, role, created_at, profiles(nome, email, ativo)')
+      .select('id, user_id, role, created_at, profiles!left(nome, email, ativo)')
       .eq('org_id', orgId)
       .order('created_at')
     setMembers((data as unknown as Member[]) ?? [])
