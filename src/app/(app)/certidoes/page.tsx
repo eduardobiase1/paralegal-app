@@ -92,7 +92,7 @@ export default function CertidoesPage() {
 
   function openRenovar(item: any) {
     setForm({
-      id: '',
+      id: item.id,  // UPDATE no registro existente, não cria novo
       empresa_id: item.empresa_id,
       tipo: item.tipo || '',
       orgao_emissor: item.orgao_emissor || '',
@@ -120,7 +120,8 @@ export default function CertidoesPage() {
     }
 
     async function doSave(p: typeof payload) {
-      if (modalMode === 'editar' && form.id) {
+      if (form.id) {
+        // Editar ou Renovar: sempre atualiza o registro existente
         return supabase.from('certidoes').update(p).eq('id', form.id)
       }
       return supabase.from('certidoes').insert([p])
