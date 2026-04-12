@@ -225,7 +225,11 @@ export default function UsuariosPage() {
 
       {/* Modal de criar usuário */}
       <Modal open={modalOpen} onClose={closeModal} title="Cadastrar Novo Usuário">
-        <form onSubmit={handleCreateUser} className="space-y-5">
+        <form onSubmit={handleCreateUser} className="space-y-5" autoComplete="off">
+
+          {/* Campo oculto para enganar o autocomplete do navegador */}
+          <input type="text" name="prevent_autofill" className="hidden" aria-hidden="true" readOnly />
+          <input type="password" name="prevent_autofill_pass" className="hidden" aria-hidden="true" readOnly />
 
           {/* E-mail */}
           <div>
@@ -236,6 +240,7 @@ export default function UsuariosPage() {
               type="email"
               required
               autoFocus
+              autoComplete="off"
               value={inviteEmail}
               onChange={e => setInviteEmail(e.target.value)}
               placeholder="usuario@empresa.com.br"
@@ -252,6 +257,7 @@ export default function UsuariosPage() {
               <input
                 type={showPassword ? 'text' : 'password'}
                 required
+                autoComplete="new-password"
                 value={invitePassword}
                 onChange={e => setInvitePassword(e.target.value)}
                 placeholder="Mínimo 6 caracteres"
