@@ -40,12 +40,21 @@ const ROLE_COLORS: Record<OrgRole, string> = {
   viewer: 'bg-gray-100 text-gray-600',
 }
 
+const ROLE_DESCRIPTIONS: Record<OrgRole, string> = {
+  admin: 'Gerencia usuários, configurações e todos os módulos',
+  operador: 'Cria e edita registros em todos os módulos',
+  viewer: 'Visualiza apenas o Módulo Societário (somente leitura)',
+}
+
 export default function UsuariosPage() {
   const { orgId, orgName, isAdmin } = useOrg()
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
   const [supabase] = useState(createClient)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteRole, setInviteRole] = useState<OrgRole>('operador')
+  const [inviting, setInviting] = useState(false)
 
   async function load() {
     setLoading(true)
@@ -68,6 +77,37 @@ export default function UsuariosPage() {
     if (error) { toast.error('Erro ao atualizar papel'); return }
     toast.success('Papel atualizado!')
     load()
+  }
+
+  async function handleInvite(e: React.FormEvent) {
+    e.preventDefault()
+    if (!inviteEmail.trim()) return
+    setInviting(true)
+    try {
+      const res = await fetch('/api/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: inviteEmail.trim(), role: inviteRole, orgId }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error ?? 'Erro ao convidar usuário.')
+      } else {
+        toast.success(
+          data.existing
+            ? `Usuário existente adicionado à organização como ${ROLE_LABELS[inviteRole]}!`
+            : `Convite enviado para ${inviteEmail}! O usuário receberá um e-mail para definir a senha.`
+        )
+        setModalOpen(false)
+        setInviteEmail('')
+        setInviteRole('operador')
+        load()
+      }
+    } catch {
+      toast.error('Erro de conexão. Tente novamente.')
+    } finally {
+      setInviting(false)
+    }
   }
 
   async function handleRemove(member: Member) {
@@ -175,28 +215,95 @@ export default function UsuariosPage() {
       </div>
 
       {/* Modal de convite */}
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Convidar Usuário">
-        <div className="space-y-4">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
-            <p className="font-medium mb-2">Como adicionar um novo usuário à organização:</p>
-            <ol className="list-decimal list-inside space-y-1.5 text-blue-700 text-xs">
-              <li>Acesse <strong>Supabase → Authentication → Users</strong></li>
-              <li>Clique em <strong>"Invite user"</strong> e informe o e-mail</li>
-              <li>O usuário define a senha pelo e-mail recebido</li>
-              <li>No primeiro login, ele cria sua própria organização — ou você pode vinculá-lo à sua com o SQL abaixo:</li>
-            </ol>
-            <pre className="mt-3 bg-blue-100 rounded p-2 text-[10px] text-blue-900 overflow-x-auto select-all">
-{`INSERT INTO organization_members (org_id, user_id, role)
-VALUES ('${orgId}', 'UUID_DO_USUARIO_AQUI', 'operador');`}
-            </pre>
-            <p className="mt-2 text-xs text-blue-600">
-              🚀 Em breve: convite direto por e-mail dentro do sistema.
-            </p>
+      <Modal open={modalOpen} onClose={() => { setModalOpen(false); setInviteEmail(''); setInviteRole('operador') }} title="Convidar Usuário">
+        <form onSubmit={handleInvite} className="space-y-5">
+          {/* E-mail */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">
+              E-mail do usuário
+            </label>
+            <input
+              type="email"
+              required
+              autoFocus
+              value={inviteEmail}
+              onChange={e => setInviteEmail(e.target.value)}
+              placeholder="usuario@empresa.com.br"
+              className="w-full border-2 border-gray-200 focus:border-blue-500 rounded-xl px-4 py-3 text-sm outline-none transition-colors"
+            />
           </div>
-          <button onClick={() => setModalOpen(false)} className="btn-secondary w-full justify-center">
-            Entendido
-          </button>
-        </div>
+
+          {/* Papel */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
+              Nível de acesso
+            </label>
+            <div className="space-y-2">
+              {(['admin', 'operador', 'viewer'] as OrgRole[]).map(r => (
+                <label
+                  key={r}
+                  className={`flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                    inviteRole === r
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="role"
+                    value={r}
+                    checked={inviteRole === r}
+                    onChange={() => setInviteRole(r)}
+                    className="mt-0.5 accent-blue-600"
+                  />
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs font-black px-2 py-0.5 rounded-full ${ROLE_COLORS[r]}`}>
+                        {ROLE_LABELS[r]}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-0.5">{ROLE_DESCRIPTIONS[r]}</p>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Info */}
+          <div className="bg-gray-50 rounded-xl p-3 text-xs text-gray-500 flex gap-2">
+            <span className="flex-shrink-0">📧</span>
+            <span>O usuário receberá um e-mail com link para definir a senha e acessar o sistema.</span>
+          </div>
+
+          {/* Botões */}
+          <div className="flex gap-3 pt-1">
+            <button
+              type="button"
+              onClick={() => { setModalOpen(false); setInviteEmail(''); setInviteRole('operador') }}
+              className="flex-1 btn-secondary justify-center"
+              disabled={inviting}
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={inviting || !inviteEmail.trim()}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold rounded-xl px-4 py-2.5 text-sm transition-colors flex items-center justify-center gap-2"
+            >
+              {inviting ? (
+                <>
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                  </svg>
+                  Enviando...
+                </>
+              ) : (
+                <>✉️ Enviar Convite</>
+              )}
+            </button>
+          </div>
+        </form>
       </Modal>
     </div>
   )
