@@ -119,11 +119,20 @@ export default function CertidoesPage() {
       pendencia_status: form.pendencia_status,
     }
 
-    let error: any
-    if (modalMode === 'editar' && form.id) {
-      ;({ error } = await supabase.from('certidoes').update(payload).eq('id', form.id))
-    } else {
-      ;({ error } = await supabase.from('certidoes').insert([payload]))
+    async function doSave(p: typeof payload) {
+      if (modalMode === 'editar' && form.id) {
+        return supabase.from('certidoes').update(p).eq('id', form.id)
+      }
+      return supabase.from('certidoes').insert([p])
+    }
+
+    let { error } = await doSave(payload)
+
+    // Se a coluna pendencia_status ainda não existe no banco, tenta sem ela
+    if (error && error.message?.includes('pendencia_status')) {
+      const { pendencia_status, ...payloadSemPend } = payload
+      ;({ error } = await doSave(payloadSemPend as any))
+      if (!error) toast('⚠️ Salvo sem pendência — rode o SQL no Supabase para habilitar esse campo.')
     }
 
     if (!error) {
