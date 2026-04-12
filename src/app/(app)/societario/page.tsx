@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useOrg } from '@/lib/org-context'
 import toast from 'react-hot-toast'
 
-// ─── Mapeamento tipo DB → label de exibição ───────────────────────────────────
+// ─── Labels ──────────────────────────────────────────────────────────────────
 
 const TIPO_LABELS: Record<string, string> = {
   abertura: 'Abertura',
@@ -15,11 +15,18 @@ const TIPO_LABELS: Record<string, string> = {
   transferencia_saida: 'Transferência (Saída)',
 }
 
-// ─── Etapas (documentos) por tipo de processo ────────────────────────────────
+const TIPO_COLORS: Record<string, string> = {
+  abertura: 'bg-emerald-100 text-emerald-700',
+  alteracao_contratual: 'bg-blue-100 text-blue-700',
+  encerramento: 'bg-red-100 text-red-700',
+  transferencia_entrada: 'bg-purple-100 text-purple-700',
+  transferencia_saida: 'bg-orange-100 text-orange-700',
+}
+
+// ─── Modelos de etapas do processo ───────────────────────────────────────────
 
 const MODELOS_PROCESSOS: Record<string, { etapa: string; status: string }[]> = {
   abertura: [
-    // ── Documentos do Cliente ──
     { etapa: 'RG / CNH (frente e verso) — todos os sócios', status: 'Pendente' },
     { etapa: 'CPF — todos os sócios', status: 'Pendente' },
     { etapa: 'Comprovante de Residência — sócios (máx. 90 dias)', status: 'Pendente' },
@@ -30,7 +37,6 @@ const MODELOS_PROCESSOS: Record<string, { etapa: string; status: string }[]> = {
     { etapa: 'Definição da Atividade (CNAE) — acordado com o cliente', status: 'Pendente' },
     { etapa: 'Definição do Capital Social', status: 'Pendente' },
     { etapa: 'Nome Empresarial — aprovado pelo cliente', status: 'Pendente' },
-    // ── Etapas Institucionais ──
     { etapa: 'Consulta de Viabilidade (Uso do Solo) — emitida', status: 'Pendente' },
     { etapa: 'Busca de Nome — JUCESP aprovada', status: 'Pendente' },
     { etapa: 'Busca de Nome — INPI verificado', status: 'Pendente' },
@@ -52,18 +58,16 @@ const MODELOS_PROCESSOS: Record<string, { etapa: string; status: string }[]> = {
     { etapa: 'Todos os documentos entregues ao cliente por e-mail', status: 'Pendente' },
   ],
   alteracao_contratual: [
-    // ── Documentos do Cliente ──
     { etapa: 'Contrato Social original (última versão registrada)', status: 'Pendente' },
     { etapa: 'RG / CNH — sócios envolvidos na alteração', status: 'Pendente' },
     { etapa: 'CPF — sócios envolvidos na alteração', status: 'Pendente' },
     { etapa: 'Comprovante de Residência — sócios (máx. 90 dias)', status: 'Pendente' },
-    { etapa: 'Certidão de Estado Civil — sócios (se alteração de quadro societário)', status: 'Pendente' },
+    { etapa: 'Certidão de Estado Civil — sócios (se alteração de QSA)', status: 'Pendente' },
     { etapa: 'IPTU ou Contrato de Locação — novo endereço (se mudança de sede)', status: 'Pendente' },
     { etapa: 'Conta de Energia do novo imóvel (se mudança de sede)', status: 'Pendente' },
     { etapa: 'Instrumento de Cessão de Quotas — assinado (se transferência de quotas)', status: 'Pendente' },
     { etapa: 'Comprovante de pagamento das quotas (se cessão onerosa)', status: 'Pendente' },
     { etapa: 'Declaração de ITCMD ou comprovante de isenção (se cessão)', status: 'Pendente' },
-    // ── Etapas Institucionais ──
     { etapa: 'Consulta de Viabilidade — novo endereço (se mudança de sede)', status: 'Pendente' },
     { etapa: 'Busca de Nome JUCESP (se alteração de razão social)', status: 'Pendente' },
     { etapa: 'Minuta de Alteração Contratual — aprovada e assinada', status: 'Pendente' },
@@ -76,19 +80,16 @@ const MODELOS_PROCESSOS: Record<string, { etapa: string; status: string }[]> = {
     { etapa: 'Todos os documentos registrados entregues ao cliente', status: 'Pendente' },
   ],
   encerramento: [
-    // ── Documentos do Cliente ──
     { etapa: 'Contrato Social original (última versão registrada)', status: 'Pendente' },
     { etapa: 'RG / CNH e CPF — todos os sócios', status: 'Pendente' },
     { etapa: 'Comprovante de Residência — todos os sócios', status: 'Pendente' },
     { etapa: 'Distrato Social — assinado por todos os sócios', status: 'Pendente' },
-    // ── Certidões e Regularidade ──
-    { etapa: 'Certidão Negativa de Débitos — Receita Federal (CND Federal)', status: 'Pendente' },
-    { etapa: 'Certidão Negativa de Débitos — Estadual', status: 'Pendente' },
-    { etapa: 'Certidão Negativa de Débitos — Municipal', status: 'Pendente' },
-    { etapa: 'Certidão de Regularidade do FGTS — CRF', status: 'Pendente' },
-    { etapa: 'Certidão Negativa Trabalhista — CNDT', status: 'Pendente' },
-    // ── Baixas ──
-    { etapa: 'Baixa SIMPLES Nacional — solicitada (se optante)', status: 'Pendente' },
+    { etapa: 'CND Federal — Receita Federal', status: 'Pendente' },
+    { etapa: 'CND Estadual', status: 'Pendente' },
+    { etapa: 'CND Municipal', status: 'Pendente' },
+    { etapa: 'CRF — FGTS', status: 'Pendente' },
+    { etapa: 'CNDT — Certidão Negativa Trabalhista', status: 'Pendente' },
+    { etapa: 'Baixa Simples Nacional — solicitada (se optante)', status: 'Pendente' },
     { etapa: 'Baixa ICMS / Inscrição Estadual — concluída', status: 'Pendente' },
     { etapa: 'Baixa ISS / Inscrição Municipal — concluída', status: 'Pendente' },
     { etapa: 'Baixa INSS — concluída', status: 'Pendente' },
@@ -99,17 +100,14 @@ const MODELOS_PROCESSOS: Record<string, { etapa: string; status: string }[]> = {
     { etapa: 'Comprovantes de encerramento entregues ao cliente', status: 'Pendente' },
   ],
   transferencia_entrada: [
-    // ── Documentos do Sócio Entrante ──
     { etapa: 'RG / CNH (frente e verso) — sócio entrante', status: 'Pendente' },
     { etapa: 'CPF — sócio entrante', status: 'Pendente' },
     { etapa: 'Comprovante de Residência — sócio entrante (máx. 90 dias)', status: 'Pendente' },
     { etapa: 'Certidão de Estado Civil — sócio entrante', status: 'Pendente' },
-    // ── Documentos da Operação ──
     { etapa: 'Contrato Social vigente (última versão)', status: 'Pendente' },
     { etapa: 'Instrumento de Cessão de Quotas — assinado pelas partes', status: 'Pendente' },
     { etapa: 'Comprovante de pagamento das quotas (se cessão onerosa)', status: 'Pendente' },
     { etapa: 'Declaração de ITCMD ou comprovante de isenção', status: 'Pendente' },
-    // ── Etapas Institucionais ──
     { etapa: 'Minuta de Alteração Contratual (Transferência) — aprovada e assinada', status: 'Pendente' },
     { etapa: 'DBE Atualizado — Receita Federal protocolado', status: 'Pendente' },
     { etapa: 'VRE — JUCESP protocolado', status: 'Pendente' },
@@ -117,17 +115,14 @@ const MODELOS_PROCESSOS: Record<string, { etapa: string; status: string }[]> = {
     { etapa: 'Documentos registrados entregues ao cliente', status: 'Pendente' },
   ],
   transferencia_saida: [
-    // ── Documentos do Sócio Sainte ──
     { etapa: 'RG / CNH (frente e verso) — sócio sainte', status: 'Pendente' },
     { etapa: 'CPF — sócio sainte', status: 'Pendente' },
     { etapa: 'Comprovante de Residência — sócio sainte (máx. 90 dias)', status: 'Pendente' },
     { etapa: 'Certidão de Estado Civil — sócio sainte', status: 'Pendente' },
-    // ── Documentos da Operação ──
     { etapa: 'Contrato Social vigente (última versão)', status: 'Pendente' },
     { etapa: 'Instrumento de Cessão de Quotas — assinado pelas partes', status: 'Pendente' },
     { etapa: 'Comprovante de pagamento das quotas (se cessão onerosa)', status: 'Pendente' },
     { etapa: 'Declaração de ITCMD ou comprovante de isenção', status: 'Pendente' },
-    // ── Etapas Institucionais ──
     { etapa: 'Minuta de Alteração Contratual (Retirada) — aprovada e assinada', status: 'Pendente' },
     { etapa: 'DBE Atualizado — Receita Federal protocolado', status: 'Pendente' },
     { etapa: 'VRE — JUCESP protocolado', status: 'Pendente' },
@@ -136,14 +131,80 @@ const MODELOS_PROCESSOS: Record<string, { etapa: string; status: string }[]> = {
   ],
 }
 
+// ─── Documentos a solicitar ao cliente por tipo ───────────────────────────────
+
+const DOCS_MODELOS: Record<string, { doc: string; recebido: boolean }[]> = {
+  abertura: [
+    { doc: 'RG / CNH (frente e verso) — todos os sócios', recebido: false },
+    { doc: 'CPF — todos os sócios', recebido: false },
+    { doc: 'Comprovante de Residência — sócios (máx. 90 dias)', recebido: false },
+    { doc: 'Certidão de Estado Civil — sócios', recebido: false },
+    { doc: 'IPTU do Imóvel (sede da empresa)', recebido: false },
+    { doc: 'Contrato de Locação ou Escritura do Imóvel', recebido: false },
+    { doc: 'Conta de Energia ou Água do Imóvel', recebido: false },
+    { doc: 'Definição da Atividade (CNAE) — acordada com o cliente', recebido: false },
+    { doc: 'Definição do Capital Social', recebido: false },
+    { doc: 'Nome Empresarial — aprovado pelo cliente', recebido: false },
+  ],
+  alteracao_contratual: [
+    { doc: 'Contrato Social original (última versão registrada)', recebido: false },
+    { doc: 'RG / CNH — sócios envolvidos na alteração', recebido: false },
+    { doc: 'CPF — sócios envolvidos na alteração', recebido: false },
+    { doc: 'Comprovante de Residência — sócios (máx. 90 dias)', recebido: false },
+    { doc: 'Certidão de Estado Civil — sócios (se alteração de QSA)', recebido: false },
+    { doc: 'IPTU ou Contrato de Locação — novo endereço (se mudança de sede)', recebido: false },
+    { doc: 'Conta de Energia do novo imóvel (se mudança de sede)', recebido: false },
+    { doc: 'Instrumento de Cessão de Quotas — assinado (se transferência de quotas)', recebido: false },
+    { doc: 'Comprovante de pagamento das quotas (se cessão onerosa)', recebido: false },
+    { doc: 'Declaração de ITCMD ou comprovante de isenção (se cessão)', recebido: false },
+  ],
+  encerramento: [
+    { doc: 'Contrato Social original (última versão registrada)', recebido: false },
+    { doc: 'RG / CNH e CPF — todos os sócios', recebido: false },
+    { doc: 'Comprovante de Residência — todos os sócios', recebido: false },
+    { doc: 'Distrato Social — assinado por todos os sócios', recebido: false },
+    { doc: 'CND Federal — Receita Federal', recebido: false },
+    { doc: 'CND Estadual', recebido: false },
+    { doc: 'CND Municipal', recebido: false },
+    { doc: 'CRF — FGTS (Certidão de Regularidade)', recebido: false },
+    { doc: 'CNDT — Certidão Negativa Trabalhista', recebido: false },
+    { doc: 'Balanço Patrimonial de Encerramento', recebido: false },
+  ],
+  transferencia_entrada: [
+    { doc: 'RG / CNH (frente e verso) — sócio entrante', recebido: false },
+    { doc: 'CPF — sócio entrante', recebido: false },
+    { doc: 'Comprovante de Residência — sócio entrante (máx. 90 dias)', recebido: false },
+    { doc: 'Certidão de Estado Civil — sócio entrante', recebido: false },
+    { doc: 'Contrato Social vigente (última versão registrada)', recebido: false },
+    { doc: 'Instrumento de Cessão de Quotas — assinado pelas partes', recebido: false },
+    { doc: 'Comprovante de pagamento das quotas (se cessão onerosa)', recebido: false },
+    { doc: 'Declaração de ITCMD ou comprovante de isenção', recebido: false },
+  ],
+  transferencia_saida: [
+    { doc: 'RG / CNH (frente e verso) — sócio sainte', recebido: false },
+    { doc: 'CPF — sócio sainte', recebido: false },
+    { doc: 'Comprovante de Residência — sócio sainte (máx. 90 dias)', recebido: false },
+    { doc: 'Certidão de Estado Civil — sócio sainte', recebido: false },
+    { doc: 'Contrato Social vigente (última versão registrada)', recebido: false },
+    { doc: 'Instrumento de Cessão de Quotas — assinado pelas partes', recebido: false },
+    { doc: 'Comprovante de pagamento das quotas (se cessão onerosa)', recebido: false },
+    { doc: 'Declaração de ITCMD ou comprovante de isenção', recebido: false },
+  ],
+}
+
 const STATUS_CYCLE: Record<string, string> = {
   Pendente: 'Andamento', Andamento: 'Concluido', Concluido: 'Pendente',
 }
 
-function getStatusColor(status: string) {
-  if (status === 'Concluido') return 'bg-emerald-500 border-emerald-600 text-white'
-  if (status === 'Andamento') return 'bg-blue-500 border-blue-600 text-white'
-  return 'bg-white border-slate-200 text-slate-400'
+function proximaEtapa(checklist: any[]): string {
+  const next = checklist?.find(i => i.status !== 'Concluido')
+  if (!next) return 'Concluído ✓'
+  const t = next.etapa as string
+  return t.length > 38 ? t.substring(0, 38) + '…' : t
+}
+
+function getInitials(nome: string): string {
+  return nome.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase()
 }
 
 // ─── Componente principal ─────────────────────────────────────────────────────
@@ -152,23 +213,44 @@ export default function SocietarioPage() {
   const { orgId, orgName, role } = useOrg()
   const isViewer = role === 'viewer'
   const [supabase] = useState(createClient())
+
+  // ── Dados ────────────────────────────────────────────────────────────────
   const [processos, setProcessos] = useState<any[]>([])
   const [empresas, setEmpresas] = useState<any[]>([])
-  const [isModalOpen, setIsModalOpen] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [expandedId, setExpandedId] = useState<string | null>(null)
+
+  // ── Navegação ────────────────────────────────────────────────────────────
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [filtroStatus, setFiltroStatus] = useState<'todos' | 'Andamento' | 'Finalizado'>('Andamento')
+  const [activeDetailTab, setActiveDetailTab] = useState<'etapas' | 'documentos' | 'anotacoes'>('etapas')
+
+  // ── Modal novo processo ──────────────────────────────────────────────────
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [formData, setFormData] = useState({ empresa_id: '', cliente_nome: '', tipo: 'abertura', titulo: '' })
+
+  // ── Edição inline etapas ─────────────────────────────────────────────────
   const [editingItem, setEditingItem] = useState<{ procId: string; index: number } | null>(null)
   const [editText, setEditText] = useState('')
   const [addingTo, setAddingTo] = useState<string | null>(null)
   const [newItemText, setNewItemText] = useState('')
-  const [filtroStatus, setFiltroStatus] = useState<'todos' | 'Andamento' | 'Finalizado'>('Andamento')
+
+  // ── Título / O.S. ────────────────────────────────────────────────────────
   const [editingTituloId, setEditingTituloId] = useState<string | null>(null)
   const [tituloText, setTituloText] = useState('')
+
+  // ── Anotações ────────────────────────────────────────────────────────────
   const [notas, setNotas] = useState<Record<string, any[]>>({})
-  const [notaInput, setNotaInput] = useState<Record<string, string>>({})
+  const [notaInput, setNotaInput] = useState('')
   const [savingNota, setSavingNota] = useState(false)
 
-  const [formData, setFormData] = useState({ empresa_id: '', cliente_nome: '', tipo: 'abertura', titulo: '' })
+  // ── Computed ─────────────────────────────────────────────────────────────
+  const selectedProcesso = processos.find(p => p.id === selectedId) ?? null
+  const processosFiltrados = useMemo(() =>
+    processos.filter(p => filtroStatus === 'todos' ? true : p.status === filtroStatus),
+    [processos, filtroStatus]
+  )
+
+  // ─── Fetch ─────────────────────────────────────────────────────────────────
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -185,37 +267,55 @@ export default function SocietarioPage() {
 
   useEffect(() => { if (orgId) fetchData() }, [orgId, fetchData])
 
-  // ── Iniciar processo ──────────────────────────────────────────────────────
+  // Quando seleciona processo, carrega notas e inicializa docs se necessário
+  useEffect(() => {
+    if (!selectedId) return
+    const p = processos.find(x => x.id === selectedId)
+    if (!p) return
+    if (!notas[selectedId]) loadNotas(selectedId)
+    if (!p.docs_solicitados || p.docs_solicitados.length === 0) initDocs(p)
+  }, [selectedId])
+
+  // ─── Handlers ──────────────────────────────────────────────────────────────
 
   async function handleIniciar(e: React.FormEvent) {
     e.preventDefault()
     if (!formData.empresa_id && !formData.cliente_nome.trim())
       return toast.error('Selecione uma empresa ou informe o nome do cliente.')
-
     const checklist = MODELOS_PROCESSOS[formData.tipo] ?? []
-    const payload: any = {
-      org_id: orgId,
-      tipo: formData.tipo,
-      checklist,
-      status: 'Andamento',
-      titulo: formData.titulo.trim() || null,
-    }
+    const docs_solicitados = DOCS_MODELOS[formData.tipo] ?? []
+    const payload: any = { org_id: orgId, tipo: formData.tipo, checklist, docs_solicitados, status: 'Andamento', titulo: formData.titulo.trim() || null }
     if (formData.empresa_id) payload.empresa_id = formData.empresa_id
     else payload.cliente_nome = formData.cliente_nome.trim()
-
     const { data, error } = await supabase.from('processos_societarios').insert([payload]).select().single()
     if (!error && data) {
       toast.success('Processo iniciado!')
       setIsModalOpen(false)
       setFormData({ empresa_id: '', cliente_nome: '', tipo: 'abertura', titulo: '' })
-      setExpandedId(data.id)
-      fetchData()
+      await fetchData()
+      setSelectedId(data.id)
+      setActiveDetailTab('etapas')
     } else {
       toast.error(`Erro: ${error?.message}`)
     }
   }
 
-  // ── Salvar título / O.S. ──────────────────────────────────────────────────
+  async function initDocs(processo: any) {
+    const docs = DOCS_MODELOS[processo.tipo] ?? []
+    try {
+      await supabase.from('processos_societarios').update({ docs_solicitados: docs }).eq('id', processo.id)
+      setProcessos(prev => prev.map(p => p.id === processo.id ? { ...p, docs_solicitados: docs } : p))
+    } catch { /* coluna pode não existir ainda */ }
+  }
+
+  async function toggleDoc(procId: string, docs: any[], index: number) {
+    const updated = [...docs]
+    updated[index] = { ...updated[index], recebido: !updated[index].recebido }
+    try {
+      await supabase.from('processos_societarios').update({ docs_solicitados: updated }).eq('id', procId)
+      setProcessos(prev => prev.map(p => p.id === procId ? { ...p, docs_solicitados: updated } : p))
+    } catch { toast.error('Erro ao salvar. Execute a migração SQL.') }
+  }
 
   async function saveTitulo(procId: string) {
     await supabase.from('processos_societarios').update({ titulo: tituloText.trim() || null }).eq('id', procId)
@@ -223,32 +323,20 @@ export default function SocietarioPage() {
     setEditingTituloId(null)
   }
 
-  // ── Notas / Anotações ────────────────────────────────────────────────────
-
   async function loadNotas(procId: string) {
-    const { data } = await supabase
-      .from('processo_notas')
-      .select('*')
-      .eq('processo_id', procId)
-      .order('created_at', { ascending: false })
+    const { data } = await supabase.from('processo_notas').select('*').eq('processo_id', procId).order('created_at', { ascending: false })
     setNotas(prev => ({ ...prev, [procId]: data || [] }))
   }
 
   async function addNota(procId: string) {
-    const texto = (notaInput[procId] || '').trim()
+    const texto = notaInput.trim()
     if (!texto) return
     setSavingNota(true)
-    const { data, error } = await supabase
-      .from('processo_notas')
-      .insert([{ processo_id: procId, org_id: orgId, texto }])
-      .select()
-      .single()
+    const { data, error } = await supabase.from('processo_notas').insert([{ processo_id: procId, org_id: orgId, texto }]).select().single()
     if (!error && data) {
       setNotas(prev => ({ ...prev, [procId]: [data, ...(prev[procId] || [])] }))
-      setNotaInput(prev => ({ ...prev, [procId]: '' }))
-    } else {
-      toast.error('Erro ao salvar anotação.')
-    }
+      setNotaInput('')
+    } else { toast.error('Erro ao salvar anotação.') }
     setSavingNota(false)
   }
 
@@ -256,8 +344,6 @@ export default function SocietarioPage() {
     await supabase.from('processo_notas').delete().eq('id', notaId)
     setNotas(prev => ({ ...prev, [procId]: (prev[procId] || []).filter(n => n.id !== notaId) }))
   }
-
-  // ── Ciclar etapa ──────────────────────────────────────────────────────────
 
   async function updateEtapa(procId: string, checklist: any[], index: number) {
     const updated = [...checklist]
@@ -288,31 +374,285 @@ export default function SocietarioPage() {
     const updated = [...checklist, { etapa: newItemText.trim(), status: 'Pendente' }]
     await supabase.from('processos_societarios').update({ checklist: updated }).eq('id', procId)
     setProcessos(prev => prev.map(p => p.id === procId ? { ...p, checklist: updated } : p))
-    setNewItemText('')
-    setAddingTo(null)
+    setNewItemText(''); setAddingTo(null)
   }
 
   async function deleteProcesso(id: string) {
-    if (!confirm('Excluir este processo?')) return
+    if (!confirm('Excluir este processo permanentemente?')) return
     await supabase.from('processos_societarios').delete().eq('id', id)
     setProcessos(prev => prev.filter(p => p.id !== id))
-    if (expandedId === id) setExpandedId(null)
+    setSelectedId(null)
     toast.success('Processo excluído.')
   }
 
-  // ── Filtro ────────────────────────────────────────────────────────────────
+  // ─── Render ───────────────────────────────────────────────────────────────
 
-  const processosFiltrados = processos.filter(p =>
-    filtroStatus === 'todos' ? true : p.status === filtroStatus
-  )
+  // ── DETALHE DO PROCESSO ──────────────────────────────────────────────────
+  if (selectedId && selectedProcesso) {
+    const p = selectedProcesso
+    const checklist: any[] = p.checklist ?? []
+    const docs: any[] = p.docs_solicitados ?? []
+    const concluido = checklist.filter(i => i.status === 'Concluido').length
+    const total = checklist.length || 1
+    const porc = Math.round((concluido / total) * 100)
+    const docsRecebidos = docs.filter(d => d.recebido).length
+    const nomeExibido = p.empresas?.razao_social || p.cliente_nome || '—'
 
-  // ── Render ────────────────────────────────────────────────────────────────
+    return (
+      <div className="p-4 md:p-6 bg-[#F8FAFC] min-h-screen font-sans text-slate-900">
+
+        {/* Topo: voltar + título */}
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+          <button
+            onClick={() => { setSelectedId(null); setActiveDetailTab('etapas') }}
+            className="flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-black transition-colors group"
+          >
+            <svg className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+            </svg>
+            Voltar aos Processos
+          </button>
+          {!isViewer && (
+            <button
+              onClick={() => deleteProcesso(p.id)}
+              className="text-xs text-red-400 hover:text-red-600 font-bold transition-colors"
+            >
+              Excluir processo
+            </button>
+          )}
+        </div>
+
+        {/* Card de cabeçalho do processo */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 mb-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <span className={`text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wide ${TIPO_COLORS[p.tipo] ?? 'bg-slate-100 text-slate-600'}`}>
+                  {TIPO_LABELS[p.tipo] ?? p.tipo}
+                </span>
+                <span className={`text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wide ${
+                  p.status === 'Finalizado' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
+                }`}>
+                  {p.status === 'Finalizado' ? 'Finalizado' : 'Em Andamento'}
+                </span>
+              </div>
+              <h2 className="text-xl font-black text-slate-900">{nomeExibido}</h2>
+
+              {/* O.S. / Título editável */}
+              <div className="mt-2">
+                {isViewer ? (
+                  p.titulo ? <span className="text-xs font-bold bg-yellow-50 text-yellow-700 border border-yellow-200 rounded-lg px-3 py-1">{p.titulo}</span> : null
+                ) : editingTituloId === p.id ? (
+                  <div className="flex items-center gap-2 mt-1">
+                    <input autoFocus value={tituloText} onChange={e => setTituloText(e.target.value)}
+                      onBlur={() => saveTitulo(p.id)} onKeyDown={e => { if (e.key === 'Enter') saveTitulo(p.id); if (e.key === 'Escape') setEditingTituloId(null) }}
+                      placeholder="Ex: O.S. 001/2026 — Abertura Padaria Central"
+                      className="w-72 text-xs border-2 border-yellow-400 rounded-lg px-3 py-1.5 outline-none bg-yellow-50 font-medium" />
+                    <button onClick={() => saveTitulo(p.id)} className="bg-yellow-400 text-black text-[10px] font-black px-3 py-1.5 rounded-lg">OK</button>
+                    <button onClick={() => setEditingTituloId(null)} className="text-slate-400 text-[10px]">✕</button>
+                  </div>
+                ) : (
+                  <button onClick={() => { setTituloText(p.titulo || ''); setEditingTituloId(p.id) }}
+                    className={`text-xs font-bold rounded-lg px-3 py-1 transition-all mt-1 ${p.titulo ? 'bg-yellow-50 text-yellow-700 border border-yellow-200 hover:bg-yellow-100' : 'text-slate-400 hover:text-yellow-500 border border-dashed border-slate-200 hover:border-yellow-300'}`}>
+                    {p.titulo ? `✎ ${p.titulo}` : '+ Definir O.S. / Título'}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Progresso circular compacto */}
+            <div className="flex items-center gap-4 flex-shrink-0">
+              <div className="text-right">
+                <div className="text-2xl font-black text-slate-900">{porc}%</div>
+                <div className="text-[10px] text-slate-400 font-bold uppercase">{concluido}/{total} etapas</div>
+              </div>
+              <div className="relative w-14 h-14">
+                <svg viewBox="0 0 36 36" className="w-14 h-14 -rotate-90">
+                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="#f1f5f9" strokeWidth="3.5" />
+                  <circle cx="18" cy="18" r="15.9" fill="none"
+                    stroke={porc === 100 ? '#10b981' : '#f59e0b'}
+                    strokeWidth="3.5"
+                    strokeDasharray={`${porc} ${100 - porc}`}
+                    strokeLinecap="round" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          {/* Barra de progresso */}
+          <div className="mt-4 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+            <div className={`h-full rounded-full transition-all ${porc === 100 ? 'bg-emerald-400' : 'bg-yellow-400'}`} style={{ width: `${porc}%` }} />
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-1 mb-4 bg-white border border-slate-200 rounded-xl p-1 w-fit">
+          {([
+            ['etapas', '📋 Etapas do Processo', checklist.length],
+            ['documentos', '📁 Documentos do Cliente', docs.length],
+            ['anotacoes', '📝 Anotações', (notas[p.id] || []).length],
+          ] as const).map(([tab, label, count]) => (
+            <button key={tab} onClick={() => setActiveDetailTab(tab)}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wide transition-all whitespace-nowrap ${
+                activeDetailTab === tab ? 'bg-black text-yellow-400' : 'text-slate-500 hover:text-slate-700'
+              }`}>
+              {label}
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${activeDetailTab === tab ? 'bg-yellow-400/20 text-yellow-300' : 'bg-slate-100 text-slate-400'}`}>
+                {count}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* ── Tab: Etapas ───────────────────────────────────────────────────── */}
+        {activeDetailTab === 'etapas' && (
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+            <div className="flex flex-col">
+              {checklist.map((item: any, i: number) => (
+                <div key={i} className={`group flex items-center gap-3 py-2.5 px-2 rounded-xl transition-colors hover:bg-slate-50 ${i < checklist.length - 1 ? 'border-b border-slate-100' : ''}`}>
+                  <span className="text-[10px] font-bold text-slate-300 w-5 text-right flex-shrink-0 select-none">{i + 1}</span>
+                  <button
+                    onClick={() => !isViewer && updateEtapa(p.id, checklist, i)}
+                    disabled={isViewer}
+                    className={`w-5 h-5 rounded-full border-2 flex-shrink-0 transition-all ${!isViewer ? 'hover:scale-110 cursor-pointer' : 'cursor-default'} ${
+                      item.status === 'Concluido' ? 'bg-emerald-500 border-emerald-500' : item.status === 'Andamento' ? 'bg-yellow-400 border-yellow-400' : 'bg-white border-slate-300'
+                    }`}>
+                    {item.status === 'Concluido' && <svg className="w-3 h-3 text-white mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                    {item.status === 'Andamento' && <span className="block w-1.5 h-1.5 bg-white rounded-full mx-auto" />}
+                  </button>
+                  {editingItem?.procId === p.id && editingItem?.index === i ? (
+                    <div className="flex flex-1 gap-2">
+                      <input autoFocus value={editText} onChange={e => setEditText(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') saveEditItem(p.id, checklist); if (e.key === 'Escape') setEditingItem(null) }}
+                        className="flex-1 border-2 border-yellow-400 rounded-lg px-2 py-1 text-sm outline-none" />
+                      <button onClick={() => saveEditItem(p.id, checklist)} className="bg-yellow-400 text-black text-xs font-black px-3 py-1 rounded-lg">OK</button>
+                      <button onClick={() => setEditingItem(null)} className="bg-slate-100 text-slate-500 text-xs px-2 py-1 rounded-lg">✕</button>
+                    </div>
+                  ) : (
+                    <span onClick={() => !isViewer && updateEtapa(p.id, checklist, i)}
+                      className={`flex-1 text-sm transition-colors ${!isViewer ? 'cursor-pointer' : ''} ${
+                        item.status === 'Concluido' ? 'line-through text-slate-400' : item.status === 'Andamento' ? 'text-yellow-700 font-medium' : 'text-slate-700'
+                      }`}>{item.etapa}</span>
+                  )}
+                  <span className={`hidden group-hover:inline-flex text-[9px] font-black px-2 py-0.5 rounded-full flex-shrink-0 ${
+                    item.status === 'Concluido' ? 'bg-emerald-100 text-emerald-700' : item.status === 'Andamento' ? 'bg-yellow-100 text-yellow-700' : 'bg-slate-100 text-slate-400'
+                  }`}>{item.status}</span>
+                  {!isViewer && editingItem === null && (
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                      <button onClick={() => { setEditingItem({ procId: p.id, index: i }); setEditText(item.etapa) }} className="w-6 h-6 bg-yellow-100 hover:bg-yellow-400 text-yellow-600 hover:text-black rounded-full text-[10px] font-black flex items-center justify-center transition-all">✎</button>
+                      <button onClick={() => deleteItem(p.id, checklist, i)} className="w-6 h-6 bg-red-50 hover:bg-red-400 text-red-400 hover:text-white rounded-full text-[10px] font-black flex items-center justify-center transition-all">✕</button>
+                    </div>
+                  )}
+                </div>
+              ))}
+              {!isViewer && (addingTo === p.id ? (
+                <div className="flex items-center gap-2 mt-3 px-2">
+                  <span className="w-5" /><span className="w-5" />
+                  <input autoFocus value={newItemText} onChange={e => setNewItemText(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') addItem(p.id, checklist); if (e.key === 'Escape') { setAddingTo(null); setNewItemText('') } }}
+                    placeholder="Nome da nova etapa..." className="flex-1 border-2 border-yellow-400 rounded-lg px-3 py-2 text-sm outline-none" />
+                  <button onClick={() => addItem(p.id, checklist)} className="bg-yellow-400 text-black text-xs font-black px-3 py-2 rounded-lg">Adicionar</button>
+                  <button onClick={() => { setAddingTo(null); setNewItemText('') }} className="bg-slate-100 text-slate-500 text-xs px-2 py-2 rounded-lg">✕</button>
+                </div>
+              ) : (
+                <button onClick={() => setAddingTo(p.id)} className="mt-3 mx-2 py-2 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 hover:border-yellow-400 hover:text-yellow-500 transition-all text-sm font-bold">+ Adicionar Etapa</button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Tab: Documentos do Cliente ────────────────────────────────────── */}
+        {activeDetailTab === 'documentos' && (
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Documentos Solicitados ao Cliente</p>
+                <p className="text-xs text-slate-400 mt-0.5">{docsRecebidos} de {docs.length} recebidos</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-24 bg-slate-100 rounded-full overflow-hidden">
+                  <div className={`h-full rounded-full transition-all ${docsRecebidos === docs.length ? 'bg-emerald-400' : 'bg-yellow-400'}`} style={{ width: `${docs.length ? Math.round((docsRecebidos / docs.length) * 100) : 0}%` }} />
+                </div>
+                <span className="text-xs font-black text-slate-500">{docs.length ? Math.round((docsRecebidos / docs.length) * 100) : 0}%</span>
+              </div>
+            </div>
+            <div className="flex flex-col">
+              {docs.map((d: any, i: number) => (
+                <div key={i} className={`group flex items-center gap-3 py-3 px-2 rounded-xl transition-colors hover:bg-slate-50 ${i < docs.length - 1 ? 'border-b border-slate-100' : ''}`}>
+                  <button
+                    onClick={() => !isViewer && toggleDoc(p.id, docs, i)}
+                    disabled={isViewer}
+                    className={`w-5 h-5 rounded border-2 flex-shrink-0 flex items-center justify-center transition-all ${!isViewer ? 'hover:scale-110 cursor-pointer' : 'cursor-default'} ${
+                      d.recebido ? 'bg-emerald-500 border-emerald-500' : 'bg-white border-slate-300'
+                    }`}>
+                    {d.recebido && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                  </button>
+                  <span className={`flex-1 text-sm transition-colors ${d.recebido ? 'line-through text-slate-400' : 'text-slate-700'}`}>{d.doc}</span>
+                  <span className={`text-[9px] font-black px-2 py-0.5 rounded-full flex-shrink-0 ${d.recebido ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-50 text-amber-600'}`}>
+                    {d.recebido ? 'Recebido' : 'Pendente'}
+                  </span>
+                </div>
+              ))}
+              {docs.length === 0 && (
+                <p className="text-sm text-slate-400 italic text-center py-8">Nenhum documento configurado para este tipo de processo.</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── Tab: Anotações ────────────────────────────────────────────────── */}
+        {activeDetailTab === 'anotacoes' && (
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+            {!isViewer && (
+              <div className="flex flex-col sm:flex-row gap-2 mb-5">
+                <textarea rows={2} value={notaInput} onChange={e => setNotaInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) addNota(p.id) }}
+                  placeholder="Registre o que aconteceu, o que foi feito, próximos passos... (Ctrl+Enter para salvar)"
+                  className="flex-1 border-2 border-slate-200 focus:border-yellow-400 rounded-xl px-3 py-2 text-sm outline-none resize-none" />
+                <button onClick={() => addNota(p.id)} disabled={savingNota || !notaInput.trim()}
+                  className="bg-black text-yellow-400 px-5 py-2 rounded-xl text-xs font-black uppercase tracking-wide disabled:opacity-40 hover:bg-slate-800 transition-all sm:self-start whitespace-nowrap">
+                  Registrar
+                </button>
+              </div>
+            )}
+            <div className="space-y-2">
+              {!notas[p.id] ? (
+                <p className="text-xs text-slate-400 italic">Carregando...</p>
+              ) : notas[p.id].length === 0 ? (
+                <p className="text-xs text-slate-400 italic text-center py-8">Nenhuma anotação ainda.</p>
+              ) : notas[p.id].map((nota: any) => (
+                <div key={nota.id} className="group flex gap-3 bg-slate-50 rounded-xl px-4 py-3 border border-slate-100">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-slate-700 whitespace-pre-wrap break-words">{nota.texto}</p>
+                    <p className="text-[10px] text-slate-400 font-mono mt-1">
+                      {new Date(nota.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </div>
+                  {!isViewer && (
+                    <button onClick={() => deleteNota(nota.id, p.id)} className="opacity-0 group-hover:opacity-100 text-red-300 hover:text-red-500 text-xs font-black flex-shrink-0 transition-all self-start" title="Excluir">✕</button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // ── LISTA DE PROCESSOS ───────────────────────────────────────────────────
+
+  const stats = {
+    total: processos.length,
+    andamento: processos.filter(p => p.status === 'Andamento').length,
+    finalizado: processos.filter(p => p.status === 'Finalizado').length,
+  }
 
   return (
-    <div className="p-4 md:p-8 bg-[#F8FAFC] min-h-screen font-sans text-slate-900">
+    <div className="p-4 md:p-6 bg-[#F8FAFC] min-h-screen font-sans text-slate-900">
 
       {/* Cabeçalho */}
-      <header className="flex flex-wrap justify-between items-center gap-3 mb-6 md:mb-8">
+      <header className="flex flex-wrap justify-between items-center gap-3 mb-6">
         <div>
           <h1 className="text-2xl font-black italic tracking-tighter uppercase">
             PARALEGAL PRO <span className="text-yellow-500">| SOCIETÁRIO</span>
@@ -328,329 +668,118 @@ export default function SocietarioPage() {
             Modo Visualização
           </span>
         ) : (
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="bg-black text-yellow-400 px-8 py-3 rounded-2xl font-bold text-xs shadow-xl hover:scale-105 transition-all"
-          >
+          <button onClick={() => setIsModalOpen(true)} className="bg-black text-yellow-400 px-8 py-3 rounded-2xl font-bold text-xs shadow-xl hover:scale-105 transition-all">
             + NOVO PROCESSO
           </button>
         )}
       </header>
 
-      {/* Filtros de status */}
-      <div className="flex flex-wrap gap-2 mb-6">
+      {/* KPIs */}
+      <div className="grid grid-cols-3 gap-3 mb-6">
+        {[
+          { label: 'Total', value: stats.total, color: 'bg-slate-900 text-white' },
+          { label: 'Em Andamento', value: stats.andamento, color: 'bg-yellow-400 text-black' },
+          { label: 'Finalizados', value: stats.finalizado, color: 'bg-emerald-500 text-white' },
+        ].map(k => (
+          <div key={k.label} className={`${k.color} rounded-2xl p-4 text-center`}>
+            <div className="text-2xl font-black">{k.value}</div>
+            <div className="text-[10px] font-black uppercase tracking-widest opacity-75 mt-0.5">{k.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Filtros */}
+      <div className="flex flex-wrap gap-2 mb-5">
         {([['Andamento', 'Em Andamento'], ['Finalizado', 'Finalizados'], ['todos', 'Todos']] as const).map(([val, label]) => (
-          <button
-            key={val}
-            onClick={() => setFiltroStatus(val)}
-            className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wide transition-all whitespace-nowrap ${
-              filtroStatus === val
-                ? 'bg-black text-yellow-400'
-                : 'bg-white text-slate-400 border border-slate-200 hover:bg-slate-50'
-            }`}
-          >
-            {label}
-            <span className="ml-1.5 opacity-60">
-              ({val === 'todos' ? processos.length : processos.filter(p => p.status === val).length})
-            </span>
+          <button key={val} onClick={() => setFiltroStatus(val)}
+            className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wide transition-all ${
+              filtroStatus === val ? 'bg-black text-yellow-400' : 'bg-white text-slate-400 border border-slate-200 hover:bg-slate-50'
+            }`}>
+            {label} <span className="ml-1 opacity-60">({val === 'todos' ? processos.length : processos.filter(p => p.status === val).length})</span>
           </button>
         ))}
       </div>
 
-      {loading && <p className="text-slate-400 text-sm italic">Carregando processos...</p>}
+      {loading && <p className="text-slate-400 text-sm italic text-center py-12">Carregando processos...</p>}
 
-      {/* ── Lista de processos ── */}
-      <div className="space-y-3">
-        {processosFiltrados.map(p => {
-          const checklist: any[] = p.checklist ?? []
-          const concluido = checklist.filter(i => i.status === 'Concluido').length
-          const total = checklist.length || 1
-          const porc = Math.round((concluido / total) * 100)
-          const nomeExibido = p.empresas?.razao_social || p.cliente_nome || '—'
-          const isOpen = expandedId === p.id
+      {/* Tabela */}
+      {!loading && processosFiltrados.length > 0 && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          {/* Cabeçalho da tabela */}
+          <div className="hidden md:grid grid-cols-[2fr_2fr_2.5fr_1.5fr_1fr] gap-4 px-5 py-3 bg-slate-50 border-b border-slate-100">
+            {['Processo / Empresa', 'O.S. / Título', 'Próxima Etapa', 'Progresso', 'Ações'].map(h => (
+              <span key={h} className="text-[10px] font-black uppercase tracking-widest text-slate-400">{h}</span>
+            ))}
+          </div>
 
-          return (
-            <div key={p.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          {/* Linhas */}
+          <div className="divide-y divide-slate-100">
+            {processosFiltrados.map(p => {
+              const checklist: any[] = p.checklist ?? []
+              const concluido = checklist.filter(i => i.status === 'Concluido').length
+              const total = checklist.length || 1
+              const porc = Math.round((concluido / total) * 100)
+              const nomeExibido = p.empresas?.razao_social || p.cliente_nome || '—'
+              const proxEtapa = proximaEtapa(checklist)
+              const docs: any[] = p.docs_solicitados ?? []
+              const docsRec = docs.filter(d => d.recebido).length
 
-              {/* Linha de resumo — clicável */}
-              <div className="w-full">
-                <button
-                  onClick={() => {
-                    const next = isOpen ? null : p.id
-                    setExpandedId(next)
-                    if (next && !notas[next]) loadNotas(next)
-                  }}
-                  className="w-full flex flex-col px-4 md:px-6 py-4 hover:bg-slate-50 transition-colors text-left gap-2"
-                >
-                  {/* Linha 1: badge + nome + seta */}
-                  <div className="flex items-center gap-2">
-                    <span className={`text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-wide flex-shrink-0 ${
-                      p.status === 'Finalizado' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
-                    }`}>
+              return (
+                <div key={p.id} className="grid grid-cols-1 md:grid-cols-[2fr_2fr_2.5fr_1.5fr_1fr] gap-4 px-5 py-4 hover:bg-slate-50 transition-colors cursor-pointer group items-center"
+                  onClick={() => { setSelectedId(p.id); setActiveDetailTab('etapas') }}>
+
+                  {/* Processo / Empresa */}
+                  <div className="flex flex-col gap-1">
+                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-full w-fit uppercase tracking-wide ${TIPO_COLORS[p.tipo] ?? 'bg-slate-100 text-slate-500'}`}>
                       {TIPO_LABELS[p.tipo] ?? p.tipo}
                     </span>
-                    <span className="font-black text-slate-800 text-sm flex-1 min-w-0 truncate">{nomeExibido}</span>
-                    <span className={`text-slate-300 transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`}>▼</span>
+                    <span className="font-black text-slate-800 text-sm truncate">{nomeExibido}</span>
                   </div>
 
-                  {/* Linha 2: barra de progresso */}
+                  {/* O.S. / Título */}
+                  <div className="text-xs text-slate-500 truncate">
+                    {p.titulo ? <span className="font-medium text-yellow-700">{p.titulo}</span> : <span className="italic text-slate-300">—</span>}
+                  </div>
+
+                  {/* Próxima Etapa */}
+                  <div className="text-xs text-slate-600 truncate">{proxEtapa}</div>
+
+                  {/* Progresso */}
                   <div className="flex items-center gap-2">
-                    <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all ${porc === 100 ? 'bg-emerald-400' : 'bg-yellow-400'}`}
-                        style={{ width: `${porc}%` }}
-                      />
+                    <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden min-w-0">
+                      <div className={`h-full rounded-full transition-all ${porc === 100 ? 'bg-emerald-400' : 'bg-yellow-400'}`} style={{ width: `${porc}%` }} />
                     </div>
-                    <span className="text-[10px] font-black text-slate-400 flex-shrink-0">{porc}% · {concluido}/{total} etapas</span>
+                    <span className="text-[10px] font-black text-slate-400 flex-shrink-0">{porc}%</span>
                   </div>
 
-                </button>
-
-                {/* Título / O.S. editável (sempre visível abaixo do card) */}
-                <div className="px-4 md:px-6 pb-3 flex items-center gap-2" onClick={e => e.stopPropagation()}>
-                  {isViewer ? (
-                    p.titulo ? (
-                      <span className="text-xs font-bold bg-yellow-50 text-yellow-700 border border-yellow-200 rounded-lg px-3 py-1">
-                        {p.titulo}
+                  {/* Ações */}
+                  <div className="flex items-center justify-end gap-1" onClick={e => e.stopPropagation()}>
+                    {docs.length > 0 && (
+                      <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${docsRec === docs.length ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                        📁 {docsRec}/{docs.length}
                       </span>
-                    ) : null
-                  ) : editingTituloId === p.id ? (
-                    <div className="flex items-center gap-2 flex-1">
-                      <input
-                        autoFocus
-                        value={tituloText}
-                        onChange={e => setTituloText(e.target.value)}
-                        onBlur={() => saveTitulo(p.id)}
-                        onKeyDown={e => { if (e.key === 'Enter') saveTitulo(p.id); if (e.key === 'Escape') setEditingTituloId(null) }}
-                        placeholder="Ex: O.S. 001/2026 — Abertura Padaria Central"
-                        className="flex-1 text-xs border-2 border-yellow-400 rounded-lg px-3 py-1.5 outline-none bg-yellow-50 font-medium"
-                      />
-                      <button onClick={() => saveTitulo(p.id)} className="bg-yellow-400 text-black text-[10px] font-black px-3 py-1.5 rounded-lg">OK</button>
-                      <button onClick={() => setEditingTituloId(null)} className="text-slate-400 text-[10px] px-2 py-1.5">✕</button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => { setTituloText(p.titulo || ''); setEditingTituloId(p.id) }}
-                      className={`text-xs font-bold rounded-lg px-3 py-1 transition-all ${
-                        p.titulo
-                          ? 'bg-yellow-50 text-yellow-700 border border-yellow-200 hover:bg-yellow-100'
-                          : 'text-slate-300 hover:text-yellow-500 border border-dashed border-slate-200 hover:border-yellow-300'
-                      }`}
-                    >
-                      {p.titulo ? `✎ ${p.titulo}` : '+ Definir O.S. / Título'}
+                    )}
+                    <button onClick={() => { setSelectedId(p.id); setActiveDetailTab('etapas') }}
+                      className="w-8 h-8 bg-black text-yellow-400 rounded-xl flex items-center justify-center hover:bg-slate-800 transition-all group-hover:scale-105">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                      </svg>
                     </button>
-                  )}
+                  </div>
                 </div>
-              </div>
-
-              {/* Checklist expandido */}
-              {isOpen && (
-                <div className="border-t border-slate-100 px-6 pb-6 pt-4">
-                  {/* Header da seção de etapas */}
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Etapas do Processo</h3>
-                    {!isViewer && (
-                      <button
-                        onClick={() => deleteProcesso(p.id)}
-                        className="text-[10px] text-red-300 hover:text-red-500 font-bold transition-colors"
-                      >
-                        Excluir processo
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Progresso compacto */}
-                  <div className="flex items-center gap-3 mb-4 p-3 bg-slate-50 rounded-xl">
-                    <div className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all ${porc === 100 ? 'bg-emerald-400' : 'bg-yellow-400'}`}
-                        style={{ width: `${porc}%` }}
-                      />
-                    </div>
-                    <span className="text-xs font-black text-slate-500 flex-shrink-0">{concluido}/{total} concluídas</span>
-                  </div>
-
-                  {/* Lista vertical de etapas */}
-                  <div className="flex flex-col">
-                    {checklist.map((item: any, i: number) => (
-                      <div
-                        key={i}
-                        className={`group flex items-center gap-3 py-2.5 px-3 rounded-xl transition-colors hover:bg-slate-50 ${
-                          i < checklist.length - 1 ? 'border-b border-slate-100' : ''
-                        }`}
-                      >
-                        {/* Número */}
-                        <span className="text-[10px] font-bold text-slate-300 w-5 text-right flex-shrink-0 select-none">{i + 1}</span>
-
-                        {/* Botão de status (círculo colorido) */}
-                        <button
-                          onClick={() => !isViewer && updateEtapa(p.id, checklist, i)}
-                          title={isViewer ? item.status : `Clique para avançar: ${item.status}`}
-                          disabled={isViewer}
-                          className={`w-5 h-5 rounded-full border-2 flex-shrink-0 transition-all ${!isViewer ? 'hover:scale-110 cursor-pointer' : 'cursor-default'} ${
-                            item.status === 'Concluido'
-                              ? 'bg-emerald-500 border-emerald-500'
-                              : item.status === 'Andamento'
-                              ? 'bg-blue-500 border-blue-500'
-                              : 'bg-white border-slate-300'
-                          }`}
-                        >
-                          {item.status === 'Concluido' && (
-                            <svg className="w-3 h-3 text-white mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                            </svg>
-                          )}
-                          {item.status === 'Andamento' && (
-                            <span className="block w-1.5 h-1.5 bg-white rounded-full mx-auto" />
-                          )}
-                        </button>
-
-                        {/* Texto da etapa ou input de edição */}
-                        {editingItem !== null && editingItem.procId === p.id && editingItem.index === i ? (
-                          <div className="flex flex-1 gap-2">
-                            <input
-                              autoFocus
-                              value={editText}
-                              onChange={e => setEditText(e.target.value)}
-                              onKeyDown={e => { if (e.key === 'Enter') saveEditItem(p.id, checklist); if (e.key === 'Escape') setEditingItem(null) }}
-                              className="flex-1 border-2 border-yellow-400 rounded-lg px-2 py-1 text-sm outline-none"
-                            />
-                            <button onClick={() => saveEditItem(p.id, checklist)} className="bg-yellow-400 text-black text-xs font-black px-3 py-1 rounded-lg">OK</button>
-                            <button onClick={() => setEditingItem(null)} className="bg-slate-100 text-slate-500 text-xs px-2 py-1 rounded-lg">✕</button>
-                          </div>
-                        ) : (
-                          <span
-                            onClick={() => !isViewer && updateEtapa(p.id, checklist, i)}
-                            className={`flex-1 text-sm transition-colors ${!isViewer ? 'cursor-pointer select-none' : 'cursor-default select-text'} ${
-                              item.status === 'Concluido'
-                                ? 'line-through text-slate-400'
-                                : item.status === 'Andamento'
-                                ? 'text-blue-700 font-medium'
-                                : 'text-slate-700'
-                            }`}
-                          >
-                            {item.etapa}
-                          </span>
-                        )}
-
-                        {/* Badge de status — visível no hover */}
-                        {editingItem === null && (
-                          <span className={`hidden group-hover:inline-flex items-center text-[9px] font-black px-2 py-0.5 rounded-full flex-shrink-0 ${
-                            item.status === 'Concluido' ? 'bg-emerald-100 text-emerald-700' :
-                            item.status === 'Andamento' ? 'bg-blue-100 text-blue-700' :
-                            'bg-slate-100 text-slate-400'
-                          }`}>
-                            {item.status}
-                          </span>
-                        )}
-
-                        {/* Ações — visíveis no hover (apenas para não-viewers) */}
-                        {!isViewer && editingItem === null && (
-                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                            <button
-                              onClick={() => { setEditingItem({ procId: p.id, index: i }); setEditText(item.etapa) }}
-                              className="w-6 h-6 bg-yellow-100 hover:bg-yellow-400 text-yellow-600 hover:text-black rounded-full text-[10px] font-black flex items-center justify-center transition-all"
-                            >✎</button>
-                            <button
-                              onClick={() => deleteItem(p.id, checklist, i)}
-                              className="w-6 h-6 bg-red-50 hover:bg-red-400 text-red-400 hover:text-white rounded-full text-[10px] font-black flex items-center justify-center transition-all"
-                            >✕</button>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-
-                    {/* Adicionar nova etapa (apenas para não-viewers) */}
-                    {!isViewer && (addingTo === p.id ? (
-                      <div className="flex items-center gap-2 mt-2 px-3">
-                        <span className="w-5 flex-shrink-0" />
-                        <span className="w-5 flex-shrink-0" />
-                        <input
-                          autoFocus
-                          value={newItemText}
-                          onChange={e => setNewItemText(e.target.value)}
-                          onKeyDown={e => { if (e.key === 'Enter') addItem(p.id, checklist); if (e.key === 'Escape') { setAddingTo(null); setNewItemText('') } }}
-                          placeholder="Nome da nova etapa..."
-                          className="flex-1 border-2 border-yellow-400 rounded-lg px-3 py-2 text-sm outline-none"
-                        />
-                        <button onClick={() => addItem(p.id, checklist)} className="bg-yellow-400 text-black text-xs font-black px-3 py-2 rounded-lg">Adicionar</button>
-                        <button onClick={() => { setAddingTo(null); setNewItemText('') }} className="bg-slate-100 text-slate-500 text-xs px-2 py-2 rounded-lg">✕</button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => setAddingTo(p.id)}
-                        className="mt-2 mx-3 py-2 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 hover:border-yellow-400 hover:text-yellow-500 transition-all text-sm font-bold"
-                      >+ Adicionar Etapa</button>
-                    ))}
-                  </div>
-
-                  {/* ── Anotações / Andamento ── */}
-                  <div className="mt-6 border-t border-slate-100 pt-5">
-                    <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-4">Anotações do Processo</h3>
-
-                    {/* Input para nova anotação (apenas para não-viewers) */}
-                    {!isViewer && (
-                      <div className="flex flex-col sm:flex-row gap-2 mb-4">
-                        <textarea
-                          rows={2}
-                          value={notaInput[p.id] || ''}
-                          onChange={e => setNotaInput(prev => ({ ...prev, [p.id]: e.target.value }))}
-                          onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) addNota(p.id) }}
-                          placeholder="Registre o que aconteceu, o que foi feito, próximos passos... (Ctrl+Enter para salvar)"
-                          className="flex-1 border-2 border-slate-200 focus:border-yellow-400 rounded-xl px-3 py-2 text-sm outline-none resize-none"
-                        />
-                        <button
-                          onClick={() => addNota(p.id)}
-                          disabled={savingNota || !(notaInput[p.id] || '').trim()}
-                          className="bg-black text-yellow-400 px-5 py-2 rounded-xl text-xs font-black uppercase tracking-wide disabled:opacity-40 hover:bg-slate-800 transition-all sm:self-start sm:mt-0 whitespace-nowrap"
-                        >
-                          Registrar
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Feed de notas */}
-                    <div className="space-y-2">
-                      {!notas[p.id] ? (
-                        <p className="text-xs text-slate-400 italic">Carregando...</p>
-                      ) : notas[p.id].length === 0 ? (
-                        <p className="text-xs text-slate-400 italic">Nenhuma anotação ainda.</p>
-                      ) : notas[p.id].map((nota: any) => (
-                        <div key={nota.id} className="group flex gap-3 bg-slate-50 rounded-xl px-4 py-3 border border-slate-100">
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm text-slate-700 whitespace-pre-wrap break-words">{nota.texto}</p>
-                            <p className="text-[10px] text-slate-400 font-mono mt-1">
-                              {new Date(nota.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                            </p>
-                          </div>
-                          {!isViewer && (
-                            <button
-                              onClick={() => deleteNota(nota.id, p.id)}
-                              className="opacity-0 group-hover:opacity-100 text-red-300 hover:text-red-500 text-xs font-black flex-shrink-0 transition-all self-start"
-                              title="Excluir anotação"
-                            >✕</button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                </div>
-              )}
-            </div>
-          )
-        })}
-      </div>
-
-      {!loading && processosFiltrados.length === 0 && (
-        <div className="text-center py-20 text-slate-400 italic">
-          {filtroStatus === 'Andamento'
-            ? 'Nenhum processo em andamento.'
-            : 'Nenhum processo encontrado.'}
+              )
+            })}
+          </div>
         </div>
       )}
 
-      {/* ── Modal novo processo ─────────────────────────────────────────────── */}
+      {!loading && processosFiltrados.length === 0 && (
+        <div className="text-center py-20 text-slate-400 italic">
+          {filtroStatus === 'Andamento' ? 'Nenhum processo em andamento.' : 'Nenhum processo encontrado.'}
+        </div>
+      )}
+
+      {/* ── Modal novo processo ──────────────────────────────────────────── */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4">
           <div className="bg-white p-6 md:p-10 rounded-[40px] w-full max-w-md border-t-8 border-yellow-400 shadow-2xl relative max-h-[90vh] overflow-y-auto">
@@ -659,55 +788,37 @@ export default function SocietarioPage() {
             <form onSubmit={handleIniciar} className="space-y-5">
               <div>
                 <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Título / Nº O.S.</label>
-                <input
-                  type="text"
-                  placeholder="Ex: O.S. 001/2026 — Abertura Padaria Central"
+                <input type="text" placeholder="Ex: O.S. 001/2026 — Abertura Padaria Central"
                   className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl mt-1 text-sm font-bold outline-none focus:border-yellow-400"
-                  value={formData.titulo}
-                  onChange={e => setFormData({ ...formData, titulo: e.target.value })}
-                />
+                  value={formData.titulo} onChange={e => setFormData({ ...formData, titulo: e.target.value })} />
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Tipo de Serviço</label>
-                <select
-                  className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl mt-1 text-sm font-bold outline-none focus:border-yellow-400 text-slate-800"
-                  value={formData.tipo}
-                  onChange={e => setFormData({ ...formData, tipo: e.target.value })}
-                >
+                <select className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl mt-1 text-sm font-bold outline-none focus:border-yellow-400 text-slate-800"
+                  value={formData.tipo} onChange={e => setFormData({ ...formData, tipo: e.target.value })}>
                   {Object.keys(MODELOS_PROCESSOS).map(tipo => (
                     <option key={tipo} value={tipo}>{TIPO_LABELS[tipo] ?? tipo}</option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
-                  Empresa <span className="text-slate-300 font-normal">(opcional)</span>
-                </label>
-                <select
-                  className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl mt-1 text-sm font-bold outline-none focus:border-yellow-400 text-slate-800"
-                  value={formData.empresa_id}
-                  onChange={e => setFormData({ ...formData, empresa_id: e.target.value, cliente_nome: '' })}
-                >
+                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Empresa <span className="text-slate-300 font-normal">(opcional)</span></label>
+                <select className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl mt-1 text-sm font-bold outline-none focus:border-yellow-400 text-slate-800"
+                  value={formData.empresa_id} onChange={e => setFormData({ ...formData, empresa_id: e.target.value, cliente_nome: '' })}>
                   <option value="">— Sem empresa cadastrada —</option>
                   {empresas.map(e => <option key={e.id} value={e.id}>{e.razao_social}</option>)}
                 </select>
               </div>
               {!formData.empresa_id && (
                 <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
-                    Nome do Cliente <span className="text-red-400">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Ex: João da Silva"
+                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Nome do Cliente <span className="text-red-400">*</span></label>
+                  <input type="text" placeholder="Ex: João da Silva"
                     className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl mt-1 text-sm font-bold outline-none focus:border-yellow-400"
-                    value={formData.cliente_nome}
-                    onChange={e => setFormData({ ...formData, cliente_nome: e.target.value })}
-                  />
+                    value={formData.cliente_nome} onChange={e => setFormData({ ...formData, cliente_nome: e.target.value })} />
                 </div>
               )}
-              <button type="submit" className="w-full bg-black text-yellow-400 py-5 rounded-3xl font-black text-xs uppercase tracking-widest shadow-xl hover:bg-slate-800 transition-all mt-2">
-                INICIAR PROCESSO SOCIETÁRIO
+              <button type="submit" className="w-full bg-black text-yellow-400 p-4 rounded-2xl font-black text-sm uppercase tracking-wide hover:bg-slate-900 transition-all mt-2">
+                Iniciar Processo →
               </button>
             </form>
           </div>
