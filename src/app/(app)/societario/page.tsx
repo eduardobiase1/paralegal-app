@@ -729,8 +729,8 @@ export default function SocietarioPage() {
                   onClick={() => { setSelectedId(p.id); setActiveDetailTab('etapas') }}>
 
                   {/* Processo / Empresa */}
-                  <div className="flex flex-col gap-1">
-                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-full w-fit uppercase tracking-wide ${TIPO_COLORS[p.tipo] ?? 'bg-slate-100 text-slate-500'}`}>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-full flex-shrink-0 uppercase tracking-wide ${TIPO_COLORS[p.tipo] ?? 'bg-slate-100 text-slate-500'}`}>
                       {TIPO_LABELS[p.tipo] ?? p.tipo}
                     </span>
                     <span className="font-black text-slate-800 text-sm truncate">{nomeExibido}</span>
