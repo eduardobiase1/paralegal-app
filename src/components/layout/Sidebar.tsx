@@ -52,7 +52,8 @@ export default function Sidebar({ isOpen = true, onToggle }: { isOpen?: boolean;
   const [editingOrg, setEditingOrg] = useState(false)
   const [orgNameInput, setOrgNameInput] = useState('')
   const [savingOrg, setSavingOrg] = useState(false)
-  const { orgName, orgId, isAdmin } = useOrg()
+  const { orgName, orgId, isAdmin, role } = useOrg()
+  const isViewer = role === 'viewer'
 
   async function handleLogout() {
     setLoggingOut(true)
@@ -106,6 +107,13 @@ export default function Sidebar({ isOpen = true, onToggle }: { isOpen?: boolean;
         )}
       </div>
 
+      {/* Viewer badge */}
+      {isViewer && (
+        <div className="px-4 py-2 bg-amber-500/10 border-b border-amber-500/20 flex items-center gap-2">
+          <span className="text-[9px] font-black uppercase tracking-widest text-amber-400">👁 Modo Visualização</span>
+        </div>
+      )}
+
       {/* Org Badge */}
       <div className="px-4 py-3 border-b border-white/[0.06]">
         {editingOrg ? (
@@ -141,7 +149,15 @@ export default function Sidebar({ isOpen = true, onToggle }: { isOpen?: boolean;
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto py-4 px-3">
-        {navigation.map((section) => (
+        {navigation
+          .map(section => ({
+            ...section,
+            items: isViewer
+              ? section.items.filter(item => item.href === '/societario')
+              : section.items,
+          }))
+          .filter(section => section.items.length > 0)
+          .map((section) => (
           <div key={section.label} className="mb-5">
             <p className="px-3 mb-1.5 text-[10px] font-semibold text-gray-600 uppercase tracking-widest">
               {section.label}
@@ -173,18 +189,20 @@ export default function Sidebar({ isOpen = true, onToggle }: { isOpen?: boolean;
 
       {/* Footer */}
       <div className="border-t border-white/[0.06] px-3 py-3 space-y-0.5">
-        <Link
-          href="/usuarios"
-          className={cn(
-            'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all border border-transparent',
-            pathname === '/usuarios'
-              ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-              : 'text-gray-400 hover:bg-white/5 hover:text-gray-100'
-          )}
-        >
-          <UserIcon className="w-4 h-4 flex-shrink-0 text-gray-600" />
-          Usuários
-        </Link>
+        {!isViewer && (
+          <Link
+            href="/usuarios"
+            className={cn(
+              'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all border border-transparent',
+              pathname === '/usuarios'
+                ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                : 'text-gray-400 hover:bg-white/5 hover:text-gray-100'
+            )}
+          >
+            <UserIcon className="w-4 h-4 flex-shrink-0 text-gray-600" />
+            Usuários
+          </Link>
+        )}
         <button
           onClick={handleLogout}
           disabled={loggingOut}

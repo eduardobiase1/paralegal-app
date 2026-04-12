@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { OrgProvider, OrgRole } from '@/lib/org-context'
 import AppShell from '@/components/layout/AppShell'
 import InactivityLogout from '@/components/InactivityLogout'
+import ViewerGuard from '@/components/ViewerGuard'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -26,6 +27,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <OrgProvider orgId={org.id} orgName={org.name} role={role}>
+      <ViewerGuard />
       <InactivityLogout />
       <AppShell>{children}</AppShell>
     </OrgProvider>

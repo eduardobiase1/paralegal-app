@@ -149,7 +149,8 @@ function getStatusColor(status: string) {
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 export default function SocietarioPage() {
-  const { orgId, orgName } = useOrg()
+  const { orgId, orgName, role } = useOrg()
+  const isViewer = role === 'viewer'
   const [supabase] = useState(createClient())
   const [processos, setProcessos] = useState<any[]>([])
   const [empresas, setEmpresas] = useState<any[]>([])
@@ -318,12 +319,22 @@ export default function SocietarioPage() {
           </h1>
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{orgName}</p>
         </div>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="bg-black text-yellow-400 px-8 py-3 rounded-2xl font-bold text-xs shadow-xl hover:scale-105 transition-all"
-        >
-          + NOVO PROCESSO
-        </button>
+        {isViewer ? (
+          <span className="flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-700 px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wide">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+            Modo Visualização
+          </span>
+        ) : (
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="bg-black text-yellow-400 px-8 py-3 rounded-2xl font-bold text-xs shadow-xl hover:scale-105 transition-all"
+          >
+            + NOVO PROCESSO
+          </button>
+        )}
       </header>
 
       {/* Filtros de status */}
@@ -397,7 +408,13 @@ export default function SocietarioPage() {
 
                 {/* Título / O.S. editável (sempre visível abaixo do card) */}
                 <div className="px-4 md:px-6 pb-3 flex items-center gap-2" onClick={e => e.stopPropagation()}>
-                  {editingTituloId === p.id ? (
+                  {isViewer ? (
+                    p.titulo ? (
+                      <span className="text-xs font-bold bg-yellow-50 text-yellow-700 border border-yellow-200 rounded-lg px-3 py-1">
+                        {p.titulo}
+                      </span>
+                    ) : null
+                  ) : editingTituloId === p.id ? (
                     <div className="flex items-center gap-2 flex-1">
                       <input
                         autoFocus
@@ -432,12 +449,14 @@ export default function SocietarioPage() {
                   {/* Header da seção de etapas */}
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Etapas do Processo</h3>
-                    <button
-                      onClick={() => deleteProcesso(p.id)}
-                      className="text-[10px] text-red-300 hover:text-red-500 font-bold transition-colors"
-                    >
-                      Excluir processo
-                    </button>
+                    {!isViewer && (
+                      <button
+                        onClick={() => deleteProcesso(p.id)}
+                        className="text-[10px] text-red-300 hover:text-red-500 font-bold transition-colors"
+                      >
+                        Excluir processo
+                      </button>
+                    )}
                   </div>
 
                   {/* Progresso compacto */}
@@ -465,9 +484,10 @@ export default function SocietarioPage() {
 
                         {/* Botão de status (círculo colorido) */}
                         <button
-                          onClick={() => updateEtapa(p.id, checklist, i)}
-                          title={`Clique para avançar: ${item.status}`}
-                          className={`w-5 h-5 rounded-full border-2 flex-shrink-0 transition-all hover:scale-110 ${
+                          onClick={() => !isViewer && updateEtapa(p.id, checklist, i)}
+                          title={isViewer ? item.status : `Clique para avançar: ${item.status}`}
+                          disabled={isViewer}
+                          className={`w-5 h-5 rounded-full border-2 flex-shrink-0 transition-all ${!isViewer ? 'hover:scale-110 cursor-pointer' : 'cursor-default'} ${
                             item.status === 'Concluido'
                               ? 'bg-emerald-500 border-emerald-500'
                               : item.status === 'Andamento'
@@ -500,8 +520,8 @@ export default function SocietarioPage() {
                           </div>
                         ) : (
                           <span
-                            onClick={() => updateEtapa(p.id, checklist, i)}
-                            className={`flex-1 text-sm cursor-pointer select-none transition-colors ${
+                            onClick={() => !isViewer && updateEtapa(p.id, checklist, i)}
+                            className={`flex-1 text-sm transition-colors ${!isViewer ? 'cursor-pointer select-none' : 'cursor-default select-text'} ${
                               item.status === 'Concluido'
                                 ? 'line-through text-slate-400'
                                 : item.status === 'Andamento'
@@ -524,8 +544,8 @@ export default function SocietarioPage() {
                           </span>
                         )}
 
-                        {/* Ações — visíveis no hover */}
-                        {editingItem === null && (
+                        {/* Ações — visíveis no hover (apenas para não-viewers) */}
+                        {!isViewer && editingItem === null && (
                           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                             <button
                               onClick={() => { setEditingItem({ procId: p.id, index: i }); setEditText(item.etapa) }}
@@ -540,8 +560,8 @@ export default function SocietarioPage() {
                       </div>
                     ))}
 
-                    {/* Adicionar nova etapa */}
-                    {addingTo === p.id ? (
+                    {/* Adicionar nova etapa (apenas para não-viewers) */}
+                    {!isViewer && (addingTo === p.id ? (
                       <div className="flex items-center gap-2 mt-2 px-3">
                         <span className="w-5 flex-shrink-0" />
                         <span className="w-5 flex-shrink-0" />
@@ -561,31 +581,33 @@ export default function SocietarioPage() {
                         onClick={() => setAddingTo(p.id)}
                         className="mt-2 mx-3 py-2 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 hover:border-yellow-400 hover:text-yellow-500 transition-all text-sm font-bold"
                       >+ Adicionar Etapa</button>
-                    )}
+                    ))}
                   </div>
 
                   {/* ── Anotações / Andamento ── */}
                   <div className="mt-6 border-t border-slate-100 pt-5">
                     <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-4">Anotações do Processo</h3>
 
-                    {/* Input para nova anotação */}
-                    <div className="flex flex-col sm:flex-row gap-2 mb-4">
-                      <textarea
-                        rows={2}
-                        value={notaInput[p.id] || ''}
-                        onChange={e => setNotaInput(prev => ({ ...prev, [p.id]: e.target.value }))}
-                        onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) addNota(p.id) }}
-                        placeholder="Registre o que aconteceu, o que foi feito, próximos passos... (Ctrl+Enter para salvar)"
-                        className="flex-1 border-2 border-slate-200 focus:border-yellow-400 rounded-xl px-3 py-2 text-sm outline-none resize-none"
-                      />
-                      <button
-                        onClick={() => addNota(p.id)}
-                        disabled={savingNota || !(notaInput[p.id] || '').trim()}
-                        className="bg-black text-yellow-400 px-5 py-2 rounded-xl text-xs font-black uppercase tracking-wide disabled:opacity-40 hover:bg-slate-800 transition-all sm:self-start sm:mt-0 whitespace-nowrap"
-                      >
-                        Registrar
-                      </button>
-                    </div>
+                    {/* Input para nova anotação (apenas para não-viewers) */}
+                    {!isViewer && (
+                      <div className="flex flex-col sm:flex-row gap-2 mb-4">
+                        <textarea
+                          rows={2}
+                          value={notaInput[p.id] || ''}
+                          onChange={e => setNotaInput(prev => ({ ...prev, [p.id]: e.target.value }))}
+                          onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) addNota(p.id) }}
+                          placeholder="Registre o que aconteceu, o que foi feito, próximos passos... (Ctrl+Enter para salvar)"
+                          className="flex-1 border-2 border-slate-200 focus:border-yellow-400 rounded-xl px-3 py-2 text-sm outline-none resize-none"
+                        />
+                        <button
+                          onClick={() => addNota(p.id)}
+                          disabled={savingNota || !(notaInput[p.id] || '').trim()}
+                          className="bg-black text-yellow-400 px-5 py-2 rounded-xl text-xs font-black uppercase tracking-wide disabled:opacity-40 hover:bg-slate-800 transition-all sm:self-start sm:mt-0 whitespace-nowrap"
+                        >
+                          Registrar
+                        </button>
+                      </div>
+                    )}
 
                     {/* Feed de notas */}
                     <div className="space-y-2">
@@ -601,11 +623,13 @@ export default function SocietarioPage() {
                               {new Date(nota.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                             </p>
                           </div>
-                          <button
-                            onClick={() => deleteNota(nota.id, p.id)}
-                            className="opacity-0 group-hover:opacity-100 text-red-300 hover:text-red-500 text-xs font-black flex-shrink-0 transition-all self-start"
-                            title="Excluir anotação"
-                          >✕</button>
+                          {!isViewer && (
+                            <button
+                              onClick={() => deleteNota(nota.id, p.id)}
+                              className="opacity-0 group-hover:opacity-100 text-red-300 hover:text-red-500 text-xs font-black flex-shrink-0 transition-all self-start"
+                              title="Excluir anotação"
+                            >✕</button>
+                          )}
                         </div>
                       ))}
                     </div>
