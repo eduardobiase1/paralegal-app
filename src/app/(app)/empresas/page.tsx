@@ -46,8 +46,12 @@ export default function EmpresasPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isConsulting, setIsConsulting] = useState(false)
   const [detailId, setDetailId] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'dados' | 'processos' | 'dossie' | 'socios' | 'controles'>('dados')
+  const [activeTab, setActiveTab] = useState<'dados' | 'processos' | 'dossie' | 'socios' | 'controles' | 'documentos'>('dados')
   const [search, setSearch] = useState('')
+  const [docsPorEmpresa, setDocsPorEmpresa] = useState<Record<string, any>>({})
+  const [notaInput, setNotaInput] = useState('')
+  const [notaSaving, setNotaSaving] = useState(false)
+  const [pendenciaEdit, setPendenciaEdit] = useState<Record<string, string>>({})
 
   const initialForm = {
     cnpj: '', razao_social: '', nome_fantasia: '', situacao: '', data_situacao_cadastral: '',
@@ -142,6 +146,78 @@ export default function EmpresasPage() {
   function toggleDetail(empId: string, tab: typeof activeTab = 'dados') {
     if (detailId === empId && activeTab === tab) { setDetailId(null); return }
     setDetailId(empId); setActiveTab(tab)
+    if (tab === 'documentos') loadDocumentos(empId)
+  }
+
+  function diasParaVencer(data?: string): number | null {
+    if (!data) return null
+    const hoje = new Date(); hoje.setHours(0, 0, 0, 0)
+    const venc = new Date(data + 'T00:00:00')
+    return Math.round((venc.getTime() - hoje.getTime()) / 86400000)
+  }
+
+  function urgBadge(dias: number | null): string {
+    if (dias === null) return 'bg-slate-100 text-slate-400'
+    if (dias < 0)   return 'bg-red-600 text-white'
+    if (dias <= 15) return 'bg-red-100 text-red-700'
+    if (dias <= 30) return 'bg-orange-100 text-orange-700'
+    if (dias <= 60) return 'bg-yellow-100 text-yellow-700'
+    return 'bg-emerald-100 text-emerald-700'
+  }
+
+  function urgLabel(dias: number | null): string {
+    if (dias === null) return 'Sem data'
+    if (dias < 0)  return `Vencida há ${Math.abs(dias)}d`
+    if (dias === 0) return 'Vence HOJE'
+    return `${dias}d`
+  }
+
+  function openMaps(emp: any) {
+    const addr = [emp.logradouro, emp.numero, emp.complemento, emp.bairro, emp.municipio, emp.uf, 'Brasil'].filter(Boolean).join(', ')
+    window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}`, '_blank')
+  }
+
+  async function loadDocumentos(empId: string) {
+    if (docsPorEmpresa[empId]?.loadedAt && Date.now() - docsPorEmpresa[empId].loadedAt < 30000) return
+    const [cert, alv, lic, cer, notas] = await Promise.all([
+      supabase.from('certidoes').select('*').eq('empresa_id', empId).order('data_vencimento'),
+      supabase.from('alvaras').select('*').eq('empresa_id', empId).order('data_vencimento'),
+      supabase.from('licencas_sanitarias').select('*').eq('empresa_id', empId).order('data_vencimento'),
+      supabase.from('certificados_digitais').select('*').eq('empresa_id', empId).order('data_vencimento'),
+      supabase.from('empresa_notas').select('*').eq('empresa_id', empId).order('created_at', { ascending: false }),
+    ])
+    const emp = empresas.find((e: any) => e.id === empId)
+    setDocsPorEmpresa((prev: any) => ({
+      ...prev,
+      [empId]: {
+        certidoes: cert.data || [],
+        alvaras: alv.data || [],
+        licencas: lic.data || [],
+        certificados: cer.data || [],
+        notas: notas.data || [],
+        pendencia: emp?.pendencia_status || 'nenhuma',
+        loadedAt: Date.now(),
+      }
+    }))
+    setPendenciaEdit(prev => ({ ...prev, [empId]: emp?.pendencia_status || 'nenhuma' }))
+  }
+
+  async function addEmpresaNota(empId: string) {
+    if (!notaInput.trim()) return
+    setNotaSaving(true)
+    await supabase.from('empresa_notas').insert({ empresa_id: empId, nota: notaInput.trim() })
+    setNotaInput('')
+    setNotaSaving(false)
+    await loadDocumentos(empId)
+    setDocsPorEmpresa((prev: any) => ({ ...prev, [empId]: { ...prev[empId], loadedAt: 0 } }))
+    loadDocumentos(empId)
+  }
+
+  async function savePendencia(empId: string) {
+    const status = pendenciaEdit[empId] || 'nenhuma'
+    await supabase.from('empresas').update({ pendencia_status: status }).eq('id', empId)
+    setDocsPorEmpresa((prev: any) => ({ ...prev, [empId]: { ...prev[empId], pendencia: status } }))
+    toast.success('Pendência atualizada')
   }
 
   // ── Busca ─────────────────────────────────────────────────────────────────────
@@ -262,6 +338,17 @@ export default function EmpresasPage() {
                             title="Dossiê CNPJ"
                             className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase transition-all ${isOpen && activeTab === 'dossie' ? 'bg-black text-yellow-400' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
                           >Dossiê</button>
+                          <button
+                            onClick={() => { toggleDetail(emp.id, 'documentos') }}
+                            title="Documentos & Vencimentos"
+                            className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase transition-all ${isOpen && activeTab === 'documentos' ? 'bg-black text-yellow-400' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                          >Docs</button>
+                          <button onClick={() => openMaps(emp)} title="Ver no Google Maps" className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-blue-100 text-slate-500 hover:text-blue-600 flex items-center justify-center transition-all">
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                          </button>
                           <button onClick={() => { setFormData(emp); setIsModalOpen(true) }} title="Editar" className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-yellow-100 text-slate-500 hover:text-yellow-700 flex items-center justify-center text-sm transition-all">✎</button>
                           <button onClick={() => handleExcluir(emp.id)} title="Excluir" className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-red-100 text-slate-500 hover:text-red-600 flex items-center justify-center text-sm transition-all">✕</button>
                         </div>
@@ -289,6 +376,7 @@ export default function EmpresasPage() {
                                 ['processos', 'Processos Ativos'],
                                 ['dossie', 'Dossiê CNPJ'],
                                 ['socios', 'Sócios (QSA)'],
+                                ['documentos', 'Documentos'],
                                 ['controles', 'Controles'],
                               ] as const).map(([tab, label]) => (
                                 <button
@@ -442,6 +530,150 @@ export default function EmpresasPage() {
                                   )}
                                 </div>
                               )}
+
+                              {/* ── Documentos & Vencimentos ── */}
+                              {activeTab === 'documentos' && (() => {
+                                const docs = docsPorEmpresa[emp.id]
+                                const pendOpts = [
+                                  { value: 'nenhuma', label: 'Sem pendência', color: 'text-emerald-600' },
+                                  { value: 'em_renovacao', label: 'Em renovação', color: 'text-blue-600' },
+                                  { value: 'aguardando_cliente', label: 'Aguardando cliente', color: 'text-yellow-600' },
+                                  { value: 'vencida_aguardando', label: 'Vencida — aguardando', color: 'text-orange-600' },
+                                  { value: 'impossivel_renovar', label: 'Impossível renovar', color: 'text-red-600' },
+                                ]
+
+                                if (!docs) {
+                                  loadDocumentos(emp.id)
+                                  return <div className="text-sm text-slate-400 animate-pulse">Carregando documentos...</div>
+                                }
+
+                                function DocRow({ item, tipo }: { item: any; tipo: string }) {
+                                  const dias = diasParaVencer(item.data_vencimento)
+                                  return (
+                                    <div className="flex items-center justify-between py-2 border-b border-slate-100 last:border-0 gap-3">
+                                      <div className="min-w-0">
+                                        <p className="text-xs font-bold text-slate-800 truncate">{item.tipo || item.orgao || item.orgao_emissor || tipo}</p>
+                                        {item.orgao_emissor && <p className="text-[10px] text-slate-400">{item.orgao_emissor}</p>}
+                                        {item.atividade_sanitaria && <p className="text-[10px] text-slate-400">{item.atividade_sanitaria}</p>}
+                                        {item.titular && <p className="text-[10px] text-slate-400">{item.titular} · {item.uso}</p>}
+                                      </div>
+                                      <div className="flex items-center gap-2 flex-shrink-0">
+                                        <span className="text-[10px] font-mono text-slate-600">
+                                          {item.data_vencimento ? new Date(item.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}
+                                        </span>
+                                        <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${urgBadge(dias)}`}>{urgLabel(dias)}</span>
+                                      </div>
+                                    </div>
+                                  )
+                                }
+
+                                return (
+                                  <div className="space-y-5">
+
+                                    {/* Pendência */}
+                                    <div className="p-3 bg-white rounded-xl border border-slate-200">
+                                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">Status de Pendência Geral</p>
+                                      <div className="flex items-center gap-2">
+                                        <select
+                                          className="flex-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold p-2 outline-none focus:border-yellow-400"
+                                          value={pendenciaEdit[emp.id] || docs.pendencia || 'nenhuma'}
+                                          onChange={e => setPendenciaEdit(prev => ({ ...prev, [emp.id]: e.target.value }))}
+                                        >
+                                          {pendOpts.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                        </select>
+                                        <button onClick={() => savePendencia(emp.id)}
+                                          className="bg-black text-yellow-400 px-4 py-2 rounded-lg text-[10px] font-black uppercase hover:bg-slate-800 transition-all">
+                                          Salvar
+                                        </button>
+                                      </div>
+                                    </div>
+
+                                    {/* Documentos grid */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                                      {/* Certidões por órgão */}
+                                      {(['Receita Federal', 'Estado', 'Prefeitura', 'CRF'] as const).map(orgao => {
+                                        const items = docs.certidoes.filter((c: any) =>
+                                          (c.orgao_emissor || '').toLowerCase().includes(orgao.toLowerCase()) ||
+                                          (orgao === 'Receita Federal' && (c.orgao_emissor || '').toLowerCase().includes('receita')) ||
+                                          (orgao === 'Estado' && (c.orgao_emissor || '').toLowerCase().includes('estadual')) ||
+                                          (orgao === 'Prefeitura' && (c.orgao_emissor || '').toLowerCase().includes('municipal'))
+                                        )
+                                        return (
+                                          <div key={orgao} className="bg-white rounded-xl border border-slate-200 p-3">
+                                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">📜 Certidão — {orgao}</p>
+                                            {items.length === 0 ? (
+                                              <p className="text-[10px] text-slate-300 italic">Nenhuma registrada</p>
+                                            ) : items.map((item: any) => <DocRow key={item.id} item={item} tipo="Certidão" />)}
+                                          </div>
+                                        )
+                                      })}
+
+                                      {/* Alvarás */}
+                                      <div className="bg-white rounded-xl border border-slate-200 p-3">
+                                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">🏛️ Alvarás</p>
+                                        {docs.alvaras.length === 0
+                                          ? <p className="text-[10px] text-slate-300 italic">Nenhum registrado</p>
+                                          : docs.alvaras.map((item: any) => <DocRow key={item.id} item={item} tipo="Alvará" />)
+                                        }
+                                      </div>
+
+                                      {/* Licenças Sanitárias */}
+                                      <div className="bg-white rounded-xl border border-slate-200 p-3">
+                                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">⚕️ Licenças Sanitárias</p>
+                                        {docs.licencas.length === 0
+                                          ? <p className="text-[10px] text-slate-300 italic">Nenhuma registrada</p>
+                                          : docs.licencas.map((item: any) => <DocRow key={item.id} item={item} tipo="Licença" />)
+                                        }
+                                      </div>
+
+                                      {/* Certificados Digitais */}
+                                      <div className="bg-white rounded-xl border border-slate-200 p-3">
+                                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">🔐 Certificados Digitais</p>
+                                        {docs.certificados.length === 0
+                                          ? <p className="text-[10px] text-slate-300 italic">Nenhum registrado</p>
+                                          : docs.certificados.map((item: any) => <DocRow key={item.id} item={item} tipo="Certificado" />)
+                                        }
+                                      </div>
+                                    </div>
+
+                                    {/* Histórico de comentários */}
+                                    <div className="bg-white rounded-xl border border-slate-200 p-3">
+                                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">💬 Histórico de Pendências</p>
+                                      <div className="flex gap-2 mb-3">
+                                        <input
+                                          className="flex-1 bg-slate-50 border border-slate-200 rounded-lg text-xs p-2 outline-none focus:border-yellow-400"
+                                          placeholder="Registrar comentário ou pendência..."
+                                          value={notaInput}
+                                          onChange={e => setNotaInput(e.target.value)}
+                                          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addEmpresaNota(emp.id) } }}
+                                        />
+                                        <button
+                                          onClick={() => addEmpresaNota(emp.id)}
+                                          disabled={notaSaving || !notaInput.trim()}
+                                          className="bg-black text-yellow-400 px-4 py-2 rounded-lg text-[10px] font-black uppercase hover:bg-slate-800 transition-all disabled:opacity-40">
+                                          {notaSaving ? '...' : 'Registrar'}
+                                        </button>
+                                      </div>
+                                      {docs.notas.length === 0 ? (
+                                        <p className="text-[10px] text-slate-300 italic text-center py-2">Nenhum comentário registrado.</p>
+                                      ) : (
+                                        <div className="space-y-2 max-h-48 overflow-y-auto">
+                                          {docs.notas.map((n: any) => (
+                                            <div key={n.id} className="flex gap-2 text-xs">
+                                              <span className="text-slate-300 flex-shrink-0 font-mono text-[9px] mt-0.5">
+                                                {new Date(n.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                              </span>
+                                              <p className="text-slate-700">{n.nota}</p>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+
+                                  </div>
+                                )
+                              })()}
 
                               {/* ── Controles ── */}
                               {activeTab === 'controles' && (

@@ -5,170 +5,226 @@ import { createClient } from '@/lib/supabase/client'
 import { useOrg } from '@/lib/org-context'
 import Link from 'next/link'
 
+function diasParaVencer(data?: string): number | null {
+  if (!data) return null
+  const hoje = new Date(); hoje.setHours(0, 0, 0, 0)
+  const venc = new Date(data + 'T00:00:00')
+  return Math.round((venc.getTime() - hoje.getTime()) / 86400000)
+}
+
+function urgenciaClass(dias: number | null) {
+  if (dias === null) return { row: '', badge: 'bg-slate-100 text-slate-500', label: 'Sem data' }
+  if (dias < 0)  return { row: 'bg-red-50',    badge: 'bg-red-600 text-white',          label: `Vencida há ${Math.abs(dias)}d` }
+  if (dias <= 15) return { row: 'bg-red-50',    badge: 'bg-red-100 text-red-700',        label: `${dias}d` }
+  if (dias <= 30) return { row: 'bg-orange-50', badge: 'bg-orange-100 text-orange-700',  label: `${dias}d` }
+  if (dias <= 60) return { row: 'bg-yellow-50', badge: 'bg-yellow-100 text-yellow-700',  label: `${dias}d` }
+  return             { row: '',            badge: 'bg-emerald-100 text-emerald-700', label: `${dias}d` }
+}
+
 export default function DashboardPage() {
   const { orgId, orgName } = useOrg()
   const [supabase] = useState(createClient())
   const [loading, setLoading] = useState(true)
-  const [stats, setStats] = useState({ empresas: 0, processosAndamento: 0, processosFinalizado: 0, cobrancas: 0 })
+  const [stats, setStats] = useState({ clientes: 0, emAndamento: 0, vencimentos: 0, cobrancas: 0 })
   const [alertas, setAlertas] = useState<any[]>([])
-  const [processosRecentes, setProcessosRecentes] = useState<any[]>([])
+  const [processos, setProcessos] = useState<any[]>([])
 
   useEffect(() => {
-    async function loadDashboardData() {
+    async function load() {
       setLoading(true)
-      const [empRes, procRes, cobRes, certRes, alvRes] = await Promise.all([
+      const [empRes, procRes, cobRes, certRes, alvRes, licRes, cerRes] = await Promise.all([
         supabase.from('empresas').select('id', { count: 'exact', head: true }),
-        supabase.from('processos_societarios').select('id, status, tipo, cliente_nome, empresas(razao_social)').eq('org_id', orgId).order('created_at', { ascending: false }).limit(10),
+        supabase.from('processos_societarios')
+          .select('id, status, tipo, cliente_nome, created_at, checklist, titulo, empresas(razao_social)')
+          .eq('org_id', orgId).eq('status', 'Andamento')
+          .order('created_at', { ascending: false }),
         supabase.from('cobrancas').select('id', { count: 'exact', head: true }).eq('status', 'pendente'),
-        supabase.from('certidoes').select('*, empresas(razao_social)').order('data_vencimento').limit(5),
-        supabase.from('alvaras').select('*, empresas(razao_social)').order('data_vencimento').limit(5),
+        supabase.from('certidoes').select('id, tipo, orgao_emissor, data_vencimento, empresas(razao_social)').order('data_vencimento'),
+        supabase.from('alvaras').select('id, tipo, orgao_emissor, data_vencimento, empresas(razao_social)').order('data_vencimento'),
+        supabase.from('licencas_sanitarias').select('id, orgao, atividade_sanitaria, data_vencimento, empresas(razao_social)').order('data_vencimento'),
+        supabase.from('certificados_digitais').select('id, tipo, uso, titular, data_vencimento, empresas(razao_social)').order('data_vencimento'),
       ])
 
-      const processos = procRes.data || []
-      const emAndamento = processos.filter((p: any) => p.status === 'Andamento').length
-      const finalizados = processos.filter((p: any) => p.status === 'Finalizado').length
+      const procsData = procRes.data || []
 
-      setStats({
-        empresas: empRes.count || 0,
-        processosAndamento: emAndamento,
-        processosFinalizado: finalizados,
-        cobrancas: cobRes.count || 0,
+      const todos = [
+        ...(certRes.data || []).map((i: any) => ({ ...i, categoria: 'Certidão',    desc: [i.tipo, i.orgao_emissor].filter(Boolean).join(' — '), href: '/certidoes' })),
+        ...(alvRes.data  || []).map((i: any) => ({ ...i, categoria: 'Alvará',      desc: [i.tipo, i.orgao_emissor].filter(Boolean).join(' — '), href: '/alvaras' })),
+        ...(licRes.data  || []).map((i: any) => ({ ...i, categoria: 'Licença',     desc: [i.orgao, i.atividade_sanitaria].filter(Boolean).join(' — '), href: '/licencas' })),
+        ...(cerRes.data  || []).map((i: any) => ({ ...i, categoria: 'Certificado', desc: [i.tipo, i.uso, i.titular].filter(Boolean).join(' · '), href: '/certificados' })),
+      ].sort((a, b) => {
+        const da = diasParaVencer(a.data_vencimento), db = diasParaVencer(b.data_vencimento)
+        if (da === null) return 1; if (db === null) return -1; return da - db
       })
 
-      setProcessosRecentes(processos.filter((p: any) => p.status === 'Andamento').slice(0, 5))
-
-      const listaAlertas = [
-        ...(certRes.data || []).map(i => ({ ...i, categoria: 'Certidão' })),
-        ...(alvRes.data || []).map(i => ({ ...i, categoria: 'Alvará' })),
-      ]
-      setAlertas(listaAlertas)
+      setStats({
+        clientes: empRes.count || 0,
+        emAndamento: procsData.length,
+        vencimentos: todos.filter(a => { const d = diasParaVencer(a.data_vencimento); return d !== null && d <= 60 }).length,
+        cobrancas: cobRes.count || 0,
+      })
+      setProcessos(procsData.slice(0, 8))
+      setAlertas(todos.slice(0, 25))
       setLoading(false)
     }
-    if (orgId) loadDashboardData()
-  }, [supabase, orgId])
+    if (orgId) load()
+  }, [orgId])
 
-  if (loading) return <div className="p-10 text-slate-400 font-sans italic">Carregando...</div>
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="text-slate-400 text-sm animate-pulse">Carregando painel...</div>
+    </div>
+  )
+
+  const hoje = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+
+  const KPIS = [
+    {
+      label: 'Carteira de Clientes', value: stats.clientes,
+      color: 'text-slate-900', bg: 'bg-white', link: '/empresas',
+      icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>,
+    },
+    {
+      label: 'Processos em Andamento', value: stats.emAndamento,
+      color: 'text-blue-600', bg: 'bg-white', link: '/societario',
+      icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>,
+    },
+    {
+      label: 'Vencimentos ≤ 60 dias', value: stats.vencimentos,
+      color: stats.vencimentos > 0 ? 'text-orange-600' : 'text-emerald-600',
+      bg: stats.vencimentos > 0 ? 'bg-orange-50' : 'bg-white', link: '/certidoes',
+      icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+    },
+    {
+      label: 'Cobranças Pendentes', value: stats.cobrancas,
+      color: stats.cobrancas > 0 ? 'text-amber-600' : 'text-emerald-600',
+      bg: stats.cobrancas > 0 ? 'bg-amber-50' : 'bg-white', link: '/financeiro',
+      icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+    },
+  ]
 
   return (
-    <div className="p-4 md:p-8 space-y-6 md:space-y-8 bg-slate-50 min-h-screen font-sans text-left">
-      <header className="flex justify-between items-end border-b border-slate-200 pb-4 md:pb-6">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Dashboard</h1>
-          <p className="text-slate-500 font-medium text-xs uppercase tracking-[0.2em] mt-1">
-            Escritório: <span className="text-blue-600 font-black">{orgName}</span>
-          </p>
-        </div>
+    <div className="p-4 md:p-8 bg-[#F8FAFC] min-h-screen font-sans">
+
+      {/* Header */}
+      <header className="mb-8">
+        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-1 capitalize">{hoje}</p>
+        <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Painel de Controle</h1>
+        <p className="text-sm text-slate-500 mt-0.5"><span className="font-bold text-slate-700">{orgName}</span></p>
       </header>
 
-      {/* Cards de estatísticas */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
-        <div className="bg-white p-5 md:p-8 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
-          <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">Carteira de Clientes</p>
-          <h2 className="text-3xl md:text-4xl font-black text-slate-900 mt-2">{stats.empresas}</h2>
-        </div>
-
-        {/* Card Processos com breakdown */}
-        <div className="bg-white p-5 md:p-8 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow col-span-2">
-          <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-3">Processos Societários</p>
-          <div className="flex items-center gap-4 md:gap-6">
-            <div>
-              <p className="text-[9px] font-black uppercase text-blue-400 tracking-widest">Em Andamento</p>
-              <h2 className="text-3xl md:text-4xl font-black text-blue-600">{stats.processosAndamento}</h2>
+      {/* KPIs */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {KPIS.map(kpi => (
+          <Link key={kpi.label} href={kpi.link}
+            className={`${kpi.bg} p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all group`}>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 leading-tight">{kpi.label}</p>
+              <span className={`${kpi.color} opacity-40 group-hover:opacity-100 transition-opacity`}>{kpi.icon}</span>
             </div>
-            <div className="w-px h-10 bg-slate-200" />
-            <div>
-              <p className="text-[9px] font-black uppercase text-emerald-400 tracking-widest">Finalizados</p>
-              <h2 className="text-3xl md:text-4xl font-black text-emerald-600">{stats.processosFinalizado}</h2>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white p-5 md:p-8 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
-          <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">Cobranças Pendentes</p>
-          <h2 className="text-3xl md:text-4xl font-black text-orange-500 mt-2">{stats.cobrancas}</h2>
-        </div>
+            <p className={`text-3xl font-black ${kpi.color}`}>{kpi.value}</p>
+          </Link>
+        ))}
       </div>
 
-      {/* Processos em andamento */}
-      {processosRecentes.length > 0 && (
-        <section className="space-y-4">
-          <div className="flex justify-between items-center ml-1">
-            <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">Processos em Andamento</h3>
-            <Link href="/societario" className="text-blue-600 text-xs font-bold hover:underline">Ver todos →</Link>
+      {/* Main grid */}
+      <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
+
+        {/* Processos em Andamento */}
+        <section className="xl:col-span-2 flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Processos em Andamento</h3>
+            <Link href="/societario" className="text-[10px] font-bold text-blue-600 hover:underline">Ver todos →</Link>
           </div>
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
-            <table className="w-full text-left min-w-[400px]">
-              <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-black uppercase text-slate-500">
-                <tr>
-                  <th className="px-4 md:px-6 py-4">Cliente / Empresa</th>
-                  <th className="px-4 md:px-6 py-4">Tipo</th>
-                  <th className="px-4 md:px-6 py-4 text-right">Ação</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {processosRecentes.map((proc: any) => (
-                  <tr key={proc.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-6 py-4 text-sm font-bold text-slate-800">
-                      {proc.empresas?.razao_social || proc.cliente_nome || '—'}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-[10px] font-black px-2 py-1 rounded bg-blue-50 text-blue-700 border border-blue-100 uppercase">
-                        {proc.tipo?.replace(/_/g, ' ')}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <Link href="/societario" className="text-blue-600 font-bold text-xs hover:underline">
-                        Abrir →
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex-1">
+            {processos.length === 0 ? (
+              <div className="p-10 text-center text-slate-400 text-sm italic">Nenhum processo ativo.</div>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {processos.map((proc: any) => {
+                  const checklist = proc.checklist || []
+                  const conc = checklist.filter((i: any) => i.status === 'Concluido').length
+                  const total = checklist.length || 1
+                  const porc = Math.round((conc / total) * 100)
+                  return (
+                    <div key={proc.id} className="p-4 hover:bg-slate-50 transition-colors">
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="min-w-0">
+                          <p className="font-bold text-slate-800 text-sm truncate">{proc.empresas?.razao_social || proc.cliente_nome || '—'}</p>
+                          <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 uppercase mt-0.5 inline-block">
+                            {(proc.tipo || '').replace(/_/g, ' ')}
+                          </span>
+                        </div>
+                        <Link href="/societario" className="text-[10px] font-bold text-blue-600 hover:underline flex-shrink-0 mt-0.5">Abrir</Link>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="flex-1 h-1 bg-slate-100 rounded-full overflow-hidden">
+                          <div className="h-full bg-yellow-400 rounded-full" style={{ width: `${porc}%` }} />
+                        </div>
+                        <span className="text-[9px] font-black text-slate-400 flex-shrink-0">{porc}%</span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         </section>
-      )}
 
-      {/* Documentos com vencimento próximo */}
-      <section className="space-y-4">
-        <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest ml-1">Documentos com Vencimento Próximo</h3>
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
-          <table className="w-full text-left min-w-[500px]">
-            <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-black uppercase text-slate-500">
-              <tr>
-                <th className="px-4 md:px-6 py-4">Empresa</th>
-                <th className="px-4 md:px-6 py-4">Documento</th>
-                <th className="px-4 md:px-6 py-4">Vencimento</th>
-                <th className="px-4 md:px-6 py-4 text-right">Ação</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {alertas.length > 0 ? alertas.map((alerta, idx) => (
-                <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-6 py-4 text-sm font-bold text-slate-800">{alerta.empresas?.razao_social}</td>
-                  <td className="px-6 py-4">
-                    <span className="text-[10px] font-black px-2 py-1 rounded bg-slate-100 text-slate-600 border border-slate-200 uppercase">
-                      {alerta.categoria}: {alerta.tipo}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 font-mono text-sm font-bold text-slate-700">
-                    {alerta.data_vencimento ? new Date(alerta.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <Link href={`/${alerta.categoria === 'Certidão' ? 'certidoes' : 'alvaras'}`} className="text-blue-600 font-bold text-xs hover:underline">
-                      Tratar →
-                    </Link>
-                  </td>
-                </tr>
-              )) : (
-                <tr>
-                  <td colSpan={4} className="px-6 py-12 text-center text-slate-400 italic">Nenhum alerta no momento.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
+        {/* Alertas de Vencimento */}
+        <section className="xl:col-span-3 flex flex-col gap-3">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Alertas de Vencimento</h3>
+            <div className="flex gap-3 text-[9px] font-bold text-slate-500">
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500 inline-block" />Crítico ≤15d</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-orange-400 inline-block" />≤30d</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-400 inline-block" />≤60d</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />OK</span>
+            </div>
+          </div>
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left min-w-[480px]">
+                <thead className="bg-slate-50 border-b border-slate-100">
+                  <tr>
+                    {['Empresa', 'Documento', 'Vencimento', 'Prazo', ''].map(h => (
+                      <th key={h} className="px-4 py-3 text-[9px] font-black uppercase text-slate-400 tracking-widest">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {alertas.length === 0 ? (
+                    <tr><td colSpan={5} className="px-6 py-12 text-center text-slate-400 italic text-sm">Nenhum alerta de vencimento.</td></tr>
+                  ) : alertas.map((alerta, idx) => {
+                    const { row, badge, label } = urgenciaClass(diasParaVencer(alerta.data_vencimento))
+                    return (
+                      <tr key={idx} className={`${row} hover:brightness-95 transition-all`}>
+                        <td className="px-4 py-3 text-sm font-bold text-slate-800">
+                          <p className="max-w-[130px] truncate">{alerta.empresas?.razao_social || '—'}</p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 uppercase block w-fit">{alerta.categoria}</span>
+                          <p className="text-[10px] text-slate-500 mt-0.5 max-w-[150px] truncate">{alerta.desc}</p>
+                        </td>
+                        <td className="px-4 py-3 text-xs font-mono font-bold text-slate-700 whitespace-nowrap">
+                          {alerta.data_vencimento ? new Date(alerta.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`text-[9px] font-black px-2 py-0.5 rounded-full whitespace-nowrap ${badge}`}>{label}</span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <Link href={alerta.href} className="text-[10px] font-bold text-blue-600 hover:underline whitespace-nowrap">Tratar →</Link>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+      </div>
     </div>
   )
 }
