@@ -66,13 +66,37 @@ export default function UsuariosPage() {
 
   async function load() {
     setLoading(true)
-    const { data } = await supabase
-      .from('organization_members')
-      .select('id, user_id, role, created_at, profiles!left(nome, email, ativo)')
-      .eq('org_id', orgId)
-      .order('created_at')
-    setMembers((data as unknown as Member[]) ?? [])
-    setLoading(false)
+    try {
+      // 1. Busca membros sem join (mais confiável com RLS)
+      const { data: membersRaw, error } = await supabase
+        .from('organization_members')
+        .select('id, user_id, role, created_at')
+        .eq('org_id', orgId)
+        .order('created_at')
+
+      if (error) { console.error('load members error:', error); setLoading(false); return }
+      if (!membersRaw || membersRaw.length === 0) { setMembers([]); setLoading(false); return }
+
+      // 2. Busca perfis separadamente pelos user_ids encontrados
+      const userIds = membersRaw.map((m: any) => m.user_id)
+      const { data: profilesRaw } = await supabase
+        .from('profiles')
+        .select('id, nome, email, ativo')
+        .in('id', userIds)
+
+      const profileMap: Record<string, any> = {}
+      for (const p of profilesRaw ?? []) profileMap[p.id] = p
+
+      // 3. Combina em memória
+      const combined = membersRaw.map((m: any) => ({
+        ...m,
+        profiles: profileMap[m.user_id] ?? null,
+      }))
+
+      setMembers(combined as Member[])
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { load() }, [orgId])
