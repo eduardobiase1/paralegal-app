@@ -224,9 +224,10 @@ export default function EmpresasPage() {
   const empresasFiltradas = useMemo(() => {
     const q = search.trim().toLowerCase()
     if (!q) return empresas
+    const qDigits = q.replace(/\D/g, '')
     return empresas.filter(e =>
       (e.razao_social || '').toLowerCase().includes(q) ||
-      (e.cnpj || '').replace(/\D/g, '').includes(q.replace(/\D/g, '')) ||
+      (qDigits.length > 0 && (e.cnpj || '').replace(/\D/g, '').includes(qDigits)) ||
       (e.municipio || '').toLowerCase().includes(q) ||
       (e.nome_fantasia || '').toLowerCase().includes(q) ||
       (e.regime_tributario || '').toLowerCase().includes(q)
