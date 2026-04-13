@@ -171,14 +171,42 @@ const DOCS_MODELOS: Record<string, { doc: string; recebido: boolean }[]> = {
     { doc: 'Balanço Patrimonial de Encerramento', recebido: false },
   ],
   transferencia_entrada: [
-    { doc: 'RG / CNH (frente e verso) — sócio entrante', recebido: false },
-    { doc: 'CPF — sócio entrante', recebido: false },
-    { doc: 'Comprovante de Residência — sócio entrante (máx. 90 dias)', recebido: false },
-    { doc: 'Certidão de Estado Civil — sócio entrante', recebido: false },
-    { doc: 'Contrato Social vigente (última versão registrada)', recebido: false },
-    { doc: 'Instrumento de Cessão de Quotas — assinado pelas partes', recebido: false },
-    { doc: 'Comprovante de pagamento das quotas (se cessão onerosa)', recebido: false },
-    { doc: 'Declaração de ITCMD ou comprovante de isenção', recebido: false },
+    // Documentos Societários
+    { doc: 'Contrato Social / Estatuto Social (última versão registrada)', recebido: false },
+    { doc: 'Última alteração contratual arquivada na Junta Comercial', recebido: false },
+    { doc: 'Cartão CNPJ atualizado', recebido: false },
+    { doc: 'Inscrição Estadual (se houver)', recebido: false },
+    { doc: 'Inscrição Municipal / Alvará de funcionamento', recebido: false },
+    // Documentos dos Sócios
+    { doc: 'RG / CNH (frente e verso) — todos os sócios', recebido: false },
+    { doc: 'CPF — todos os sócios', recebido: false },
+    { doc: 'Comprovante de Residência — todos os sócios (máx. 90 dias)', recebido: false },
+    // Obrigações Fiscais
+    { doc: 'Última declaração entregue (IRPJ / DEFIS / DASN conforme regime)', recebido: false },
+    { doc: 'Enquadramento tributário atual (Simples / Presumido / Real)', recebido: false },
+    { doc: 'CND Federal — Certidão de Regularidade Receita Federal', recebido: false },
+    { doc: 'Certidão Negativa Municipal', recebido: false },
+    { doc: 'Certidão Negativa Estadual (se contribuinte ICMS)', recebido: false },
+    // Folha de Pagamento / eSocial
+    { doc: 'Relação de funcionários ativos (nome, CPF, cargo, salário, admissão)', recebido: false },
+    { doc: 'Último FGTS recolhido (GFIP / SEFIP ou eSocial)', recebido: false },
+    { doc: 'Última folha de pagamento processada', recebido: false },
+    { doc: 'Histórico de pró-labore dos sócios', recebido: false },
+    // Financeiro
+    { doc: 'Últimos 3 extratos bancários de todas as contas da empresa', recebido: false },
+    { doc: 'Relação de contas a pagar e a receber em aberto', recebido: false },
+    { doc: 'Contratos de financiamento ou leasing ativos (se houver)', recebido: false },
+    // Arquivos do escritório anterior
+    { doc: 'Backup contábil completo (XML ou formato exportável)', recebido: false },
+    { doc: 'Livros Contábeis: Diário, Razão e Balancete (últimos 5 anos)', recebido: false },
+    { doc: 'Arquivos XML das NF-e / NFS-e emitidas (últimos 5 anos)', recebido: false },
+    { doc: 'SPED Fiscal e SPED Contábil entregues', recebido: false },
+    { doc: 'Declarações entregues: ECF, ECD, DCTF, PGDAS', recebido: false },
+    { doc: 'Carta de apresentação / dispensa do escritório anterior', recebido: false },
+    // Informações Gerais
+    { doc: 'Procuração para representação no e-CAC (Receita Federal)', recebido: false },
+    { doc: 'Pendências ou parcelamentos em aberto (REFIS, PERT, etc.)', recebido: false },
+    { doc: 'Data do último balanço fechado', recebido: false },
   ],
   transferencia_saida: [
     { doc: 'RG / CNH (frente e verso) — sócio sainte', recebido: false },
