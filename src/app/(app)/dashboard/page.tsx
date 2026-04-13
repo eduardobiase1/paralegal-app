@@ -77,7 +77,7 @@ export default function DashboardPage() {
       setStats({
         clientes: empRes.count || 0,
         emAndamento: procsData.length,
-        vencimentos: todos.filter(a => { const d = diasParaVencer(a.data_vencimento); return d !== null && d <= 60 }).length,
+        vencimentos: todos.filter(a => { const d = diasParaVencer(a.data_vencimento); return d !== null && d <= 15 }).length,
         cobrancas: cobRes.count || 0,
         parados: paradosList.length,
       })
@@ -109,7 +109,7 @@ export default function DashboardPage() {
       icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>,
     },
     {
-      label: 'Vencimentos ≤ 60 dias', value: stats.vencimentos,
+      label: 'Vencimentos ≤ 15 dias', value: stats.vencimentos,
       color: stats.vencimentos > 0 ? 'text-orange-600' : 'text-emerald-600',
       bg: stats.vencimentos > 0 ? 'bg-orange-50' : 'bg-white', link: '/certidoes',
       icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
