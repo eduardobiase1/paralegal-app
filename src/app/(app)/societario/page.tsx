@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useOrg } from '@/lib/org-context'
 import toast from 'react-hot-toast'
@@ -282,6 +282,10 @@ export default function SocietarioPage() {
   const [editingTituloId, setEditingTituloId] = useState<string | null>(null)
   const [tituloText, setTituloText] = useState('')
 
+  // ── Drag & drop etapas ───────────────────────────────────────────────────
+  const dragIndex = useRef<number | null>(null)
+  const dragOverIndex = useRef<number | null>(null)
+
   // ── Documentos checklist (edição admin) ─────────────────────────────────
   const [editingDocIndex, setEditingDocIndex] = useState<number | null>(null)
   const [editDocText, setEditDocText] = useState('')
@@ -452,6 +456,15 @@ export default function SocietarioPage() {
     setProcessos(prev => prev.map(p => p.id === procId ? { ...p, checklist: updated } : p))
   }
 
+  async function reorderChecklist(procId: string, checklist: any[], from: number, to: number) {
+    if (from === to) return
+    const updated = [...checklist]
+    const [moved] = updated.splice(from, 1)
+    updated.splice(to, 0, moved)
+    await supabase.from('processos_societarios').update({ checklist: updated }).eq('id', procId)
+    setProcessos(prev => prev.map(p => p.id === procId ? { ...p, checklist: updated } : p))
+  }
+
   async function addItem(procId: string, checklist: any[]) {
     if (!newItemText.trim()) { setAddingTo(null); return }
     const updated = [...checklist, { etapa: newItemText.trim(), status: 'Pendente' }]
@@ -609,8 +622,17 @@ export default function SocietarioPage() {
             )}
             <div className="flex flex-col">
               {checklist.map((item: any, i: number) => (
-                <div key={i} className={`group flex items-center gap-3 py-2.5 px-2 rounded-xl transition-colors hover:bg-slate-50 ${i < checklist.length - 1 ? 'border-b border-slate-100' : ''}`}>
-                  <span className="text-[10px] font-bold text-slate-300 w-5 text-right flex-shrink-0 select-none">{i + 1}</span>
+                <div key={i}
+                  draggable={!isViewer}
+                  onDragStart={() => { dragIndex.current = i }}
+                  onDragOver={e => { e.preventDefault(); dragOverIndex.current = i }}
+                  onDrop={() => { if (dragIndex.current !== null && dragOverIndex.current !== null) reorderChecklist(p.id, checklist, dragIndex.current, dragOverIndex.current); dragIndex.current = null; dragOverIndex.current = null }}
+                  onDragEnd={() => { dragIndex.current = null; dragOverIndex.current = null }}
+                  className={`group flex items-center gap-3 py-2.5 px-2 rounded-xl transition-colors hover:bg-slate-50 ${!isViewer ? 'cursor-grab active:cursor-grabbing' : ''} ${i < checklist.length - 1 ? 'border-b border-slate-100' : ''}`}>
+                  {!isViewer
+                    ? <span className="text-slate-300 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity select-none cursor-grab" title="Arrastar">⠿</span>
+                    : <span className="text-[10px] font-bold text-slate-300 w-5 text-right flex-shrink-0 select-none">{i + 1}</span>
+                  }
                   <button
                     onClick={() => !isViewer && updateEtapa(p.id, checklist, i)}
                     disabled={isViewer}
