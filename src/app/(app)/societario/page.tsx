@@ -289,8 +289,7 @@ export default function SocietarioPage() {
     if (!formData.empresa_id && !formData.cliente_nome.trim())
       return toast.error('Selecione uma empresa ou informe o nome do cliente.')
     const checklist = MODELOS_PROCESSOS[formData.tipo] ?? []
-    const docs_solicitados = DOCS_MODELOS[formData.tipo] ?? []
-    const payload: any = { org_id: orgId, tipo: formData.tipo, checklist, docs_solicitados, status: 'Andamento', titulo: formData.titulo.trim() || null }
+    const payload: any = { org_id: orgId, tipo: formData.tipo, checklist, status: 'Andamento', titulo: formData.titulo.trim() || null }
     if (formData.empresa_id) payload.empresa_id = formData.empresa_id
     else payload.cliente_nome = formData.cliente_nome.trim()
     const { data, error } = await supabase.from('processos_societarios').insert([payload]).select().single()
