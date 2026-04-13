@@ -712,6 +712,40 @@ export default function EmpresasPage() {
                               {/* ── Controles ── */}
                               {activeTab === 'controles' && (
                                 <div>
+                                  {/* Inscrições inline */}
+                                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-3">Inscrições</p>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+                                    {[
+                                      { key: 'inscricao_estadual',  label: 'Inscrição Estadual (I.E.)',  placeholder: 'Ex: 123.456.789.000' },
+                                      { key: 'inscricao_municipal', label: 'Inscrição Municipal (I.M.)', placeholder: 'Ex: 00123456/001-0' },
+                                    ].map(({ key, label, placeholder }) => (
+                                      <div key={key} className="flex flex-col gap-1">
+                                        <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">{label}</label>
+                                        <div className="flex gap-2">
+                                          <input
+                                            defaultValue={emp[key] || ''}
+                                            placeholder={placeholder}
+                                            id={`${emp.id}-${key}`}
+                                            className="flex-1 border border-slate-200 focus:border-yellow-400 rounded-xl px-3 py-2 text-sm outline-none bg-slate-50 focus:bg-white transition-all font-mono"
+                                          />
+                                          <button
+                                            onClick={async () => {
+                                              const val = (document.getElementById(`${emp.id}-${key}`) as HTMLInputElement)?.value?.trim() || null
+                                              const { error } = await supabase.from('empresas').update({ [key]: val }).eq('id', emp.id)
+                                              if (!error) {
+                                                setEmpresas(prev => prev.map(e => e.id === emp.id ? { ...e, [key]: val } : e))
+                                                toast.success('Salvo!')
+                                              }
+                                            }}
+                                            className="bg-black text-yellow-400 px-3 py-2 rounded-xl text-xs font-black hover:bg-slate-800 transition-all flex-shrink-0"
+                                          >
+                                            Salvar
+                                          </button>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+
                                   <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-4">Ações Rápidas</p>
                                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                                     {[
