@@ -100,19 +100,26 @@ const MODELOS_PROCESSOS: Record<string, { etapa: string; status: string }[]> = {
     { etapa: 'Comprovantes de encerramento entregues ao cliente', status: 'Pendente' },
   ],
   transferencia_entrada: [
-    { etapa: 'RG / CNH (frente e verso) — sócio entrante', status: 'Pendente' },
-    { etapa: 'CPF — sócio entrante', status: 'Pendente' },
-    { etapa: 'Comprovante de Residência — sócio entrante (máx. 90 dias)', status: 'Pendente' },
-    { etapa: 'Certidão de Estado Civil — sócio entrante', status: 'Pendente' },
-    { etapa: 'Contrato Social vigente (última versão)', status: 'Pendente' },
-    { etapa: 'Instrumento de Cessão de Quotas — assinado pelas partes', status: 'Pendente' },
-    { etapa: 'Comprovante de pagamento das quotas (se cessão onerosa)', status: 'Pendente' },
-    { etapa: 'Declaração de ITCMD ou comprovante de isenção', status: 'Pendente' },
-    { etapa: 'Minuta de Alteração Contratual (Transferência) — aprovada e assinada', status: 'Pendente' },
-    { etapa: 'DBE Atualizado — Receita Federal protocolado', status: 'Pendente' },
-    { etapa: 'VRE — JUCESP protocolado', status: 'Pendente' },
-    { etapa: 'Taxa de Registro — JUCESP paga', status: 'Pendente' },
-    { etapa: 'Documentos registrados entregues ao cliente', status: 'Pendente' },
+    { etapa: 'Contato inicial — levantar regime tributário, porte e necessidades do cliente', status: 'Pendente' },
+    { etapa: 'Enviar proposta de honorários ao cliente', status: 'Pendente' },
+    { etapa: 'Assinar contrato de prestação de serviços contábeis', status: 'Pendente' },
+    { etapa: 'Enviar checklist de documentos ao cliente', status: 'Pendente' },
+    { etapa: 'Receber e conferir todos os documentos solicitados', status: 'Pendente' },
+    { etapa: 'Emitir carta de apresentação ao escritório contábil anterior', status: 'Pendente' },
+    { etapa: 'Receber carta de transferência / anuência do escritório anterior', status: 'Pendente' },
+    { etapa: 'Cadastrar empresa no sistema contábil interno', status: 'Pendente' },
+    { etapa: 'Solicitar e receber procuração para acesso ao e-CAC (Receita Federal)', status: 'Pendente' },
+    { etapa: 'Credenciar no e-CAC — habilitar acesso à empresa na Receita Federal', status: 'Pendente' },
+    { etapa: 'Verificar pendências fiscais na Receita Federal (SIEF / SIDA)', status: 'Pendente' },
+    { etapa: 'Verificar pendências no Simples Nacional (PGDAS / parcelamentos)', status: 'Pendente' },
+    { etapa: 'Verificar pendências no eSocial — eventos em aberto', status: 'Pendente' },
+    { etapa: 'Levantar obrigações acessórias em aberto (DCTF, ECD, ECF, SPED)', status: 'Pendente' },
+    { etapa: 'Importar histórico contábil e fiscal no sistema interno', status: 'Pendente' },
+    { etapa: 'Conferir último balanço e balancete do período anterior', status: 'Pendente' },
+    { etapa: 'Atualizar responsável contábil na Receita Federal (DBE)', status: 'Pendente' },
+    { etapa: 'Emitir Declaração de Responsabilidade Técnica — CRC', status: 'Pendente' },
+    { etapa: 'Arquivar documentação recebida do cliente e do escritório anterior', status: 'Pendente' },
+    { etapa: 'Comunicar conclusão da transferência ao cliente — boas-vindas', status: 'Pendente' },
   ],
   transferencia_saida: [
     { etapa: 'RG / CNH (frente e verso) — sócio sainte', status: 'Pendente' },
@@ -565,6 +572,23 @@ export default function SocietarioPage() {
         {/* ── Tab: Etapas ───────────────────────────────────────────────────── */}
         {activeDetailTab === 'etapas' && (
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+            {role === 'admin' && MODELOS_PROCESSOS[p.tipo] && (
+              <div className="flex justify-end mb-3">
+                <button
+                  onClick={() => {
+                    if (!confirm(`Restaurar as ${MODELOS_PROCESSOS[p.tipo].length} etapas do modelo padrão? As etapas atuais serão substituídas.`)) return
+                    const novas = MODELOS_PROCESSOS[p.tipo]
+                    supabase.from('processos_societarios').update({ checklist: novas, status: 'Andamento' }).eq('id', p.id).then(() => {
+                      setProcessos(prev => prev.map(x => x.id === p.id ? { ...x, checklist: novas, status: 'Andamento' } : x))
+                      toast.success(`Modelo restaurado com ${novas.length} etapas.`)
+                    })
+                  }}
+                  className="text-[10px] font-black text-slate-400 hover:text-yellow-600 border border-dashed border-slate-200 hover:border-yellow-400 px-2.5 py-1 rounded-lg transition-all"
+                >
+                  ↺ Restaurar modelo
+                </button>
+              </div>
+            )}
             <div className="flex flex-col">
               {checklist.map((item: any, i: number) => (
                 <div key={i} className={`group flex items-center gap-3 py-2.5 px-2 rounded-xl transition-colors hover:bg-slate-50 ${i < checklist.length - 1 ? 'border-b border-slate-100' : ''}`}>
