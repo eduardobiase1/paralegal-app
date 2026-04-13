@@ -12,13 +12,16 @@ function diasParaVencer(data?: string): number | null {
   return Math.round((venc.getTime() - hoje.getTime()) / 86400000)
 }
 
-function urgenciaClass(dias: number | null) {
+const isFGTS = (desc?: string) => !!(desc && /fgts|crf|caixa/i.test(desc))
+
+function urgenciaClass(dias: number | null, desc?: string) {
+  const limCritico = isFGTS(desc) ? 4 : 15
   if (dias === null) return { row: '', badge: 'bg-slate-100 text-slate-500', label: 'Sem data' }
-  if (dias < 0)  return { row: 'bg-red-50',    badge: 'bg-red-600 text-white',          label: `Vencida há ${Math.abs(dias)}d` }
-  if (dias <= 15) return { row: 'bg-red-50',    badge: 'bg-red-100 text-red-700',        label: `${dias}d` }
-  if (dias <= 30) return { row: 'bg-orange-50', badge: 'bg-orange-100 text-orange-700',  label: `${dias}d` }
-  if (dias <= 60) return { row: 'bg-yellow-50', badge: 'bg-yellow-100 text-yellow-700',  label: `${dias}d` }
-  return             { row: '',            badge: 'bg-emerald-100 text-emerald-700', label: `${dias}d` }
+  if (dias < 0)          return { row: 'bg-red-50',    badge: 'bg-red-600 text-white',          label: `Vencida há ${Math.abs(dias)}d` }
+  if (dias <= limCritico) return { row: 'bg-red-50',    badge: 'bg-red-100 text-red-700',        label: `${dias}d` }
+  if (dias <= 30)         return { row: 'bg-orange-50', badge: 'bg-orange-100 text-orange-700',  label: `${dias}d` }
+  if (dias <= 60)         return { row: 'bg-yellow-50', badge: 'bg-yellow-100 text-yellow-700',  label: `${dias}d` }
+  return                         { row: '',             badge: 'bg-emerald-100 text-emerald-700', label: `${dias}d` }
 }
 
 export default function DashboardPage() {
@@ -218,7 +221,7 @@ export default function DashboardPage() {
                   {alertas.length === 0 ? (
                     <tr><td colSpan={5} className="px-6 py-12 text-center text-slate-400 italic text-sm">Nenhum alerta de vencimento.</td></tr>
                   ) : alertas.map((alerta, idx) => {
-                    const { row, badge, label } = urgenciaClass(diasParaVencer(alerta.data_vencimento))
+                    const { row, badge, label } = urgenciaClass(diasParaVencer(alerta.data_vencimento), alerta.desc)
                     return (
                       <tr key={idx} className={`${row} hover:brightness-95 transition-all`}>
                         <td className="px-4 py-3 text-sm font-bold text-slate-800">
