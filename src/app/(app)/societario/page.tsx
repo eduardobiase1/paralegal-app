@@ -307,7 +307,7 @@ export default function SocietarioPage() {
     const p = processos.find(x => x.id === selectedId)
     if (!p) return
     if (!notas[selectedId]) loadNotas(selectedId)
-    if (!p.docs_solicitados || p.docs_solicitados.length === 0) initDocs(p)
+    if (!p.docs_solicitados || p.docs_solicitados.length === 0) initDocs(p, false)
   }, [selectedId])
 
   // ─── Handlers ──────────────────────────────────────────────────────────────
@@ -333,11 +333,13 @@ export default function SocietarioPage() {
     }
   }
 
-  async function initDocs(processo: any) {
+  async function initDocs(processo: any, force = false) {
     const docs = DOCS_MODELOS[processo.tipo] ?? []
+    if (!force && processo.docs_solicitados && processo.docs_solicitados.length > 0) return
     try {
       await supabase.from('processos_societarios').update({ docs_solicitados: docs }).eq('id', processo.id)
       setProcessos(prev => prev.map(p => p.id === processo.id ? { ...p, docs_solicitados: docs } : p))
+      if (force) toast.success(`Modelo restaurado com ${docs.length} documentos.`)
     } catch { /* coluna pode não existir ainda */ }
   }
 
@@ -625,11 +627,25 @@ export default function SocietarioPage() {
                 <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Documentos Solicitados ao Cliente</p>
                 <p className="text-xs text-slate-400 mt-0.5">{docsRecebidos} de {docs.length} recebidos</p>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="h-2 w-24 bg-slate-100 rounded-full overflow-hidden">
-                  <div className={`h-full rounded-full transition-all ${docsRecebidos === docs.length ? 'bg-emerald-400' : 'bg-yellow-400'}`} style={{ width: `${docs.length ? Math.round((docsRecebidos / docs.length) * 100) : 0}%` }} />
+              <div className="flex items-center gap-3">
+                {role === 'admin' && DOCS_MODELOS[p.tipo] && (
+                  <button
+                    onClick={() => {
+                      if (!confirm(`Restaurar os ${DOCS_MODELOS[p.tipo].length} documentos do modelo padrão? Os documentos atuais serão substituídos.`)) return
+                      initDocs(p, true)
+                    }}
+                    className="text-[10px] font-black text-slate-400 hover:text-yellow-600 border border-dashed border-slate-200 hover:border-yellow-400 px-2.5 py-1 rounded-lg transition-all whitespace-nowrap"
+                    title="Substituir lista pelo modelo padrão deste tipo de processo"
+                  >
+                    ↺ Restaurar modelo
+                  </button>
+                )}
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-24 bg-slate-100 rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full transition-all ${docsRecebidos === docs.length ? 'bg-emerald-400' : 'bg-yellow-400'}`} style={{ width: `${docs.length ? Math.round((docsRecebidos / docs.length) * 100) : 0}%` }} />
+                  </div>
+                  <span className="text-xs font-black text-slate-500">{docs.length ? Math.round((docsRecebidos / docs.length) * 100) : 0}%</span>
                 </div>
-                <span className="text-xs font-black text-slate-500">{docs.length ? Math.round((docsRecebidos / docs.length) * 100) : 0}%</span>
               </div>
             </div>
             <div className="flex flex-col">
