@@ -292,6 +292,8 @@ export default function SocietarioPage() {
   const [notas, setNotas] = useState<Record<string, any[]>>({})
   const [notaInput, setNotaInput] = useState('')
   const [savingNota, setSavingNota] = useState(false)
+  const [editingNotaId, setEditingNotaId] = useState<string | null>(null)
+  const [editNotaText, setEditNotaText] = useState('')
 
   // ── Computed ─────────────────────────────────────────────────────────────
   const selectedProcesso = processos.find(p => p.id === selectedId) ?? null
@@ -417,6 +419,13 @@ export default function SocietarioPage() {
   async function deleteNota(notaId: string, procId: string) {
     await supabase.from('processo_notas').delete().eq('id', notaId)
     setNotas(prev => ({ ...prev, [procId]: (prev[procId] || []).filter(n => n.id !== notaId) }))
+  }
+
+  async function updateNota(notaId: string, procId: string) {
+    if (!editNotaText.trim()) { setEditingNotaId(null); return }
+    await supabase.from('processo_notas').update({ texto: editNotaText.trim() }).eq('id', notaId)
+    setNotas(prev => ({ ...prev, [procId]: (prev[procId] || []).map(n => n.id === notaId ? { ...n, texto: editNotaText.trim() } : n) }))
+    setEditingNotaId(null)
   }
 
   async function updateEtapa(procId: string, checklist: any[], index: number) {
@@ -765,13 +774,30 @@ export default function SocietarioPage() {
               ) : notas[p.id].map((nota: any) => (
                 <div key={nota.id} className="group flex gap-3 bg-slate-50 rounded-xl px-4 py-3 border border-slate-100">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-slate-700 whitespace-pre-wrap break-words">{nota.texto}</p>
-                    <p className="text-[10px] text-slate-400 font-mono mt-1">
-                      {new Date(nota.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                    </p>
+                    {editingNotaId === nota.id ? (
+                      <div className="flex flex-col gap-2">
+                        <textarea autoFocus rows={3} value={editNotaText} onChange={e => setEditNotaText(e.target.value)}
+                          onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) updateNota(nota.id, p.id); if (e.key === 'Escape') setEditingNotaId(null) }}
+                          className="w-full border-2 border-yellow-400 rounded-xl px-3 py-2 text-sm outline-none resize-none bg-yellow-50" />
+                        <div className="flex gap-2">
+                          <button onClick={() => updateNota(nota.id, p.id)} className="bg-black text-yellow-400 text-xs font-black px-4 py-1.5 rounded-lg hover:bg-slate-800 transition-all">Salvar</button>
+                          <button onClick={() => setEditingNotaId(null)} className="bg-slate-100 text-slate-500 text-xs px-3 py-1.5 rounded-lg">Cancelar</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-sm text-slate-700 whitespace-pre-wrap break-words">{nota.texto}</p>
+                        <p className="text-[10px] text-slate-400 font-mono mt-1">
+                          {new Date(nota.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </>
+                    )}
                   </div>
-                  {!isViewer && (
-                    <button onClick={() => deleteNota(nota.id, p.id)} className="opacity-0 group-hover:opacity-100 text-red-300 hover:text-red-500 text-xs font-black flex-shrink-0 transition-all self-start" title="Excluir">✕</button>
+                  {!isViewer && editingNotaId !== nota.id && (
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0 self-start">
+                      <button onClick={() => { setEditingNotaId(nota.id); setEditNotaText(nota.texto) }} className="w-6 h-6 bg-yellow-100 hover:bg-yellow-400 text-yellow-600 hover:text-black rounded-full text-[10px] font-black flex items-center justify-center transition-all" title="Editar">✎</button>
+                      <button onClick={() => deleteNota(nota.id, p.id)} className="w-6 h-6 bg-red-50 hover:bg-red-400 text-red-400 hover:text-white rounded-full text-[10px] font-black flex items-center justify-center transition-all" title="Excluir">✕</button>
+                    </div>
                   )}
                 </div>
               ))}
