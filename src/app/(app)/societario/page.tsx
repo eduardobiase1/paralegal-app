@@ -864,28 +864,36 @@ export default function SocietarioPage() {
         )}
       </header>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
+      {/* KPIs — barra compacta */}
+      <div className="flex items-center gap-px mb-6 bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
         {[
-          { label: 'Total', value: stats.total, color: 'bg-slate-900 text-white' },
-          { label: 'Em Andamento', value: stats.andamento, color: 'bg-yellow-400 text-black' },
-          { label: 'Finalizados', value: stats.finalizado, color: 'bg-emerald-500 text-white' },
-        ].map(k => (
-          <div key={k.label} className={`${k.color} rounded-2xl p-4 text-center`}>
-            <div className="text-2xl font-black">{k.value}</div>
-            <div className="text-[10px] font-black uppercase tracking-widest opacity-75 mt-0.5">{k.label}</div>
+          { label: 'Total', value: stats.total, accent: 'text-slate-900', dot: 'bg-slate-900' },
+          { label: 'Em Andamento', value: stats.andamento, accent: 'text-yellow-600', dot: 'bg-yellow-400' },
+          { label: 'Finalizados', value: stats.finalizado, accent: 'text-emerald-600', dot: 'bg-emerald-500' },
+        ].map((k, idx) => (
+          <div key={k.label} className={`flex-1 flex items-center gap-3 px-5 py-4 ${idx < 2 ? 'border-r border-slate-100' : ''}`}>
+            <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${k.dot}`} />
+            <div>
+              <div className={`text-2xl font-black leading-none ${k.accent}`}>{k.value}</div>
+              <div className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mt-0.5">{k.label}</div>
+            </div>
           </div>
         ))}
       </div>
 
       {/* Filtros */}
-      <div className="flex flex-wrap gap-2 mb-5">
+      <div className="flex gap-1 mb-5 bg-white border border-slate-200 rounded-xl p-1 w-fit shadow-sm">
         {([['Andamento', 'Em Andamento'], ['Finalizado', 'Finalizados'], ['todos', 'Todos']] as const).map(([val, label]) => (
           <button key={val} onClick={() => setFiltroStatus(val)}
-            className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wide transition-all ${
-              filtroStatus === val ? 'bg-black text-yellow-400' : 'bg-white text-slate-400 border border-slate-200 hover:bg-slate-50'
+            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              filtroStatus === val
+                ? 'bg-slate-900 text-yellow-400 shadow-sm'
+                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
             }`}>
-            {label} <span className="ml-1 opacity-60">({val === 'todos' ? processos.length : processos.filter(p => p.status === val).length})</span>
+            {label}
+            <span className={`ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full ${filtroStatus === val ? 'bg-white/10 text-yellow-300' : 'bg-slate-100 text-slate-400'}`}>
+              {val === 'todos' ? processos.length : processos.filter(p => p.status === val).length}
+            </span>
           </button>
         ))}
       </div>
@@ -895,16 +903,18 @@ export default function SocietarioPage() {
       {/* Tabela */}
       {!loading && processosFiltrados.length > 0 && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          {/* Cabeçalho da tabela */}
-          <div className="hidden md:grid grid-cols-[2fr_2fr_2.5fr_1.5fr_1fr] gap-4 px-5 py-3 bg-slate-50 border-b border-slate-100">
-            {['Processo / Empresa', 'O.S. / Título', 'Próxima Etapa', 'Progresso', 'Ações'].map(h => (
-              <span key={h} className="text-[10px] font-black uppercase tracking-widest text-slate-400">{h}</span>
+          {/* Cabeçalho */}
+          <div className="hidden md:grid grid-cols-[2.5fr_2fr_2.5fr_1.2fr_auto] gap-0 border-b border-slate-100">
+            {['Empresa', 'O.S. / Título', 'Próxima Etapa', 'Progresso', ''].map((h, i) => (
+              <div key={i} className={`px-5 py-3 bg-slate-50 ${i < 4 ? 'border-r border-slate-100' : ''}`}>
+                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">{h}</span>
+              </div>
             ))}
           </div>
 
           {/* Linhas */}
-          <div className="divide-y divide-slate-100">
-            {processosFiltrados.map(p => {
+          <div>
+            {processosFiltrados.map((p, rowIdx) => {
               const checklist: any[] = p.checklist ?? []
               const concluido = checklist.filter(i => i.status === 'Concluido').length
               const total = checklist.length || 1
@@ -915,43 +925,50 @@ export default function SocietarioPage() {
               const docsRec = docs.filter(d => d.recebido).length
 
               return (
-                <div key={p.id} className="grid grid-cols-1 md:grid-cols-[2fr_2fr_2.5fr_1.5fr_1fr] gap-4 px-5 py-4 hover:bg-slate-50 transition-colors cursor-pointer group items-center"
+                <div key={p.id}
+                  className={`hidden md:grid grid-cols-[2.5fr_2fr_2.5fr_1.2fr_auto] gap-0 cursor-pointer group transition-colors hover:bg-yellow-50/40 ${rowIdx < processosFiltrados.length - 1 ? 'border-b border-slate-100' : ''}`}
                   onClick={() => { setSelectedId(p.id); setActiveDetailTab('etapas') }}>
 
-                  {/* Processo / Empresa */}
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-full flex-shrink-0 uppercase tracking-wide ${TIPO_COLORS[p.tipo] ?? 'bg-slate-100 text-slate-500'}`}>
+                  {/* Empresa */}
+                  <div className="px-5 py-4 border-r border-slate-100 flex flex-col justify-center gap-1 min-w-0">
+                    <span className="font-bold text-slate-900 text-sm leading-tight truncate">{nomeExibido}</span>
+                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-full w-fit uppercase tracking-wide ${TIPO_COLORS[p.tipo] ?? 'bg-slate-100 text-slate-500'}`}>
                       {TIPO_LABELS[p.tipo] ?? p.tipo}
                     </span>
-                    <span className="font-black text-slate-800 text-sm truncate">{nomeExibido}</span>
                   </div>
 
                   {/* O.S. / Título */}
-                  <div className="text-xs text-slate-500 truncate">
-                    {p.titulo ? <span className="font-medium text-yellow-700">{p.titulo}</span> : <span className="italic text-slate-300">—</span>}
+                  <div className="px-5 py-4 border-r border-slate-100 flex items-center min-w-0">
+                    {p.titulo
+                      ? <span className="text-xs font-semibold text-slate-700 truncate">{p.titulo}</span>
+                      : <span className="text-xs text-slate-300 italic">Sem título</span>}
                   </div>
 
                   {/* Próxima Etapa */}
-                  <div className="text-xs text-slate-600 truncate">{proxEtapa}</div>
-
-                  {/* Progresso */}
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden min-w-0">
-                      <div className={`h-full rounded-full transition-all ${porc === 100 ? 'bg-emerald-400' : 'bg-yellow-400'}`} style={{ width: `${porc}%` }} />
-                    </div>
-                    <span className="text-[10px] font-black text-slate-400 flex-shrink-0">{porc}%</span>
+                  <div className="px-5 py-4 border-r border-slate-100 flex items-center min-w-0">
+                    <span className="text-xs text-slate-500 truncate">{proxEtapa}</span>
                   </div>
 
-                  {/* Ações */}
-                  <div className="flex items-center justify-end gap-1" onClick={e => e.stopPropagation()}>
+                  {/* Progresso */}
+                  <div className="px-5 py-4 border-r border-slate-100 flex flex-col justify-center gap-1.5 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                        <div className={`h-full rounded-full transition-all ${porc === 100 ? 'bg-emerald-400' : 'bg-yellow-400'}`} style={{ width: `${porc}%` }} />
+                      </div>
+                      <span className="text-[10px] font-black text-slate-400 flex-shrink-0 w-7 text-right">{porc}%</span>
+                    </div>
                     {docs.length > 0 && (
-                      <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${docsRec === docs.length ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                        📁 {docsRec}/{docs.length}
+                      <span className={`text-[9px] font-semibold ${docsRec === docs.length ? 'text-emerald-600' : 'text-amber-600'}`}>
+                        📁 {docsRec}/{docs.length} docs
                       </span>
                     )}
+                  </div>
+
+                  {/* Ação */}
+                  <div className="px-4 py-4 flex items-center" onClick={e => e.stopPropagation()}>
                     <button onClick={() => { setSelectedId(p.id); setActiveDetailTab('etapas') }}
-                      className="w-8 h-8 bg-black text-yellow-400 rounded-xl flex items-center justify-center hover:bg-slate-800 transition-all group-hover:scale-105">
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      className="w-8 h-8 rounded-xl bg-slate-100 group-hover:bg-slate-900 text-slate-400 group-hover:text-yellow-400 flex items-center justify-center transition-all">
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
                       </svg>
                     </button>
