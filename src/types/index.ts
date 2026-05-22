@@ -168,6 +168,7 @@ export interface CertificadoDigital {
   pagamento_confirmado?: boolean
   data_aviso_cliente?: string | null
   data_agendamento?: string | null
+  certificado_finalizado?: boolean
   created_by?: string
   created_at: string
   updated_at: string

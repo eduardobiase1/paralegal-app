@@ -12,6 +12,20 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import toast from 'react-hot-toast'
 import { useSearchParams } from 'next/navigation'
 
+type EditingDate = { id: string; field: 'aviso' | 'agenda' } | null
+
+function fmtDate(iso?: string | null) {
+  if (!iso) return null
+  return new Date(iso + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+}
+function fmtDateTime(iso?: string | null) {
+  if (!iso) return null
+  return new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+}
+function todayISO() {
+  return new Date().toISOString().slice(0, 10)
+}
+
 function CertificadosPageInner() {
   const searchParams = useSearchParams()
   const [certs, setCerts] = useState<CertificadoDigital[]>([])
@@ -22,14 +36,14 @@ function CertificadosPageInner() {
   const [deleteItem, setDeleteItem] = useState<CertificadoDigital | null>(null)
   const [filtroEmpresa, setFiltroEmpresa] = useState(searchParams.get('empresa') || '')
   const [supabase] = useState(createClient)
-  const [expandedControl, setExpandedControl] = useState<string | null>(null)
-  const [savingControl, setSavingControl] = useState<string | null>(null)
+  const [editingDate, setEditingDate] = useState<EditingDate>(null)
+  const [saving, setSaving] = useState<string | null>(null)
 
   async function saveControl(id: string, fields: Record<string, any>) {
-    setSavingControl(id)
+    setSaving(id)
     await supabase.from('certificados_digitais').update(fields).eq('id', id)
     setCerts(prev => prev.map(c => c.id === id ? { ...c, ...fields } : c))
-    setSavingControl(null)
+    setSaving(null)
     toast.success('Salvo!')
   }
 
@@ -84,7 +98,7 @@ function CertificadosPageInner() {
         </select>
       </div>
 
-      <div className="card">
+      <div className="card overflow-hidden">
         {loading ? (
           <div className="p-12 text-center text-gray-400">Carregando...</div>
         ) : !filtered.length ? (
@@ -96,26 +110,32 @@ function CertificadosPageInner() {
                 <tr>
                   <th className="px-4 py-3 text-left font-medium text-gray-600">Empresa</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-600">Titular</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-600">Tipo/Uso</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-600">Tipo / Uso</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-600">AC</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-600">Vencimento</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-600">Status</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-600">Renovação</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-600 min-w-[220px]">
+                    <div className="flex items-center gap-1.5">
+                      Controle de Renovação
+                      <span className="text-[9px] font-normal text-gray-400">(clique para atualizar)</span>
+                    </div>
+                  </th>
                   <th className="px-4 py-3 text-right font-medium text-gray-600">Ações</th>
                 </tr>
               </thead>
-              <tbody className="divide-y">
+              <tbody className="divide-y divide-gray-100">
                 {filtered.map(c => {
-                  const isOpen = expandedControl === c.id
-                  const agendadoFmt = (c as any).data_agendamento
-                    ? new Date((c as any).data_agendamento).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-                    : null
-                  const avisoFmt = (c as any).data_aviso_cliente
-                    ? new Date((c as any).data_aviso_cliente + 'T12:00:00').toLocaleDateString('pt-BR')
-                    : null
+                  const avisoFmt   = fmtDate((c as any).data_aviso_cliente)
+                  const agendaFmt  = fmtDateTime((c as any).data_agendamento)
+                  const pago       = !!(c as any).pagamento_confirmado
+                  const finalizado = !!(c as any).certificado_finalizado
+                  const isEditAviso  = editingDate?.id === c.id && editingDate.field === 'aviso'
+                  const isEditAgenda = editingDate?.id === c.id && editingDate.field === 'agenda'
+
                   return (
                     <>
-                    <tr key={c.id} className="hover:bg-gray-50">
+                    <tr key={c.id} className={`hover:bg-gray-50 transition-colors ${finalizado ? 'opacity-60' : ''}`}>
+                      {/* Empresa */}
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="font-medium text-gray-900 truncate max-w-[130px]">{c.razao_social}</span>
@@ -123,9 +143,13 @@ function CertificadosPageInner() {
                             <span className="text-[9px] font-black uppercase tracking-widest bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full flex-shrink-0">avulsa</span>
                           )}
                         </div>
-                        <div className="text-xs text-gray-500 font-mono">{c.cnpj && formatCNPJ(c.cnpj)}</div>
+                        <div className="text-xs text-gray-400 font-mono">{c.cnpj && formatCNPJ(c.cnpj)}</div>
                       </td>
+
+                      {/* Titular */}
                       <td className="px-4 py-3 text-gray-700">{c.titular}</td>
+
+                      {/* Tipo/Uso */}
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">
                           <span className={`text-xs px-1.5 py-0.5 rounded font-mono font-bold ${
@@ -134,6 +158,8 @@ function CertificadosPageInner() {
                           <span className="text-gray-600">{c.uso}</span>
                         </div>
                       </td>
+
+                      {/* AC */}
                       <td className="px-4 py-3">
                         {AC_URLS[c.autoridade_certificadora] ? (
                           <a href={AC_URLS[c.autoridade_certificadora]} target="_blank" rel="noopener noreferrer"
@@ -142,38 +168,89 @@ function CertificadosPageInner() {
                           <span className="text-gray-600">{c.autoridade_certificadora}</span>
                         )}
                       </td>
+
+                      {/* Vencimento */}
                       <td className="px-4 py-3 text-gray-600">{formatDate(c.data_vencimento)}</td>
+
+                      {/* Status */}
                       <td className="px-4 py-3">
                         <StatusBadge status={c.status_cor ?? 'sem_data'} diasParaVencer={c.dias_para_vencer} />
                       </td>
 
-                      {/* Coluna Renovação — resumo rápido */}
+                      {/* ===== CONTROLE DE RENOVAÇÃO ===== */}
                       <td className="px-4 py-3">
                         <div className="flex flex-col gap-1">
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full w-fit ${
-                            (c as any).pagamento_confirmado ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
-                          }`}>
-                            {(c as any).pagamento_confirmado ? '💰 Pago' : '💰 Pendente'}
-                          </span>
-                          {avisoFmt && <span className="text-[10px] text-gray-500">📧 {avisoFmt}</span>}
-                          {agendadoFmt && <span className="text-[10px] text-blue-600 font-semibold">📅 {agendadoFmt}</span>}
+
+                          {/* Linha 1: Aviso + Pagamento */}
+                          <div className="flex gap-1 flex-wrap">
+
+                            {/* 📧 Aviso */}
+                            <button
+                              onClick={() => setEditingDate(isEditAviso ? null : { id: c.id, field: 'aviso' })}
+                              title="Clique para registrar data do aviso ao cliente"
+                              className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full border transition-all ${
+                                avisoFmt
+                                  ? 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100'
+                                  : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300 hover:text-slate-600'
+                              } ${isEditAviso ? 'ring-1 ring-blue-400' : ''}`}>
+                              <span>📧</span>
+                              <span>{avisoFmt ?? 'Aviso'}</span>
+                            </button>
+
+                            {/* 💰 Pagamento */}
+                            <button
+                              onClick={() => saveControl(c.id, { pagamento_confirmado: !pago })}
+                              disabled={saving === c.id}
+                              title={pago ? 'Clique para marcar como pendente' : 'Clique para confirmar pagamento'}
+                              className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full border transition-all ${
+                                pago
+                                  ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
+                                  : 'bg-amber-50 border-amber-200 text-amber-600 hover:bg-amber-100'
+                              }`}>
+                              <span>💰</span>
+                              <span>{pago ? 'Pago' : 'Pendente'}</span>
+                            </button>
+                          </div>
+
+                          {/* Linha 2: Videoconf + Finalizado */}
+                          <div className="flex gap-1 flex-wrap">
+
+                            {/* 🎥 Videoconferência */}
+                            <button
+                              onClick={() => setEditingDate(isEditAgenda ? null : { id: c.id, field: 'agenda' })}
+                              title="Clique para agendar videoconferência"
+                              className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full border transition-all ${
+                                agendaFmt
+                                  ? 'bg-violet-50 border-violet-200 text-violet-700 hover:bg-violet-100'
+                                  : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300 hover:text-slate-600'
+                              } ${isEditAgenda ? 'ring-1 ring-violet-400' : ''}`}>
+                              <span>🎥</span>
+                              <span>{agendaFmt ?? 'Videoconf.'}</span>
+                            </button>
+
+                            {/* ✅ Finalizado */}
+                            <button
+                              onClick={() => saveControl(c.id, { certificado_finalizado: !finalizado })}
+                              disabled={saving === c.id}
+                              title={finalizado ? 'Clique para reabrir' : 'Clique para marcar como finalizado'}
+                              className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full border transition-all ${
+                                finalizado
+                                  ? 'bg-emerald-500 border-emerald-500 text-white hover:bg-emerald-600'
+                                  : 'bg-white border-slate-200 text-slate-400 hover:border-emerald-300 hover:text-emerald-600'
+                              }`}>
+                              <span>✅</span>
+                              <span>{finalizado ? 'Finalizado' : 'Finalizar'}</span>
+                            </button>
+                          </div>
                         </div>
                       </td>
 
+                      {/* Ações */}
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1 justify-end">
-                          <button
-                            onClick={() => setExpandedControl(isOpen ? null : c.id)}
-                            className={`p-1.5 rounded-lg transition-colors ${isOpen ? 'bg-yellow-100 text-yellow-700' : 'text-gray-400 hover:text-yellow-600 hover:bg-yellow-50'}`}
-                            title="Controle de Renovação"
-                          >
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                            </svg>
-                          </button>
                           {AC_URLS[c.autoridade_certificadora] && (
                             <a href={AC_URLS[c.autoridade_certificadora]} target="_blank" rel="noopener noreferrer"
-                              className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg" title="Renovar">
+                              className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg" title="Renovar online">
                               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                                   d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -181,14 +258,14 @@ function CertificadosPageInner() {
                             </a>
                           )}
                           <button onClick={() => { setEditItem(c); setModalOpen(true) }}
-                            className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg">
+                            className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg" title="Editar">
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                                 d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                             </svg>
                           </button>
                           <button onClick={() => setDeleteItem(c)}
-                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg">
+                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg" title="Excluir">
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                                 d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -198,64 +275,73 @@ function CertificadosPageInner() {
                       </td>
                     </tr>
 
-                    {/* Painel de Controle de Renovação */}
-                    {isOpen && (
-                      <tr key={`ctrl-${c.id}`} className="bg-yellow-50/60 border-b border-yellow-100">
-                        <td colSpan={8} className="px-6 py-4">
-                          <div className="flex flex-wrap gap-6 items-end">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-yellow-700 w-full mb-1">Controle de Renovação — {c.razao_social}</p>
+                    {/* ===== EDITOR INLINE DE DATA DE AVISO ===== */}
+                    {isEditAviso && (
+                      <tr key={`aviso-${c.id}`} className="bg-blue-50/70 border-b border-blue-100">
+                        <td colSpan={8} className="px-6 py-3">
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-blue-600">📧 Data do Aviso ao Cliente — {c.razao_social}</span>
+                            <input type="date"
+                              defaultValue={(c as any).data_aviso_cliente || ''}
+                              id={`aviso-${c.id}`}
+                              className="border border-blue-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-blue-400 bg-white"
+                            />
+                            <button
+                              onClick={() => {
+                                const val = (document.getElementById(`aviso-${c.id}`) as HTMLInputElement)?.value || null
+                                saveControl(c.id, { data_aviso_cliente: val }).then(() => setEditingDate(null))
+                              }}
+                              className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-black hover:bg-blue-700">
+                              Salvar
+                            </button>
+                            <button
+                              onClick={() => {
+                                const input = document.getElementById(`aviso-${c.id}`) as HTMLInputElement
+                                if (input) input.value = todayISO()
+                                saveControl(c.id, { data_aviso_cliente: todayISO() }).then(() => setEditingDate(null))
+                              }}
+                              className="bg-white border border-blue-300 text-blue-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-50">
+                              📅 Registrar hoje
+                            </button>
+                            <button onClick={() => setEditingDate(null)}
+                              className="text-xs text-gray-400 hover:text-gray-600 ml-1">
+                              Cancelar
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
 
-                            {/* Pagamento */}
-                            <div className="flex flex-col gap-1.5">
-                              <label className="text-[9px] font-black uppercase tracking-widest text-gray-500">Pagamento</label>
-                              <div className="flex gap-2">
-                                {[{ v: true, label: '💰 Confirmado', cls: 'bg-emerald-500 text-white' }, { v: false, label: 'Pendente', cls: 'bg-amber-400 text-black' }].map(opt => (
-                                  <button key={String(opt.v)}
-                                    onClick={() => saveControl(c.id, { pagamento_confirmado: opt.v })}
-                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${(c as any).pagamento_confirmado === opt.v ? opt.cls + ' shadow-sm' : 'bg-white border border-gray-200 text-gray-500 hover:border-gray-300'}`}>
-                                    {opt.label}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-
-                            {/* Aviso ao cliente */}
-                            <div className="flex flex-col gap-1.5">
-                              <label className="text-[9px] font-black uppercase tracking-widest text-gray-500">📧 Data do Aviso ao Cliente</label>
-                              <div className="flex gap-2 items-center">
-                                <input type="date"
-                                  defaultValue={(c as any).data_aviso_cliente || ''}
-                                  id={`aviso-${c.id}`}
-                                  className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-yellow-400 bg-white"
-                                />
-                                <button onClick={() => {
-                                  const val = (document.getElementById(`aviso-${c.id}`) as HTMLInputElement)?.value || null
-                                  saveControl(c.id, { data_aviso_cliente: val })
-                                }} disabled={savingControl === c.id}
-                                  className="bg-black text-yellow-400 px-3 py-1.5 rounded-lg text-xs font-black hover:bg-slate-800 disabled:opacity-50">
-                                  Salvar
-                                </button>
-                              </div>
-                            </div>
-
-                            {/* Agendamento */}
-                            <div className="flex flex-col gap-1.5">
-                              <label className="text-[9px] font-black uppercase tracking-widest text-gray-500">📅 Agendamento (Data e Horário)</label>
-                              <div className="flex gap-2 items-center">
-                                <input type="datetime-local"
-                                  defaultValue={(c as any).data_agendamento ? new Date((c as any).data_agendamento).toISOString().slice(0,16) : ''}
-                                  id={`agenda-${c.id}`}
-                                  className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-yellow-400 bg-white"
-                                />
-                                <button onClick={() => {
-                                  const val = (document.getElementById(`agenda-${c.id}`) as HTMLInputElement)?.value || null
-                                  saveControl(c.id, { data_agendamento: val || null })
-                                }} disabled={savingControl === c.id}
-                                  className="bg-black text-yellow-400 px-3 py-1.5 rounded-lg text-xs font-black hover:bg-slate-800 disabled:opacity-50">
-                                  Salvar
-                                </button>
-                              </div>
-                            </div>
+                    {/* ===== EDITOR INLINE DE VIDEOCONFERÊNCIA ===== */}
+                    {isEditAgenda && (
+                      <tr key={`agenda-${c.id}`} className="bg-violet-50/70 border-b border-violet-100">
+                        <td colSpan={8} className="px-6 py-3">
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-violet-600">🎥 Agendamento de Videoconferência — {c.razao_social}</span>
+                            <input type="datetime-local"
+                              defaultValue={(c as any).data_agendamento ? new Date((c as any).data_agendamento).toISOString().slice(0, 16) : ''}
+                              id={`agenda-${c.id}`}
+                              className="border border-violet-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-violet-400 bg-white"
+                            />
+                            <button
+                              onClick={() => {
+                                const val = (document.getElementById(`agenda-${c.id}`) as HTMLInputElement)?.value || null
+                                saveControl(c.id, { data_agendamento: val || null }).then(() => setEditingDate(null))
+                              }}
+                              className="bg-violet-600 text-white px-3 py-1.5 rounded-lg text-xs font-black hover:bg-violet-700">
+                              Salvar
+                            </button>
+                            {(c as any).data_agendamento && (
+                              <button
+                                onClick={() => saveControl(c.id, { data_agendamento: null }).then(() => setEditingDate(null))}
+                                className="bg-white border border-red-200 text-red-500 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-50">
+                                Remover
+                              </button>
+                            )}
+                            <button onClick={() => setEditingDate(null)}
+                              className="text-xs text-gray-400 hover:text-gray-600 ml-1">
+                              Cancelar
+                            </button>
                           </div>
                         </td>
                       </tr>
