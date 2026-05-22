@@ -153,7 +153,9 @@ export type UsoCertificado = 'e-CNPJ' | 'e-CPF' | 'NF-e' | 'CT-e' | 'eSocial' | 
 
 export interface CertificadoDigital {
   id: string
-  empresa_id: string
+  empresa_id?: string | null
+  empresa_nome_livre?: string | null
+  empresa_cnpj_livre?: string | null
   titular: string
   tipo: TipoCertificado
   uso: UsoCertificado
@@ -163,6 +165,9 @@ export interface CertificadoDigital {
   localizacao_fisica?: string
   responsavel_custodia_id?: string
   observacoes?: string
+  pagamento_confirmado?: boolean
+  data_aviso_cliente?: string | null
+  data_agendamento?: string | null
   created_by?: string
   created_at: string
   updated_at: string

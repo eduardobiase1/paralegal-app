@@ -46,7 +46,11 @@ function CertificadosPageInner() {
 
   useEffect(() => { load() }, [])
 
-  const filtered = filtroEmpresa ? certs.filter(c => c.empresa_id === filtroEmpresa) : certs
+  const filtered = filtroEmpresa === '__avulsa__'
+    ? certs.filter(c => !c.empresa_id)
+    : filtroEmpresa
+      ? certs.filter(c => c.empresa_id === filtroEmpresa)
+      : certs
 
   async function handleDelete() {
     if (!deleteItem) return
@@ -75,6 +79,7 @@ function CertificadosPageInner() {
       <div className="mb-4">
         <select className="input max-w-xs" value={filtroEmpresa} onChange={e => setFiltroEmpresa(e.target.value)}>
           <option value="">Todas as empresas</option>
+          <option value="__avulsa__">— Empresas Avulsas —</option>
           {empresas.map(e => <option key={e.id} value={e.id}>{e.razao_social}</option>)}
         </select>
       </div>
@@ -112,7 +117,12 @@ function CertificadosPageInner() {
                     <>
                     <tr key={c.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3">
-                        <div className="font-medium text-gray-900 truncate max-w-[140px]">{c.razao_social}</div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-medium text-gray-900 truncate max-w-[130px]">{c.razao_social}</span>
+                          {!c.empresa_id && (
+                            <span className="text-[9px] font-black uppercase tracking-widest bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full flex-shrink-0">avulsa</span>
+                          )}
+                        </div>
                         <div className="text-xs text-gray-500 font-mono">{c.cnpj && formatCNPJ(c.cnpj)}</div>
                       </td>
                       <td className="px-4 py-3 text-gray-700">{c.titular}</td>
