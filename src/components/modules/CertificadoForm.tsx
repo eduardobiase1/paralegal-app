@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { CertificadoDigital, Empresa } from '@/types'
 import { formatDateInput } from '@/lib/utils'
+import { useOrg } from '@/lib/org-context'
 import toast from 'react-hot-toast'
 
 const ACS = ['Serasa', 'Certisign', 'Valid', 'Soluti', 'Safeweb', 'VRSafe', 'Outro']
@@ -22,6 +23,7 @@ function todayISO() {
 export default function CertificadoForm({ empresas, certificado, defaultEmpresaId, onSuccess }: Props) {
   const [supabase] = useState(createClient)
   const [loading, setLoading] = useState(false)
+  const { orgId } = useOrg()
 
   const modoInicial = certificado?.empresa_nome_livre ? 'avulsa' : 'cadastrada'
   const [modoEmpresa, setModoEmpresa] = useState<'cadastrada' | 'avulsa'>(modoInicial)
@@ -83,10 +85,12 @@ export default function CertificadoForm({ empresas, certificado, defaultEmpresaI
       payload.empresa_id = form.empresa_id
       payload.empresa_nome_livre = null
       payload.empresa_cnpj_livre = null
+      payload.org_id = null
     } else {
       payload.empresa_id = null
       payload.empresa_nome_livre = form.empresa_nome_livre.trim()
       payload.empresa_cnpj_livre = form.empresa_cnpj_livre.trim() || null
+      payload.org_id = orgId
     }
 
     let error
