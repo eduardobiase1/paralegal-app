@@ -19,6 +19,11 @@ interface Props {
 function todayISO() {
   return new Date().toISOString().slice(0, 10)
 }
+function toLocalDatetimeInput(iso: string): string {
+  const d = new Date(iso)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
 
 export default function CertificadoForm({ empresas, certificado, defaultEmpresaId, onSuccess }: Props) {
   const [supabase] = useState(createClient)
@@ -44,7 +49,7 @@ export default function CertificadoForm({ empresas, certificado, defaultEmpresaI
     pagamento_confirmado:   certificado?.pagamento_confirmado ?? false,
     data_aviso_cliente:     (certificado as any)?.data_aviso_cliente ?? '',
     data_agendamento:       (certificado as any)?.data_agendamento
-                              ? new Date((certificado as any).data_agendamento).toISOString().slice(0, 16)
+                              ? toLocalDatetimeInput((certificado as any).data_agendamento)
                               : '',
     certificado_finalizado: (certificado as any)?.certificado_finalizado ?? false,
   })
@@ -77,7 +82,7 @@ export default function CertificadoForm({ empresas, certificado, defaultEmpresaI
       // Controle
       pagamento_confirmado:     form.pagamento_confirmado,
       data_aviso_cliente:       form.data_aviso_cliente || null,
-      data_agendamento:         form.data_agendamento || null,
+      data_agendamento:         form.data_agendamento ? new Date(form.data_agendamento).toISOString() : null,
       certificado_finalizado:   form.certificado_finalizado,
     }
 

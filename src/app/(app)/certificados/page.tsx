@@ -26,6 +26,17 @@ function fmtDateTime(iso?: string | null) {
 function todayISO() {
   return new Date().toISOString().slice(0, 10)
 }
+// Converte ISO UTC → string local para input datetime-local
+function toLocalDatetimeInput(iso: string): string {
+  const d = new Date(iso)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+// Converte string local do input → ISO UTC para salvar no banco
+function localDatetimeToISO(localStr: string): string | null {
+  if (!localStr) return null
+  return new Date(localStr).toISOString()
+}
 
 function CertificadosPageInner() {
   const searchParams = useSearchParams()
@@ -167,11 +178,11 @@ function CertificadosPageInner() {
             <div className="flex items-center gap-3 flex-wrap">
               <span className="text-[10px] font-black uppercase tracking-widest text-violet-600">🎥 Agendamento — {c.razao_social}</span>
               <input type="datetime-local" id={`agenda-${c.id}`}
-                defaultValue={(c as any).data_agendamento ? new Date((c as any).data_agendamento).toISOString().slice(0, 16) : ''}
+                defaultValue={(c as any).data_agendamento ? toLocalDatetimeInput((c as any).data_agendamento) : ''}
                 className="border border-violet-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-violet-400 bg-white" />
               <button onClick={() => {
-                const val = (document.getElementById(`agenda-${c.id}`) as HTMLInputElement)?.value || null
-                saveControl(c.id, { data_agendamento: val || null }).then(() => setEditingDate(null))
+                const raw = (document.getElementById(`agenda-${c.id}`) as HTMLInputElement)?.value || null
+                saveControl(c.id, { data_agendamento: localDatetimeToISO(raw ?? '') }).then(() => setEditingDate(null))
               }} className="bg-violet-600 text-white px-3 py-1.5 rounded-lg text-xs font-black hover:bg-violet-700">Salvar</button>
               {(c as any).data_agendamento && (
                 <button onClick={() => saveControl(c.id, { data_agendamento: null }).then(() => setEditingDate(null))}
