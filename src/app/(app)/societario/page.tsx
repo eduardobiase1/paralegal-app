@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
+import { useEffect, useState, useCallback, useMemo, useRef, Suspense } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useOrg } from '@/lib/org-context'
+import { useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 
 // ─── Labels ──────────────────────────────────────────────────────────────────
@@ -253,10 +254,11 @@ function getInitials(nome: string): string {
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 
-export default function SocietarioPage() {
+function SocietarioPageInner() {
   const { orgId, orgName, role } = useOrg()
   const isViewer = role === 'viewer'
   const [supabase] = useState(createClient())
+  const searchParams = useSearchParams()
 
   // ── Dados ────────────────────────────────────────────────────────────────
   const [processos, setProcessos] = useState<any[]>([])
@@ -322,6 +324,15 @@ export default function SocietarioPage() {
   }, [supabase, orgId])
 
   useEffect(() => { if (orgId) fetchData() }, [orgId, fetchData])
+
+  // Auto-seleciona processo via ?processo=ID (vindo do Dashboard)
+  useEffect(() => {
+    const procId = searchParams.get('processo')
+    if (procId && processos.length > 0 && !selectedId) {
+      setSelectedId(procId)
+      setActiveDetailTab('anotacoes')
+    }
+  }, [processos, searchParams])
 
   // Quando seleciona processo, carrega notas e inicializa docs se necessário
   useEffect(() => {
@@ -1033,4 +1044,8 @@ export default function SocietarioPage() {
       )}
     </div>
   )
+}
+
+export default function SocietarioPage() {
+  return <Suspense><SocietarioPageInner /></Suspense>
 }

@@ -317,7 +317,7 @@ export default function DashboardPage() {
                     <span className={`text-[9px] font-black px-2.5 py-1 rounded-full flex-shrink-0 whitespace-nowrap ${urgencia.badge}`}>
                       {urgencia.label} sem anotação
                     </span>
-                    <Link href="/societario" className="text-[10px] font-bold text-blue-600 hover:underline flex-shrink-0">Tratar →</Link>
+                    <Link href={`/societario?processo=${proc.id}`} className="text-[10px] font-bold text-blue-600 hover:underline flex-shrink-0">Tratar →</Link>
                   </div>
                 )
               })}
