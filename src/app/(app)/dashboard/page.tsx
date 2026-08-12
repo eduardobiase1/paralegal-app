@@ -186,7 +186,7 @@ export default function DashboardPage() {
                             {(proc.tipo || '').replace(/_/g, ' ')}
                           </span>
                         </div>
-                        <Link href="/societario" className="text-[10px] font-bold text-blue-600 hover:underline flex-shrink-0 mt-0.5">Abrir</Link>
+                        <Link href={`/societario?processo=${proc.id}`} className="text-[10px] font-bold text-blue-600 hover:underline flex-shrink-0 mt-0.5">Abrir</Link>
                       </div>
                       <div className="flex items-center gap-2 mt-1">
                         <div className="flex-1 h-1 bg-slate-100 rounded-full overflow-hidden">
