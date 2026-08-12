@@ -58,16 +58,12 @@ export default function DashboardPage() {
         if (!ultimaNotaMap[n.processo_id]) ultimaNotaMap[n.processo_id] = n.created_at
       })
 
-      // Gargalos: processos sem anotação há mais de 5 dias
+      // Fila de prioridade: TODOS os processos em andamento, do mais antigo sem anotação ao mais recente
       const agora = Date.now()
-      const paradosList = procsData.filter((p: any) => {
-        const ultimaNota = ultimaNotaMap[p.id] || p.created_at
-        const diasSem = Math.floor((agora - new Date(ultimaNota).getTime()) / 86400000)
-        return diasSem >= 5
-      }).map((p: any) => {
-        const ultimaNota = ultimaNotaMap[p.id] || null
-        const baseDate  = ultimaNota || p.created_at
-        const diasSem   = Math.floor((agora - new Date(baseDate).getTime()) / 86400000)
+      const paradosList = procsData.map((p: any) => {
+        const ultimaNota    = ultimaNotaMap[p.id] || null
+        const baseDate      = ultimaNota || p.created_at
+        const diasSem       = Math.floor((agora - new Date(baseDate).getTime()) / 86400000)
         const ultimaNotaFmt = ultimaNota
           ? new Date(ultimaNota).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
           : null
@@ -89,7 +85,7 @@ export default function DashboardPage() {
         emAndamento: procsData.length,
         vencimentos: todos.filter(a => { const d = diasParaVencer(a.data_vencimento); return d !== null && d <= 15 }).length,
         cobrancas: cobRes.count || 0,
-        parados: paradosList.length,
+        parados: paradosList.filter((p: any) => p.diasSemMovimento >= 7).length,
       })
       setProcessos(procsData.slice(0, 8))
       setAlertas(todos.slice(0, 25))
@@ -261,30 +257,33 @@ export default function DashboardPage() {
 
       </div>
 
-      {/* Gargalos — Processos sem anotação */}
+      {/* Fila de Prioridade — todos os processos em andamento */}
       {parados.length > 0 && (
         <section className="mt-6">
           <div className="flex items-center gap-3 mb-3">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-              <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Gargalos — Processos sem anotação</h3>
+              <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+              <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Fila de Prioridade — Próximo processo a tratar</h3>
             </div>
-            <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-red-100 text-red-700">{parados.length} processo{parados.length > 1 ? 's' : ''}</span>
+            <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">{parados.length} em andamento</span>
             <div className="flex gap-3 ml-auto text-[9px] font-bold text-slate-400">
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-400 inline-block" />5–9 dias</span>
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-orange-400 inline-block" />10–14 dias</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />Hoje</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-400 inline-block" />1–6 dias</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-orange-400 inline-block" />7–14 dias</span>
               <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500 inline-block" />15+ dias</span>
             </div>
           </div>
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="divide-y divide-slate-100">
-              {parados.map((proc: any) => {
+              {parados.map((proc: any, idx: number) => {
                 const dias = proc.diasSemMovimento
-                const urgencia = dias >= 15
-                  ? { bar: 'bg-red-500', badge: 'bg-red-100 text-red-700', row: 'hover:bg-red-50' }
-                  : dias >= 10
-                  ? { bar: 'bg-orange-400', badge: 'bg-orange-100 text-orange-700', row: 'hover:bg-orange-50' }
-                  : { bar: 'bg-yellow-400', badge: 'bg-yellow-100 text-yellow-700', row: 'hover:bg-yellow-50' }
+                const urgencia = dias === 0
+                  ? { bar: 'bg-emerald-400', badge: 'bg-emerald-100 text-emerald-700', row: 'hover:bg-emerald-50', label: 'Hoje' }
+                  : dias >= 15
+                  ? { bar: 'bg-red-500',    badge: 'bg-red-100 text-red-700',       row: 'hover:bg-red-50',    label: `${dias} dias` }
+                  : dias >= 7
+                  ? { bar: 'bg-orange-400', badge: 'bg-orange-100 text-orange-700', row: 'hover:bg-orange-50', label: `${dias} dias` }
+                  : { bar: 'bg-blue-400',   badge: 'bg-blue-100 text-blue-700',     row: 'hover:bg-blue-50',   label: `${dias} dia${dias !== 1 ? 's' : ''}` }
                 const checklist = proc.checklist || []
                 const conc = checklist.filter((i: any) => i.status === 'Concluido').length
                 const total = checklist.length || 1
@@ -292,6 +291,8 @@ export default function DashboardPage() {
                 const proxEtapa = checklist.find((i: any) => i.status !== 'Concluido')?.etapa
                 return (
                   <div key={proc.id} className={`flex items-center gap-4 px-5 py-3.5 transition-colors ${urgencia.row}`}>
+                    {/* Número de ordem */}
+                    <span className="text-[11px] font-black text-slate-300 w-4 flex-shrink-0 text-center">{idx + 1}</span>
                     <div className={`w-1 h-10 rounded-full flex-shrink-0 ${urgencia.bar}`} />
                     <div className="flex-1 min-w-0">
                       <p className="font-black text-slate-800 text-sm truncate">
@@ -300,7 +301,7 @@ export default function DashboardPage() {
                       <p className="text-[10px] text-slate-400 truncate mt-0.5">
                         {proc.temNota
                           ? `📝 Última anotação: ${proc.ultimaNotaFmt}`
-                          : '📝 Nenhuma anotação registrada'}
+                          : '📝 Nenhuma anotação ainda'}
                         {proxEtapa && <span className="ml-2">· ⏳ {proxEtapa}</span>}
                       </p>
                     </div>
@@ -314,7 +315,7 @@ export default function DashboardPage() {
                       <span className="text-[9px] font-black text-slate-400 w-7 text-right">{porc}%</span>
                     </div>
                     <span className={`text-[9px] font-black px-2.5 py-1 rounded-full flex-shrink-0 whitespace-nowrap ${urgencia.badge}`}>
-                      Faz {dias} dia{dias !== 1 ? 's' : ''} sem anotação
+                      {urgencia.label} sem anotação
                     </span>
                     <Link href="/societario" className="text-[10px] font-bold text-blue-600 hover:underline flex-shrink-0">Tratar →</Link>
                   </div>
