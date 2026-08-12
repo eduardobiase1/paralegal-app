@@ -36,7 +36,7 @@ export default function DashboardPage() {
   useEffect(() => {
     async function load() {
       setLoading(true)
-      const [empRes, procRes, cobRes, certRes, alvRes, licRes, cerRes] = await Promise.all([
+      const [empRes, procRes, cobRes, certRes, alvRes, licRes, cerRes, notasRes] = await Promise.all([
         supabase.from('empresas').select('id', { count: 'exact', head: true }),
         supabase.from('processos_societarios')
           .select('id, status, tipo, cliente_nome, created_at, updated_at, checklist, titulo, empresas(razao_social)')
@@ -47,21 +47,31 @@ export default function DashboardPage() {
         supabase.from('alvaras').select('id, tipo, orgao_emissor, data_vencimento, empresas(razao_social)').order('data_vencimento'),
         supabase.from('licencas_sanitarias').select('id, orgao, atividade_sanitaria, data_vencimento, empresas(razao_social)').order('data_vencimento'),
         supabase.from('certificados_digitais').select('id, tipo, uso, titular, data_vencimento, empresas(razao_social)').order('data_vencimento'),
+        supabase.from('processo_notas').select('processo_id, created_at').eq('org_id', orgId).order('created_at', { ascending: false }),
       ])
 
       const procsData = procRes.data || []
 
-      // Processos parados: sem atualização há mais de 5 dias
+      // Mapa: processo_id → data da última anotação
+      const ultimaNotaMap: Record<string, string> = {}
+      ;(notasRes.data || []).forEach((n: any) => {
+        if (!ultimaNotaMap[n.processo_id]) ultimaNotaMap[n.processo_id] = n.created_at
+      })
+
+      // Gargalos: processos sem anotação há mais de 5 dias
       const agora = Date.now()
       const paradosList = procsData.filter((p: any) => {
-        const ultima = p.updated_at || p.created_at
-        if (!ultima) return false
-        const diasSem = Math.floor((agora - new Date(ultima).getTime()) / 86400000)
+        const ultimaNota = ultimaNotaMap[p.id] || p.created_at
+        const diasSem = Math.floor((agora - new Date(ultimaNota).getTime()) / 86400000)
         return diasSem >= 5
       }).map((p: any) => {
-        const ultima = p.updated_at || p.created_at
-        const diasSem = Math.floor((agora - new Date(ultima).getTime()) / 86400000)
-        return { ...p, diasSemMovimento: diasSem }
+        const ultimaNota = ultimaNotaMap[p.id] || null
+        const baseDate  = ultimaNota || p.created_at
+        const diasSem   = Math.floor((agora - new Date(baseDate).getTime()) / 86400000)
+        const ultimaNotaFmt = ultimaNota
+          ? new Date(ultimaNota).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+          : null
+        return { ...p, diasSemMovimento: diasSem, ultimaNotaFmt, temNota: !!ultimaNota }
       }).sort((a: any, b: any) => b.diasSemMovimento - a.diasSemMovimento)
 
       const todos = [
@@ -251,13 +261,13 @@ export default function DashboardPage() {
 
       </div>
 
-      {/* Gargalos — Processos sem movimentação */}
+      {/* Gargalos — Processos sem anotação */}
       {parados.length > 0 && (
         <section className="mt-6">
           <div className="flex items-center gap-3 mb-3">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-              <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Gargalos — Processos sem movimentação</h3>
+              <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Gargalos — Processos sem anotação</h3>
             </div>
             <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-red-100 text-red-700">{parados.length} processo{parados.length > 1 ? 's' : ''}</span>
             <div className="flex gap-3 ml-auto text-[9px] font-bold text-slate-400">
@@ -271,10 +281,10 @@ export default function DashboardPage() {
               {parados.map((proc: any) => {
                 const dias = proc.diasSemMovimento
                 const urgencia = dias >= 15
-                  ? { bar: 'bg-red-500', badge: 'bg-red-100 text-red-700', row: 'hover:bg-red-50', label: `${dias} dias parado` }
+                  ? { bar: 'bg-red-500', badge: 'bg-red-100 text-red-700', row: 'hover:bg-red-50' }
                   : dias >= 10
-                  ? { bar: 'bg-orange-400', badge: 'bg-orange-100 text-orange-700', row: 'hover:bg-orange-50', label: `${dias} dias parado` }
-                  : { bar: 'bg-yellow-400', badge: 'bg-yellow-100 text-yellow-700', row: 'hover:bg-yellow-50', label: `${dias} dias parado` }
+                  ? { bar: 'bg-orange-400', badge: 'bg-orange-100 text-orange-700', row: 'hover:bg-orange-50' }
+                  : { bar: 'bg-yellow-400', badge: 'bg-yellow-100 text-yellow-700', row: 'hover:bg-yellow-50' }
                 const checklist = proc.checklist || []
                 const conc = checklist.filter((i: any) => i.status === 'Concluido').length
                 const total = checklist.length || 1
@@ -284,8 +294,15 @@ export default function DashboardPage() {
                   <div key={proc.id} className={`flex items-center gap-4 px-5 py-3.5 transition-colors ${urgencia.row}`}>
                     <div className={`w-1 h-10 rounded-full flex-shrink-0 ${urgencia.bar}`} />
                     <div className="flex-1 min-w-0">
-                      <p className="font-black text-slate-800 text-sm truncate">{proc.empresas?.razao_social || proc.cliente_nome || '—'}</p>
-                      <p className="text-[10px] text-slate-400 truncate mt-0.5">{proxEtapa ? `⏳ ${proxEtapa}` : 'Sem próxima etapa'}</p>
+                      <p className="font-black text-slate-800 text-sm truncate">
+                        {proc.empresas?.razao_social || proc.cliente_nome || '—'}
+                      </p>
+                      <p className="text-[10px] text-slate-400 truncate mt-0.5">
+                        {proc.temNota
+                          ? `📝 Última anotação: ${proc.ultimaNotaFmt}`
+                          : '📝 Nenhuma anotação registrada'}
+                        {proxEtapa && <span className="ml-2">· ⏳ {proxEtapa}</span>}
+                      </p>
                     </div>
                     <div className="hidden sm:block text-[9px] font-black px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 uppercase flex-shrink-0">
                       {(proc.tipo || '').replace(/_/g, ' ')}
@@ -296,7 +313,9 @@ export default function DashboardPage() {
                       </div>
                       <span className="text-[9px] font-black text-slate-400 w-7 text-right">{porc}%</span>
                     </div>
-                    <span className={`text-[9px] font-black px-2.5 py-1 rounded-full flex-shrink-0 ${urgencia.badge}`}>{urgencia.label}</span>
+                    <span className={`text-[9px] font-black px-2.5 py-1 rounded-full flex-shrink-0 whitespace-nowrap ${urgencia.badge}`}>
+                      Faz {dias} dia{dias !== 1 ? 's' : ''} sem anotação
+                    </span>
                     <Link href="/societario" className="text-[10px] font-bold text-blue-600 hover:underline flex-shrink-0">Tratar →</Link>
                   </div>
                 )
