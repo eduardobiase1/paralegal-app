@@ -89,15 +89,20 @@ function CertificadosPageInner() {
         ? list.filter(c => c.empresa_id === filtroEmpresa)
         : list
 
+  function norm(str: string): string {
+    return str.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+  }
+
   const byBusca = (list: CertificadoDigital[]) => {
-    const q = busca.trim().toLowerCase()
+    const q = norm(busca.trim())
     if (!q) return list
-    return list.filter(c =>
-      c.razao_social?.toLowerCase().includes(q) ||
-      c.titular?.toLowerCase().includes(q) ||
-      c.cnpj?.replace(/\D/g, '').includes(q.replace(/\D/g, '')) ||
-      (c as any).empresa_cnpj_livre?.replace(/\D/g, '').includes(q.replace(/\D/g, ''))
-    )
+    const qDigits = q.replace(/\D/g, '')
+    return list.filter(c => {
+      const nome = norm(c.razao_social || (c as any).empresa_nome_livre || '')
+      const titular = norm(c.titular || '')
+      const cnpj = (c.cnpj || (c as any).empresa_cnpj_livre || '').replace(/\D/g, '')
+      return nome.includes(q) || titular.includes(q) || (qDigits && cnpj.includes(qDigits))
+    })
   }
 
   const emProcesso  = byBusca(byEmpresa(certs.filter(c => !(c as any).certificado_finalizado)))
