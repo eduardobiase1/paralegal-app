@@ -51,6 +51,7 @@ function CertificadosPageInner() {
   const [editingDate, setEditingDate] = useState<EditingDate>(null)
   const [saving, setSaving] = useState<string | null>(null)
   const [aba, setAba] = useState<Aba>('processo')
+  const [busca, setBusca] = useState('')
 
   async function saveControl(id: string, fields: Record<string, any>) {
     setSaving(id)
@@ -88,8 +89,19 @@ function CertificadosPageInner() {
         ? list.filter(c => c.empresa_id === filtroEmpresa)
         : list
 
-  const emProcesso  = byEmpresa(certs.filter(c => !(c as any).certificado_finalizado))
-  const finalizados = byEmpresa(certs.filter(c => !!(c as any).certificado_finalizado))
+  const byBusca = (list: CertificadoDigital[]) => {
+    const q = busca.trim().toLowerCase()
+    if (!q) return list
+    return list.filter(c =>
+      c.razao_social?.toLowerCase().includes(q) ||
+      c.titular?.toLowerCase().includes(q) ||
+      c.cnpj?.replace(/\D/g, '').includes(q.replace(/\D/g, '')) ||
+      (c as any).empresa_cnpj_livre?.replace(/\D/g, '').includes(q.replace(/\D/g, ''))
+    )
+  }
+
+  const emProcesso  = byBusca(byEmpresa(certs.filter(c => !(c as any).certificado_finalizado)))
+  const finalizados = byBusca(byEmpresa(certs.filter(c => !!(c as any).certificado_finalizado)))
 
   async function handleDelete() {
     if (!deleteItem) return
@@ -216,11 +228,33 @@ function CertificadosPageInner() {
 
       {/* Filtro + Abas */}
       <div className="flex items-center justify-between mb-4 gap-4 flex-wrap">
-        <select className="input max-w-xs" value={filtroEmpresa} onChange={e => setFiltroEmpresa(e.target.value)}>
-          <option value="">Todas as empresas</option>
-          <option value="__avulsa__">— Empresas Avulsas —</option>
-          {empresas.map(e => <option key={e.id} value={e.id}>{e.razao_social}</option>)}
-        </select>
+        <div className="flex items-center gap-3 flex-wrap">
+          <select className="input max-w-xs" value={filtroEmpresa} onChange={e => setFiltroEmpresa(e.target.value)}>
+            <option value="">Todas as empresas</option>
+            <option value="__avulsa__">— Empresas Avulsas —</option>
+            {empresas.map(e => <option key={e.id} value={e.id}>{e.razao_social}</option>)}
+          </select>
+          <div className="relative">
+            <svg className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Buscar empresa, titular ou CNPJ..."
+              value={busca}
+              onChange={e => setBusca(e.target.value)}
+              className="input pl-9 w-72"
+            />
+            {busca && (
+              <button onClick={() => setBusca('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+        </div>
 
         {/* Abas */}
         <div className="flex rounded-xl overflow-hidden border border-slate-200 bg-white">
