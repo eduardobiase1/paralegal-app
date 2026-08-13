@@ -41,7 +41,9 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(loginUrl)
     }
   } catch {
-    // Falha de conexão — deixa o app lidar
+    const loginUrl = new URL('/login', request.url)
+    loginUrl.searchParams.set('next', request.nextUrl.pathname)
+    return NextResponse.redirect(loginUrl)
   }
 
   return supabaseResponse
