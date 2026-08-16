@@ -1,12 +1,16 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useOrg } from '@/lib/org-context'
+import Link from 'next/link'
 import toast from 'react-hot-toast'
 
-export default function AlvarasPage() {
+function AlvarasPage() {
   const { orgName } = useOrg()
+  const searchParams = useSearchParams()
+  const empresaFiltro = searchParams.get('empresa')
   const [supabase] = useState(createClient())
   const [dados, setDados] = useState<any[]>([])
   const [empresas, setEmpresas] = useState<any[]>([])
@@ -72,16 +76,32 @@ export default function AlvarasPage() {
     return 'text-slate-700'
   }
 
+  const empresaNome = empresaFiltro ? (empresas.find(e => e.id === empresaFiltro)?.razao_social || '') : ''
+  const dadosFiltrados = empresaFiltro ? dados.filter(i => i.empresa_id === empresaFiltro) : dados
+
   if (loading) return <div className="p-10 font-sans text-slate-400">Carregando...</div>
 
   return (
     <div className="p-4 md:p-8 space-y-4 md:space-y-6 bg-slate-50 min-h-screen font-sans">
+
+      {empresaFiltro && (
+        <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-2xl px-5 py-3">
+          <Link href={`/empresas/${empresaFiltro}`} className="flex items-center gap-1.5 text-blue-600 hover:text-blue-800 text-sm font-semibold transition-colors">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg>
+            Voltar para empresa
+          </Link>
+          <span className="text-blue-300">|</span>
+          <span className="text-sm text-blue-800 font-bold truncate">{empresaNome}</span>
+        </div>
+      )}
+
       <header className="flex flex-wrap justify-between items-center gap-3 bg-white p-4 md:p-6 rounded-2xl border border-slate-200 shadow-sm">
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-slate-900">Alvarás de Funcionamento</h1>
-          <p className="text-[10px] font-black uppercase text-blue-600 tracking-widest mt-1">{orgName}</p>
+          <p className="text-[10px] font-black uppercase text-blue-600 tracking-widest mt-1">{empresaNome || orgName}</p>
         </div>
-        <button onClick={() => setModal(true)} className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-800 transition-all whitespace-nowrap">
+        <button onClick={() => setForm(f => ({ ...f, empresa_id: empresaFiltro || '' })) || setModal(true)}
+          className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-800 transition-all whitespace-nowrap">
           + Novo Alvará
         </button>
       </header>
@@ -99,7 +119,7 @@ export default function AlvarasPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {dados.map(item => (
+            {dadosFiltrados.map(item => (
               <tr key={item.id} className="hover:bg-slate-50 transition-colors">
                 <td className="px-6 py-4 text-sm font-bold text-slate-800">{item.empresas?.razao_social || '—'}</td>
                 <td className="px-6 py-4 text-xs uppercase text-slate-600">{item.tipo}</td>
@@ -113,7 +133,7 @@ export default function AlvarasPage() {
                 </td>
               </tr>
             ))}
-            {dados.length === 0 && (
+            {dadosFiltrados.length === 0 && (
               <tr><td colSpan={6} className="px-6 py-12 text-center text-slate-400 italic">Nenhum alvará cadastrado.</td></tr>
             )}
           </tbody>
@@ -180,4 +200,8 @@ export default function AlvarasPage() {
       )}
     </div>
   )
+}
+
+export default function AlvarasPageWrapper() {
+  return <Suspense><AlvarasPage /></Suspense>
 }

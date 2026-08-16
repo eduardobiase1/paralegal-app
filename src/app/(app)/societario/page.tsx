@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useMemo, useRef, Suspense } from 'rea
 import { createClient } from '@/lib/supabase/client'
 import { useOrg } from '@/lib/org-context'
 import { useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import toast from 'react-hot-toast'
 
 // ─── Labels ──────────────────────────────────────────────────────────────────
@@ -272,7 +273,7 @@ function SocietarioPageInner() {
 
   // ── Modal novo processo ──────────────────────────────────────────────────
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [formData, setFormData] = useState({ empresa_id: '', cliente_nome: '', tipo: 'abertura', titulo: '' })
+  const [formData, setFormData] = useState({ empresa_id: searchParams.get('empresa') || '', cliente_nome: '', tipo: 'abertura', titulo: '' })
 
   // ── Edição inline etapas ─────────────────────────────────────────────────
   const [editingItem, setEditingItem] = useState<{ procId: string; index: number } | null>(null)
@@ -302,10 +303,15 @@ function SocietarioPageInner() {
   const [editNotaText, setEditNotaText] = useState('')
 
   // ── Computed ─────────────────────────────────────────────────────────────
+  const empresaParamId = searchParams.get('empresa')
   const selectedProcesso = processos.find(p => p.id === selectedId) ?? null
   const processosFiltrados = useMemo(() =>
-    processos.filter(p => filtroStatus === 'todos' ? true : p.status === filtroStatus),
-    [processos, filtroStatus]
+    processos.filter(p => {
+      const matchStatus  = filtroStatus === 'todos' ? true : p.status === filtroStatus
+      const matchEmpresa = !empresaParamId || p.empresa_id === empresaParamId
+      return matchStatus && matchEmpresa
+    }),
+    [processos, filtroStatus, empresaParamId]
   )
 
   // ─── Fetch ─────────────────────────────────────────────────────────────────
@@ -849,8 +855,24 @@ function SocietarioPageInner() {
     finalizado: processos.filter(p => p.status === 'Finalizado').length,
   }
 
+  const empresaNomeSoc = empresaParamId
+    ? (empresas.find((e: any) => e.id === empresaParamId)?.razao_social || '')
+    : ''
+
   return (
     <div className="p-4 md:p-6 bg-[#F8FAFC] min-h-screen font-sans text-slate-900">
+
+      {/* Banner empresa filtrada */}
+      {empresaParamId && (
+        <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-2xl px-5 py-3 mb-4">
+          <Link href={`/empresas/${empresaParamId}`} className="flex items-center gap-1.5 text-blue-600 hover:text-blue-800 text-sm font-semibold transition-colors">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg>
+            Voltar para empresa
+          </Link>
+          <span className="text-blue-300">|</span>
+          <span className="text-sm text-blue-800 font-bold truncate">{empresaNomeSoc}</span>
+        </div>
+      )}
 
       {/* Cabeçalho */}
       <header className="flex flex-wrap justify-between items-center gap-3 mb-6">
@@ -858,7 +880,7 @@ function SocietarioPageInner() {
           <h1 className="text-2xl font-black italic tracking-tighter uppercase">
             PARALEGAL PRO <span className="text-yellow-500">| SOCIETÁRIO</span>
           </h1>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{orgName}</p>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{empresaNomeSoc || orgName}</p>
         </div>
         {isViewer ? (
           <span className="flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-700 px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wide">

@@ -11,6 +11,7 @@ import CertificadoForm from '@/components/modules/CertificadoForm'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import toast from 'react-hot-toast'
 import { useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 
 type EditingDate = { id: string; field: 'aviso' | 'agenda' } | null
 type Aba = 'processo' | 'certificados'
@@ -213,8 +214,24 @@ function CertificadosPageInner() {
     )
   }
 
+  const empresaNomeAtual = filtroEmpresa && filtroEmpresa !== '__avulsa__'
+    ? (empresas.find(e => e.id === filtroEmpresa)?.razao_social || '')
+    : ''
+
   return (
     <div className="p-6">
+      {/* Banner empresa filtrada */}
+      {filtroEmpresa && filtroEmpresa !== '__avulsa__' && searchParams.get('empresa') && (
+        <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-2xl px-5 py-3 mb-4">
+          <Link href={`/empresas/${filtroEmpresa}`} className="flex items-center gap-1.5 text-blue-600 hover:text-blue-800 text-sm font-semibold transition-colors">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg>
+            Voltar para empresa
+          </Link>
+          <span className="text-blue-300">|</span>
+          <span className="text-sm text-blue-800 font-bold truncate">{empresaNomeAtual}</span>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>

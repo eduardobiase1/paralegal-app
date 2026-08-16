@@ -1,8 +1,10 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useOrg } from '@/lib/org-context'
+import Link from 'next/link'
 import toast from 'react-hot-toast'
 
 const EMPTY_FORM = {
@@ -43,8 +45,10 @@ function vencBadge(dias: number | null) {
   return             { cls: 'bg-emerald-100 text-emerald-700', label: `${dias}d` }
 }
 
-export default function CertidoesPage() {
+function CertidoesPage() {
   const { orgName } = useOrg()
+  const searchParams = useSearchParams()
+  const empresaFiltro = searchParams.get('empresa')
   const [supabase] = useState(createClient())
   const [data, setData] = useState<any[]>([])
   const [empresas, setEmpresas] = useState<any[]>([])
@@ -70,7 +74,7 @@ export default function CertidoesPage() {
   useEffect(() => { load() }, [load])
 
   function openNovo() {
-    setForm({ ...EMPTY_FORM })
+    setForm({ ...EMPTY_FORM, empresa_id: empresaFiltro || '' })
     setModalMode('novo')
     setModal(true)
   }
@@ -156,13 +160,15 @@ export default function CertidoesPage() {
   }
 
   // Filtro/busca
+  const empresaNome = empresaFiltro ? (empresas.find(e => e.id === empresaFiltro)?.razao_social || '') : ''
   const filtered = data.filter(i => {
+    const matchEmpresa = !empresaFiltro || i.empresa_id === empresaFiltro
     const matchSearch = !search ||
       (i.empresas?.razao_social || '').toLowerCase().includes(search.toLowerCase()) ||
       (i.tipo || '').toLowerCase().includes(search.toLowerCase()) ||
       (i.orgao_emissor || '').toLowerCase().includes(search.toLowerCase())
     const matchPend = filterPendencia === 'todas' || (i.pendencia_status || 'nenhuma') === filterPendencia
-    return matchSearch && matchPend
+    return matchEmpresa && matchSearch && matchPend
   })
 
   const modalTitle = { novo: 'Nova Certidão Negativa', editar: 'Editar Certidão', renovar: 'Renovar Certidão' }
@@ -170,11 +176,25 @@ export default function CertidoesPage() {
   return (
     <div className="p-4 md:p-8 space-y-4 bg-slate-50 min-h-screen font-sans">
 
+      {/* Banner empresa filtrada */}
+      {empresaFiltro && (
+        <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-2xl px-5 py-3">
+          <Link href={`/empresas/${empresaFiltro}`} className="flex items-center gap-1.5 text-blue-600 hover:text-blue-800 text-sm font-semibold transition-colors">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg>
+            Voltar para empresa
+          </Link>
+          <span className="text-blue-300">|</span>
+          <span className="text-sm text-blue-800 font-bold truncate">{empresaNome}</span>
+        </div>
+      )}
+
       {/* Header */}
       <header className="flex flex-wrap justify-between items-center gap-3 bg-white p-4 md:p-6 rounded-2xl border border-slate-200 shadow-sm">
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-slate-900">Certidões Negativas</h1>
-          <p className="text-[10px] font-black uppercase text-blue-600 tracking-widest mt-1">{orgName}</p>
+          <p className="text-[10px] font-black uppercase text-blue-600 tracking-widest mt-1">
+            {empresaNome || orgName}
+          </p>
         </div>
         <button onClick={openNovo} className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-800 transition-all whitespace-nowrap">
           + Nova Certidão
@@ -380,4 +400,8 @@ export default function CertidoesPage() {
       )}
     </div>
   )
+}
+
+export default function CertidoesPageWrapper() {
+  return <Suspense><CertidoesPage /></Suspense>
 }
