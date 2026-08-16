@@ -1,11 +1,10 @@
 'use client'
 
-import { useEffect, useState, useMemo, Fragment } from 'react'
+import { useEffect, useState, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useOrg } from '@/lib/org-context'
 import toast from 'react-hot-toast'
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function getNatTag(natureza: string): string {
   if (!natureza) return ''
@@ -34,9 +33,8 @@ const TIPO_LABELS: Record<string, string> = {
 
 const REGIME_OPTIONS = ['Simples Nacional', 'Lucro Presumido', 'Lucro Real', 'MEI', 'Isento']
 
-// ── Componente principal ───────────────────────────────────────────────────────
-
 export default function EmpresasPage() {
+  const router = useRouter()
   const { orgId, orgName } = useOrg()
   const [supabase] = useState(createClient())
   const [empresas, setEmpresas] = useState<any[]>([])
@@ -45,13 +43,7 @@ export default function EmpresasPage() {
   const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isConsulting, setIsConsulting] = useState(false)
-  const [detailId, setDetailId] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'dados' | 'processos' | 'dossie' | 'socios' | 'controles' | 'documentos'>('dados')
   const [search, setSearch] = useState('')
-  const [docsPorEmpresa, setDocsPorEmpresa] = useState<Record<string, any>>({})
-  const [notaInput, setNotaInput] = useState('')
-  const [notaSaving, setNotaSaving] = useState(false)
-  const [pendenciaEdit, setPendenciaEdit] = useState<Record<string, string>>({})
 
   const initialForm = {
     cnpj: '', razao_social: '', nome_fantasia: '', situacao: '', data_situacao_cadastral: '',
@@ -74,7 +66,6 @@ export default function EmpresasPage() {
     })()
     setEmpresas(emps)
 
-    // Busca processos de todas as empresas
     if (emps.length > 0) {
       const ids = emps.map((e: any) => e.id)
       const { data: procs } = await supabase
@@ -140,59 +131,20 @@ export default function EmpresasPage() {
   async function handleExcluir(id: string) {
     if (!confirm('Excluir empresa permanentemente?')) return
     const { error } = await supabase.from('empresas').delete().eq('id', id)
-    if (!error) { fetchData(); if (detailId === id) setDetailId(null); toast.success('Empresa removida') }
-  }
-
-  function toggleDetail(empId: string, tab: typeof activeTab = 'dados') {
-    if (detailId === empId && activeTab === tab) { setDetailId(null); return }
-    setDetailId(empId); setActiveTab(tab)
-    if (tab === 'documentos') loadDocumentos(empId)
-  }
-
-  function diasParaVencer(data?: string): number | null {
-    if (!data) return null
-    const hoje = new Date(); hoje.setHours(0, 0, 0, 0)
-    const venc = new Date(data + 'T00:00:00')
-    return Math.round((venc.getTime() - hoje.getTime()) / 86400000)
-  }
-
-  function urgBadge(dias: number | null): string {
-    if (dias === null) return 'bg-slate-100 text-slate-400'
-    if (dias < 0)   return 'bg-red-600 text-white'
-    if (dias <= 15) return 'bg-red-100 text-red-700'
-    if (dias <= 30) return 'bg-orange-100 text-orange-700'
-    if (dias <= 60) return 'bg-yellow-100 text-yellow-700'
-    return 'bg-emerald-100 text-emerald-700'
-  }
-
-  function urgLabel(dias: number | null): string {
-    if (dias === null) return 'Sem data'
-    if (dias < 0)  return `Vencida há ${Math.abs(dias)}d`
-    if (dias === 0) return 'Vence HOJE'
-    return `${dias}d`
+    if (!error) { fetchData(); toast.success('Empresa removida') }
   }
 
   async function openMaps(emp: any) {
-    // Format CEP with hyphen (e.g. 01234-567)
     const cepFmt = (emp.cep || '').replace(/\D/g, '').replace(/^(\d{5})(\d{3})$/, '$1-$2')
-    // Full Brazilian address for geocoding
     const parts = [
-      emp.logradouro,
-      emp.numero,
-      emp.complemento,
-      emp.bairro,
+      emp.logradouro, emp.numero, emp.complemento, emp.bairro,
       emp.municipio && emp.uf ? `${emp.municipio} - ${emp.uf}` : (emp.municipio || emp.uf),
-      cepFmt,
-      'Brasil',
+      cepFmt, 'Brasil',
     ].filter(Boolean)
     const addr = parts.join(', ')
     const fallbackUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}`
-
-    // Open window immediately (synchronous) to avoid popup blocker
     const win = window.open('about:blank', '_blank')
-
     try {
-      // Free geocoding via Nominatim (OpenStreetMap) — no API key needed
       const res = await fetch(
         `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(addr)}&format=json&limit=1&countrycodes=br`,
         { headers: { 'Accept-Language': 'pt-BR' } }
@@ -200,7 +152,6 @@ export default function EmpresasPage() {
       const data = await res.json()
       if (data && data.length > 0) {
         const { lat, lon } = data[0]
-        // cbll = Street View center coordinates; cbp = heading/tilt/zoom
         if (win) win.location.href = `https://maps.google.com/maps?q=&layer=c&cbll=${lat},${lon}&cbp=12,0,,0,0`
       } else {
         if (win) win.location.href = fallbackUrl
@@ -210,50 +161,6 @@ export default function EmpresasPage() {
     }
   }
 
-  async function loadDocumentos(empId: string) {
-    if (docsPorEmpresa[empId]?.loadedAt && Date.now() - docsPorEmpresa[empId].loadedAt < 30000) return
-    const [cert, alv, lic, cer, notas] = await Promise.all([
-      supabase.from('certidoes').select('*').eq('empresa_id', empId).order('data_vencimento'),
-      supabase.from('alvaras').select('*').eq('empresa_id', empId).order('data_vencimento'),
-      supabase.from('licencas_sanitarias').select('*').eq('empresa_id', empId).order('data_vencimento'),
-      supabase.from('certificados_digitais').select('*').eq('empresa_id', empId).order('data_vencimento'),
-      supabase.from('empresa_notas').select('*').eq('empresa_id', empId).order('created_at', { ascending: false }),
-    ])
-    const emp = empresas.find((e: any) => e.id === empId)
-    setDocsPorEmpresa((prev: any) => ({
-      ...prev,
-      [empId]: {
-        certidoes: cert.data || [],
-        alvaras: alv.data || [],
-        licencas: lic.data || [],
-        certificados: cer.data || [],
-        notas: notas.data || [],
-        pendencia: emp?.pendencia_status || 'nenhuma',
-        loadedAt: Date.now(),
-      }
-    }))
-    setPendenciaEdit(prev => ({ ...prev, [empId]: emp?.pendencia_status || 'nenhuma' }))
-  }
-
-  async function addEmpresaNota(empId: string) {
-    if (!notaInput.trim()) return
-    setNotaSaving(true)
-    await supabase.from('empresa_notas').insert({ empresa_id: empId, nota: notaInput.trim() })
-    setNotaInput('')
-    setNotaSaving(false)
-    await loadDocumentos(empId)
-    setDocsPorEmpresa((prev: any) => ({ ...prev, [empId]: { ...prev[empId], loadedAt: 0 } }))
-    loadDocumentos(empId)
-  }
-
-  async function savePendencia(empId: string) {
-    const status = pendenciaEdit[empId] || 'nenhuma'
-    await supabase.from('empresas').update({ pendencia_status: status }).eq('id', empId)
-    setDocsPorEmpresa((prev: any) => ({ ...prev, [empId]: { ...prev[empId], pendencia: status } }))
-    toast.success('Pendência atualizada')
-  }
-
-  // ── Busca ─────────────────────────────────────────────────────────────────────
   const empresasFiltradas = useMemo(() => {
     const q = search.trim().toLowerCase()
     if (!q) return empresas
@@ -272,7 +179,7 @@ export default function EmpresasPage() {
   return (
     <div className="p-4 md:p-8 bg-[#F8FAFC] min-h-screen font-sans text-slate-900">
 
-      {/* ── Cabeçalho ── */}
+      {/* Cabeçalho */}
       <header className="flex flex-wrap justify-between items-start gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-black tracking-tight">Base de Clientes</h1>
@@ -290,7 +197,7 @@ export default function EmpresasPage() {
         </button>
       </header>
 
-      {/* ── Busca ── */}
+      {/* Busca */}
       <div className="mb-4 relative">
         <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none">🔍</span>
         <input
@@ -304,7 +211,7 @@ export default function EmpresasPage() {
         )}
       </div>
 
-      {/* ── Tabela ── */}
+      {/* Tabela */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[640px]">
@@ -321,463 +228,64 @@ export default function EmpresasPage() {
             </thead>
             <tbody>
               {empresasFiltradas.map(emp => {
-                const isOpen = detailId === emp.id
                 const tag = getNatTag(emp.natureza_juridica)
                 const processos = processosPorEmpresa[emp.id] || []
                 const ativos = processos.filter(p => p.status === 'Andamento')
 
                 return (
-                  <Fragment key={emp.id}>
-                    <tr
-                      onClick={() => toggleDetail(emp.id)}
-                      className={`border-b border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors ${isOpen ? 'bg-yellow-50 hover:bg-yellow-50 border-yellow-100' : ''}`}
-                    >
-                      <td className="px-4 py-3">
-                        <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase ${getSituacaoBadge(emp.situacao)}`}>
-                          {emp.situacao || 'ATIVA'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 max-w-[180px]">
-                        <p className="font-bold text-slate-800 text-sm truncate">{emp.razao_social}</p>
-                        {emp.nome_fantasia && emp.nome_fantasia !== '********' && (
-                          <p className="text-[11px] text-slate-400 truncate">{emp.nome_fantasia}</p>
+                  <tr
+                    key={emp.id}
+                    onClick={() => router.push(`/empresas/${emp.id}`)}
+                    className="border-b border-slate-100 hover:bg-yellow-50 cursor-pointer transition-colors"
+                  >
+                    <td className="px-4 py-3">
+                      <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase ${getSituacaoBadge(emp.situacao)}`}>
+                        {emp.situacao || 'ATIVA'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 max-w-[180px]">
+                      <p className="font-bold text-slate-800 text-sm truncate">{emp.razao_social}</p>
+                      {emp.nome_fantasia && emp.nome_fantasia !== '********' && (
+                        <p className="text-[11px] text-slate-400 truncate">{emp.nome_fantasia}</p>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 font-mono text-xs text-slate-500 hidden md:table-cell">{emp.cnpj}</td>
+                    <td className="px-4 py-3 text-xs text-slate-600 hidden sm:table-cell">
+                      {emp.municipio}{emp.uf ? `/${emp.uf}` : ''}
+                    </td>
+                    <td className="px-4 py-3 hidden lg:table-cell">
+                      <div className="flex flex-wrap gap-1">
+                        {tag && <span className="text-[9px] font-black px-2 py-0.5 rounded bg-slate-100 text-slate-600 uppercase">{tag}</span>}
+                        {emp.regime_tributario && (
+                          <span className="text-[9px] font-black px-2 py-0.5 rounded bg-blue-50 text-blue-600 uppercase">{emp.regime_tributario}</span>
                         )}
-                      </td>
-                      <td className="px-4 py-3 font-mono text-xs text-slate-500 hidden md:table-cell">{emp.cnpj}</td>
-                      <td className="px-4 py-3 text-xs text-slate-600 hidden sm:table-cell">
-                        {emp.municipio}{emp.uf ? `/${emp.uf}` : ''}
-                      </td>
-                      <td className="px-4 py-3 hidden lg:table-cell">
-                        <div className="flex flex-wrap gap-1">
-                          {tag && <span className="text-[9px] font-black px-2 py-0.5 rounded bg-slate-100 text-slate-600 uppercase">{tag}</span>}
-                          {emp.regime_tributario && (
-                            <span className="text-[9px] font-black px-2 py-0.5 rounded bg-blue-50 text-blue-600 uppercase">{emp.regime_tributario}</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-slate-500 hidden xl:table-cell">
-                        {ultimaAcaoPorEmpresa[emp.id] || '—'}
-                      </td>
-                      <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                        <div className="flex items-center justify-end gap-1">
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-xs text-slate-500 hidden xl:table-cell">
+                      {ultimaAcaoPorEmpresa[emp.id] || '—'}
+                    </td>
+                    <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                      <div className="flex items-center justify-end gap-1">
+                        {ativos.length > 0 && (
                           <button
-                            onClick={() => toggleDetail(emp.id, 'processos')}
-                            title="Processos"
-                            className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase transition-all ${isOpen && activeTab === 'processos' ? 'bg-black text-yellow-400' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                            onClick={() => router.push(`/societario?empresa=${emp.id}`)}
+                            title="Ver processos"
+                            className="px-2 py-1 rounded-lg text-[10px] font-black uppercase bg-blue-100 text-blue-700 hover:bg-blue-200 transition-all"
                           >
-                            {ativos.length > 0 ? `${ativos.length} proc.` : 'Processos'}
+                            {ativos.length} proc.
                           </button>
-                          <button
-                            onClick={() => toggleDetail(emp.id, 'dossie')}
-                            title="Dossiê CNPJ"
-                            className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase transition-all ${isOpen && activeTab === 'dossie' ? 'bg-black text-yellow-400' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-                          >Dossiê</button>
-                          <button
-                            onClick={() => { toggleDetail(emp.id, 'documentos') }}
-                            title="Documentos & Vencimentos"
-                            className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase transition-all ${isOpen && activeTab === 'documentos' ? 'bg-black text-yellow-400' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-                          >Docs</button>
-                          <button onClick={() => openMaps(emp)} title="Abrir Street View" className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-blue-100 text-slate-500 hover:text-blue-600 flex items-center justify-center transition-all">
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                          </button>
-                          <button onClick={() => { setFormData(emp); setIsModalOpen(true) }} title="Editar" className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-yellow-100 text-slate-500 hover:text-yellow-700 flex items-center justify-center text-sm transition-all">✎</button>
-                          <button onClick={() => handleExcluir(emp.id)} title="Excluir" className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-red-100 text-slate-500 hover:text-red-600 flex items-center justify-center text-sm transition-all">✕</button>
-                        </div>
-                      </td>
-                    </tr>
-
-                    {/* ── Central do Cliente (painel inline) ── */}
-                    {isOpen && (
-                      <tr>
-                        <td colSpan={7} className="p-0 border-b border-yellow-100">
-                          <div className="bg-slate-50">
-
-                            {/* Header do painel */}
-                            <div className="bg-black text-white px-4 py-2 flex items-center justify-between">
-                              <span className="text-[10px] font-black uppercase tracking-widest text-yellow-400">
-                                Central do Cliente &nbsp;|&nbsp; <span className="text-white">{emp.razao_social}</span>
-                              </span>
-                              <button onClick={() => setDetailId(null)} className="text-slate-400 hover:text-white text-xs font-black">✕</button>
-                            </div>
-
-                            {/* Abas */}
-                            <div className="flex border-b border-slate-200 bg-white overflow-x-auto">
-                              {([
-                                ['dados', 'Dados Gerais'],
-                                ['processos', 'Processos Ativos'],
-                                ['dossie', 'Dossiê CNPJ'],
-                                ['socios', 'Sócios (QSA)'],
-                                ['documentos', 'Documentos'],
-                                ['controles', 'Controles'],
-                              ] as const).map(([tab, label]) => (
-                                <button
-                                  key={tab}
-                                  onClick={() => setActiveTab(tab)}
-                                  className={`px-4 py-2.5 text-[10px] font-black uppercase whitespace-nowrap border-b-2 transition-all ${
-                                    activeTab === tab ? 'border-yellow-400 text-slate-900 bg-yellow-50' : 'border-transparent text-slate-400 hover:text-slate-700'
-                                  }`}
-                                >
-                                  {label}
-                                  {tab === 'processos' && ativos.length > 0 && (
-                                    <span className="ml-1.5 bg-blue-500 text-white text-[8px] rounded-full px-1.5 py-0.5">{ativos.length}</span>
-                                  )}
-                                </button>
-                              ))}
-                            </div>
-
-                            <div className="p-4 md:p-6">
-
-                              {/* ── Dados Gerais ── */}
-                              {activeTab === 'dados' && (
-                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 text-xs">
-                                  {([
-                                    ['Razão Social', emp.razao_social, 'col-span-2'],
-                                    ['Nome Fantasia', emp.nome_fantasia !== '********' ? emp.nome_fantasia : '—', ''],
-                                    ['CNPJ', emp.cnpj, ''],
-                                    ['Situação', emp.situacao, ''],
-                                    ['Abertura', emp.data_abertura?.split('-').reverse().join('/') || '—', ''],
-                                    ['Porte', emp.porte || '—', ''],
-                                    ['Capital Social', `R$ ${Number(emp.capital_social || 0).toLocaleString('pt-BR')}`, ''],
-                                    ['Regime Tributário', emp.regime_tributario || '—', ''],
-                                    ['Natureza Jurídica', emp.natureza_juridica || '—', 'col-span-2'],
-                                    ['Logradouro', `${emp.logradouro || ''}${emp.numero ? ', ' + emp.numero : ''}${emp.complemento ? ' ' + emp.complemento : ''}` || '—', 'col-span-2'],
-                                    ['Bairro', emp.bairro || '—', ''],
-                                    ['Município/UF', `${emp.municipio || ''}${emp.uf ? '/' + emp.uf : ''}` || '—', ''],
-                                    ['CEP', emp.cep || '—', ''],
-                                    ['E-mail', emp.email || '—', ''],
-                                    ['Telefone', emp.telefone || '—', ''],
-                                  ] as [string, string, string][]).map(([label, value, extra]) => (
-                                    <div key={label} className={extra}>
-                                      <p className="text-[9px] text-slate-400 font-black uppercase tracking-wide mb-0.5">{label}</p>
-                                      <p className="font-bold text-slate-700 break-words">{value}</p>
-                                    </div>
-                                  ))}
-                                  {emp.cnae_principal_codigo && (
-                                    <div className="col-span-2 sm:col-span-3 md:col-span-4">
-                                      <p className="text-[9px] text-slate-400 font-black uppercase tracking-wide mb-0.5">CNAE Principal</p>
-                                      <p className="font-bold text-slate-700">{emp.cnae_principal_codigo} — {emp.cnae_principal_descricao}</p>
-                                    </div>
-                                  )}
-                                  <div className="col-span-2 sm:col-span-3 md:col-span-4 pt-2 border-t border-slate-200">
-                                    <button onClick={() => { setFormData(emp); setIsModalOpen(true) }} className="bg-black text-yellow-400 px-5 py-2 rounded-xl text-xs font-black uppercase hover:bg-slate-800 transition-all">
-                                      ✎ Editar Dados
-                                    </button>
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* ── Processos Ativos ── */}
-                              {activeTab === 'processos' && (
-                                <div>
-                                  {processos.length === 0 ? (
-                                    <p className="text-sm text-slate-400 italic">Nenhum processo societário para esta empresa.</p>
-                                  ) : (
-                                    <div className="space-y-3">
-                                      {processos.map((proc: any) => {
-                                        const checklist = proc.checklist || []
-                                        const conc = checklist.filter((i: any) => i.status === 'Concluido').length
-                                        const total = checklist.length || 1
-                                        const porc = Math.round((conc / total) * 100)
-                                        return (
-                                          <div key={proc.id} className="bg-white rounded-xl border border-slate-200 p-4">
-                                            <div className="flex items-center justify-between mb-2">
-                                              <div>
-                                                <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase ${proc.status === 'Finalizado' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>
-                                                  {TIPO_LABELS[proc.tipo] || proc.tipo}
-                                                </span>
-                                                {proc.titulo && <span className="ml-2 text-[10px] text-yellow-600 font-bold">{proc.titulo}</span>}
-                                              </div>
-                                              <span className="text-[10px] text-slate-400 font-mono">
-                                                {new Date(proc.created_at).toLocaleDateString('pt-BR')}
-                                              </span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                              <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                                <div className={`h-full rounded-full ${porc === 100 ? 'bg-emerald-400' : 'bg-yellow-400'}`} style={{ width: `${porc}%` }} />
-                                              </div>
-                                              <span className="text-[10px] font-black text-slate-500 flex-shrink-0">{conc}/{total} etapas · {porc}%</span>
-                                            </div>
-                                          </div>
-                                        )
-                                      })}
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-
-                              {/* ── Dossiê CNPJ ── */}
-                              {activeTab === 'dossie' && (
-                                <div className="bg-white border-2 border-black rounded-xl overflow-hidden max-w-2xl">
-                                  <div className="p-4 bg-black text-yellow-400 text-center">
-                                    <h2 className="text-xl font-black italic tracking-tighter">PARALEGAL PRO</h2>
-                                    <h3 className="text-[9px] font-bold uppercase text-white mt-0.5 tracking-[0.3em]">Gestão de Dados Empresariais</h3>
-                                  </div>
-                                  <div className="grid grid-cols-2 sm:grid-cols-4 border-b-2 border-black text-[10px]">
-                                    <div className="p-2 border-r-2 border-black"><p className="text-[7px] text-slate-400 font-bold uppercase">CNPJ</p><p className="font-mono font-bold">{emp.cnpj}</p></div>
-                                    <div className="p-2 border-r-2 border-black col-span-2 flex items-center justify-center font-black text-[10px] uppercase text-center">Comprovante de Situação Cadastral</div>
-                                    <div className="p-2"><p className="text-[7px] text-slate-400 font-bold uppercase">ABERTURA</p><p className="font-bold">{emp.data_abertura?.split('-').reverse().join('/')}</p></div>
-                                  </div>
-                                  <div className="space-y-px bg-black">
-                                    <div className="bg-white p-2"><p className="text-[7px] text-slate-400 font-bold uppercase">NOME EMPRESARIAL</p><p className="text-[11px] font-black uppercase">{emp.razao_social}</p></div>
-                                    <div className="grid grid-cols-4 gap-px">
-                                      <div className="bg-white p-2 col-span-3"><p className="text-[7px] text-slate-400 font-bold uppercase">NOME DE FANTASIA</p><p className="text-[10px] font-bold uppercase">{emp.nome_fantasia}</p></div>
-                                      <div className="bg-white p-2"><p className="text-[7px] text-slate-400 font-bold uppercase">PORTE</p><p className="text-[10px] font-bold uppercase">{emp.porte}</p></div>
-                                    </div>
-                                    <div className="bg-white p-2"><p className="text-[7px] text-slate-400 font-bold uppercase">ATIVIDADE ECONÔMICA PRINCIPAL</p><p className="text-[9px] font-bold">{emp.cnae_principal_codigo} - {emp.cnae_principal_descricao}</p></div>
-                                    <div className="bg-white p-2"><p className="text-[7px] text-slate-400 font-bold uppercase">NATUREZA JURÍDICA</p><p className="text-[9px] font-bold uppercase">{emp.natureza_juridica}</p></div>
-                                    <div className="grid grid-cols-6 gap-px">
-                                      <div className="bg-white p-2 col-span-4"><p className="text-[7px] text-slate-400 font-bold uppercase">LOGRADOURO</p><p className="text-[9px] font-bold uppercase">{emp.logradouro}</p></div>
-                                      <div className="bg-white p-2"><p className="text-[7px] text-slate-400 font-bold uppercase">NÚMERO</p><p className="text-[9px] font-bold">{emp.numero}</p></div>
-                                      <div className="bg-white p-2"><p className="text-[7px] text-slate-400 font-bold uppercase">COMPL.</p><p className="text-[9px] font-bold uppercase">{emp.complemento}</p></div>
-                                    </div>
-                                    <div className="grid grid-cols-4 gap-px">
-                                      <div className="bg-white p-2"><p className="text-[7px] text-slate-400 font-bold uppercase">CEP</p><p className="text-[9px] font-bold">{emp.cep}</p></div>
-                                      <div className="bg-white p-2"><p className="text-[7px] text-slate-400 font-bold uppercase">BAIRRO</p><p className="text-[9px] font-bold uppercase">{emp.bairro}</p></div>
-                                      <div className="bg-white p-2"><p className="text-[7px] text-slate-400 font-bold uppercase">MUNICÍPIO</p><p className="text-[9px] font-bold uppercase">{emp.municipio}</p></div>
-                                      <div className="bg-white p-2"><p className="text-[7px] text-slate-400 font-bold uppercase">UF</p><p className="text-[9px] font-bold uppercase">{emp.uf}</p></div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-px">
-                                      <div className="bg-white p-2"><p className="text-[7px] text-slate-400 font-bold uppercase">SITUAÇÃO</p><p className={`text-[10px] font-black ${emp.situacao === 'ATIVA' ? 'text-emerald-600' : 'text-red-600'}`}>{emp.situacao}</p></div>
-                                      <div className="bg-white p-2"><p className="text-[7px] text-slate-400 font-bold uppercase">CAPITAL SOCIAL</p><p className="text-[10px] font-bold">R$ {Number(emp.capital_social || 0).toLocaleString('pt-BR')}</p></div>
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* ── Sócios ── */}
-                              {activeTab === 'socios' && (
-                                <div>
-                                  {(!emp.qsa || emp.qsa.length === 0) ? (
-                                    <p className="text-sm text-slate-400 italic">Nenhum sócio registrado.</p>
-                                  ) : (
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                                      {emp.qsa.map((s: any, i: number) => (
-                                        <div key={i} className="p-3 bg-white border-l-4 border-yellow-400 rounded-r-xl shadow-sm">
-                                          <p className="text-xs font-black uppercase text-slate-800">{s.nome || s.nome_socio}</p>
-                                          <p className="text-[10px] font-bold text-slate-400 uppercase mt-0.5">{s.qualificacao}</p>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-
-                              {/* ── Documentos & Vencimentos ── */}
-                              {activeTab === 'documentos' && (() => {
-                                const docs = docsPorEmpresa[emp.id]
-                                const pendOpts = [
-                                  { value: 'nenhuma', label: 'Sem pendência', color: 'text-emerald-600' },
-                                  { value: 'em_renovacao', label: 'Em renovação', color: 'text-blue-600' },
-                                  { value: 'aguardando_cliente', label: 'Aguardando cliente', color: 'text-yellow-600' },
-                                  { value: 'vencida_aguardando', label: 'Vencida — aguardando', color: 'text-orange-600' },
-                                  { value: 'impossivel_renovar', label: 'Impossível renovar', color: 'text-red-600' },
-                                ]
-
-                                if (!docs) {
-                                  loadDocumentos(emp.id)
-                                  return <div className="text-sm text-slate-400 animate-pulse">Carregando documentos...</div>
-                                }
-
-                                function DocRow({ item, tipo }: { item: any; tipo: string }) {
-                                  const dias = diasParaVencer(item.data_vencimento)
-                                  return (
-                                    <div className="flex items-center justify-between py-2 border-b border-slate-100 last:border-0 gap-3">
-                                      <div className="min-w-0">
-                                        <p className="text-xs font-bold text-slate-800 truncate">{item.tipo || item.orgao || item.orgao_emissor || tipo}</p>
-                                        {item.orgao_emissor && <p className="text-[10px] text-slate-400">{item.orgao_emissor}</p>}
-                                        {item.atividade_sanitaria && <p className="text-[10px] text-slate-400">{item.atividade_sanitaria}</p>}
-                                        {item.titular && <p className="text-[10px] text-slate-400">{item.titular} · {item.uso}</p>}
-                                      </div>
-                                      <div className="flex items-center gap-2 flex-shrink-0">
-                                        <span className="text-[10px] font-mono text-slate-600">
-                                          {item.data_vencimento ? new Date(item.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}
-                                        </span>
-                                        <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${urgBadge(dias)}`}>{urgLabel(dias)}</span>
-                                      </div>
-                                    </div>
-                                  )
-                                }
-
-                                return (
-                                  <div className="space-y-5">
-
-                                    {/* Pendência */}
-                                    <div className="p-3 bg-white rounded-xl border border-slate-200">
-                                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">Status de Pendência Geral</p>
-                                      <div className="flex items-center gap-2">
-                                        <select
-                                          className="flex-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold p-2 outline-none focus:border-yellow-400"
-                                          value={pendenciaEdit[emp.id] || docs.pendencia || 'nenhuma'}
-                                          onChange={e => setPendenciaEdit(prev => ({ ...prev, [emp.id]: e.target.value }))}
-                                        >
-                                          {pendOpts.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                                        </select>
-                                        <button onClick={() => savePendencia(emp.id)}
-                                          className="bg-black text-yellow-400 px-4 py-2 rounded-lg text-[10px] font-black uppercase hover:bg-slate-800 transition-all">
-                                          Salvar
-                                        </button>
-                                      </div>
-                                    </div>
-
-                                    {/* Documentos grid */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-                                      {/* Certidões por órgão */}
-                                      {(['Receita Federal', 'Estado', 'Prefeitura', 'CRF'] as const).map(orgao => {
-                                        const items = docs.certidoes.filter((c: any) =>
-                                          (c.orgao_emissor || '').toLowerCase().includes(orgao.toLowerCase()) ||
-                                          (orgao === 'Receita Federal' && (c.orgao_emissor || '').toLowerCase().includes('receita')) ||
-                                          (orgao === 'Estado' && (c.orgao_emissor || '').toLowerCase().includes('estadual')) ||
-                                          (orgao === 'Prefeitura' && (c.orgao_emissor || '').toLowerCase().includes('municipal'))
-                                        )
-                                        return (
-                                          <div key={orgao} className="bg-white rounded-xl border border-slate-200 p-3">
-                                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">📜 Certidão — {orgao}</p>
-                                            {items.length === 0 ? (
-                                              <p className="text-[10px] text-slate-300 italic">Nenhuma registrada</p>
-                                            ) : items.map((item: any) => <DocRow key={item.id} item={item} tipo="Certidão" />)}
-                                          </div>
-                                        )
-                                      })}
-
-                                      {/* Alvarás */}
-                                      <div className="bg-white rounded-xl border border-slate-200 p-3">
-                                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">🏛️ Alvarás</p>
-                                        {docs.alvaras.length === 0
-                                          ? <p className="text-[10px] text-slate-300 italic">Nenhum registrado</p>
-                                          : docs.alvaras.map((item: any) => <DocRow key={item.id} item={item} tipo="Alvará" />)
-                                        }
-                                      </div>
-
-                                      {/* Licenças Sanitárias */}
-                                      <div className="bg-white rounded-xl border border-slate-200 p-3">
-                                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">⚕️ Licenças Sanitárias</p>
-                                        {docs.licencas.length === 0
-                                          ? <p className="text-[10px] text-slate-300 italic">Nenhuma registrada</p>
-                                          : docs.licencas.map((item: any) => <DocRow key={item.id} item={item} tipo="Licença" />)
-                                        }
-                                      </div>
-
-                                      {/* Certificados Digitais */}
-                                      <div className="bg-white rounded-xl border border-slate-200 p-3">
-                                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">🔐 Certificados Digitais</p>
-                                        {docs.certificados.length === 0
-                                          ? <p className="text-[10px] text-slate-300 italic">Nenhum registrado</p>
-                                          : docs.certificados.map((item: any) => <DocRow key={item.id} item={item} tipo="Certificado" />)
-                                        }
-                                      </div>
-                                    </div>
-
-                                    {/* Histórico de comentários */}
-                                    <div className="bg-white rounded-xl border border-slate-200 p-3">
-                                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">💬 Histórico de Pendências</p>
-                                      <div className="flex gap-2 mb-3">
-                                        <input
-                                          className="flex-1 bg-slate-50 border border-slate-200 rounded-lg text-xs p-2 outline-none focus:border-yellow-400"
-                                          placeholder="Registrar comentário ou pendência..."
-                                          value={notaInput}
-                                          onChange={e => setNotaInput(e.target.value)}
-                                          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addEmpresaNota(emp.id) } }}
-                                        />
-                                        <button
-                                          onClick={() => addEmpresaNota(emp.id)}
-                                          disabled={notaSaving || !notaInput.trim()}
-                                          className="bg-black text-yellow-400 px-4 py-2 rounded-lg text-[10px] font-black uppercase hover:bg-slate-800 transition-all disabled:opacity-40">
-                                          {notaSaving ? '...' : 'Registrar'}
-                                        </button>
-                                      </div>
-                                      {docs.notas.length === 0 ? (
-                                        <p className="text-[10px] text-slate-300 italic text-center py-2">Nenhum comentário registrado.</p>
-                                      ) : (
-                                        <div className="space-y-2 max-h-48 overflow-y-auto">
-                                          {docs.notas.map((n: any) => (
-                                            <div key={n.id} className="flex gap-2 text-xs">
-                                              <span className="text-slate-300 flex-shrink-0 font-mono text-[9px] mt-0.5">
-                                                {new Date(n.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                                              </span>
-                                              <p className="text-slate-700">{n.nota}</p>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      )}
-                                    </div>
-
-                                  </div>
-                                )
-                              })()}
-
-                              {/* ── Controles ── */}
-                              {activeTab === 'controles' && (
-                                <div>
-                                  {/* Inscrições inline */}
-                                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-3">Inscrições</p>
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
-                                    {[
-                                      { key: 'inscricao_estadual',  label: 'Inscrição Estadual (I.E.)',  placeholder: 'Ex: 123.456.789.000' },
-                                      { key: 'inscricao_municipal', label: 'Inscrição Municipal (I.M.)', placeholder: 'Ex: 00123456/001-0' },
-                                    ].map(({ key, label, placeholder }) => (
-                                      <div key={key} className="flex flex-col gap-1">
-                                        <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">{label}</label>
-                                        <div className="flex gap-2">
-                                          <input
-                                            defaultValue={emp[key] || ''}
-                                            placeholder={placeholder}
-                                            id={`${emp.id}-${key}`}
-                                            className="flex-1 border border-slate-200 focus:border-yellow-400 rounded-xl px-3 py-2 text-sm outline-none bg-slate-50 focus:bg-white transition-all font-mono"
-                                          />
-                                          <button
-                                            onClick={async () => {
-                                              const val = (document.getElementById(`${emp.id}-${key}`) as HTMLInputElement)?.value?.trim() || null
-                                              const { error } = await supabase.from('empresas').update({ [key]: val }).eq('id', emp.id)
-                                              if (!error) {
-                                                setEmpresas(prev => prev.map(e => e.id === emp.id ? { ...e, [key]: val } : e))
-                                                toast.success('Salvo!')
-                                              }
-                                            }}
-                                            className="bg-black text-yellow-400 px-3 py-2 rounded-xl text-xs font-black hover:bg-slate-800 transition-all flex-shrink-0"
-                                          >
-                                            Salvar
-                                          </button>
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
-
-                                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-4">Ações Rápidas</p>
-                                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                                    {[
-                                      { label: 'Editar Dados', icon: '✎', action: () => { setFormData(emp); setIsModalOpen(true) }, color: 'hover:bg-yellow-50 hover:border-yellow-300 hover:text-yellow-700' },
-                                      { label: 'Ver Processos', icon: '📋', action: () => setActiveTab('processos'), color: 'hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700' },
-                                      { label: 'Dossiê CNPJ', icon: '📄', action: () => setActiveTab('dossie'), color: 'hover:bg-slate-100 hover:border-slate-300' },
-                                      { label: 'Ver Sócios', icon: '👥', action: () => setActiveTab('socios'), color: 'hover:bg-purple-50 hover:border-purple-300 hover:text-purple-700' },
-                                      { label: 'Ir p/ Societário', icon: '⚖️', action: () => window.location.href = '/societario', color: 'hover:bg-indigo-50 hover:border-indigo-300 hover:text-indigo-700' },
-                                      { label: 'Ir p/ Certidões', icon: '📜', action: () => window.location.href = '/certidoes', color: 'hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700' },
-                                      { label: 'Ir p/ Alvarás', icon: '🏛️', action: () => window.location.href = '/alvaras', color: 'hover:bg-orange-50 hover:border-orange-300 hover:text-orange-700' },
-                                      { label: 'Ir p/ Financeiro', icon: '💰', action: () => window.location.href = '/financeiro', color: 'hover:bg-green-50 hover:border-green-300 hover:text-green-700' },
-                                      { label: 'Excluir Empresa', icon: '🗑️', action: () => handleExcluir(emp.id), color: 'hover:bg-red-50 hover:border-red-300 hover:text-red-700' },
-                                    ].map(btn => (
-                                      <button
-                                        key={btn.label}
-                                        onClick={btn.action}
-                                        className={`flex items-center gap-2 px-4 py-3 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 text-left transition-all ${btn.color}`}
-                                      >
-                                        <span>{btn.icon}</span>
-                                        <span>{btn.label}</span>
-                                      </button>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
+                        )}
+                        <button onClick={() => openMaps(emp)} title="Abrir Street View" className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-blue-100 text-slate-500 hover:text-blue-600 flex items-center justify-center transition-all">
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                        </button>
+                        <button onClick={() => { setFormData(emp); setIsModalOpen(true) }} title="Editar" className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-yellow-100 text-slate-500 hover:text-yellow-700 flex items-center justify-center text-sm transition-all">✎</button>
+                        <button onClick={() => handleExcluir(emp.id)} title="Excluir" className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-red-100 text-slate-500 hover:text-red-600 flex items-center justify-center text-sm transition-all">✕</button>
+                      </div>
+                    </td>
+                  </tr>
                 )
               })}
             </tbody>
@@ -791,7 +299,7 @@ export default function EmpresasPage() {
         )}
       </div>
 
-      {/* ── Modal Cadastro / Edição ── */}
+      {/* Modal Cadastro / Edição */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 text-left">
           <div className="bg-white w-full max-w-lg rounded-2xl p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto">
@@ -818,7 +326,6 @@ export default function EmpresasPage() {
                   <p className="text-[10px] text-slate-500 font-mono mt-0.5">{formData.cnpj}</p>
                 </div>
 
-                {/* Regime tributário */}
                 <div>
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Regime Tributário</label>
                   <select
