@@ -166,7 +166,7 @@ function gerarHTML(f: F): string {
 <p style="${C}">(artigos 997, III; 1.052, 1.055, CC/2002)</p>
 <p style="${S}"><b>CLÁUSULA TERCEIRA – DO OBJETIVO SOCIAL:</b></p>
 <p style="${S}">A sociedade tem como objetivo social o ramo de:</p>
-<p style="${S}">${ob}</p>
+<p style="${S}"><b>• ${ob}</b></p>
 <p style="${S}"><b>CLÁUSULA QUARTA – DO PRAZO DE DURAÇÃO E INÍCIO DAS ATIVIDADES:</b></p>
 <p style="${S}">A sociedade iniciará suas atividades a partir da assinatura do instrumento de constituição e o prazo de duração é por tempo indeterminado.</p>
 <p style="${C}">(artigo 997, II, CC/2002)</p>
@@ -261,7 +261,7 @@ async function gerarDocx(f: F): Promise<Blob> {
     pb('(artigos 997, III; 1.052, 1.055, CC/2002)', false, true),
     pb('CLÁUSULA TERCEIRA – DO OBJETIVO SOCIAL:', true),
     pb('A sociedade tem como objetivo social o ramo de:'),
-    pb(f.objetoSocial||'[objeto social]'),
+    pb(`• ${f.objetoSocial||'[objeto social]'}`, true),
     pb('CLÁUSULA QUARTA – DO PRAZO DE DURAÇÃO E INÍCIO DAS ATIVIDADES:', true),
     pb('A sociedade iniciará suas atividades a partir da assinatura do instrumento de constituição e o prazo de duração é por tempo indeterminado.'),
     pb('(artigo 997, II, CC/2002)', false, true),
