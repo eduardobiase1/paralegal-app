@@ -94,13 +94,18 @@ function fmtData(iso: string) {
 function v(f: F) {
   const m = f.socioGenero === 'masculino'
   return {
-    abaixo: m?'o abaixo assinado':'a abaixo assinada',
-    Unico: m?'O único sócio':'A única sócia',
-    unico: m?'o único sócio':'a única sócia',
-    do: m?'do único sócio':'da única sócia',
-    trat: m?'o Sr.':'a Sra.',
-    res: m?'residente e domiciliado':'residente e domiciliada',
-    port: m?'portador':'portadora',
+    abaixo:       m?'o abaixo assinado':'a abaixo assinada',
+    Unico:        m?'O único sócio':'A única sócia',
+    unico:        m?'o único sócio':'a única sócia',
+    do:           m?'do único sócio':'da única sócia',
+    pelo:         m?'pelo único sócio':'pela única sócia',
+    trat:         m?'o Sr.':'a Sra.',
+    res:          m?'residente e domiciliado':'residente e domiciliada',
+    port:         m?'portador':'portadora',
+    qualificado:  m?'qualificado':'qualificada',
+    administrador:m?'O administrador':'A administradora',
+    falecendo:    m?'Falecendo ou interditado o único sócio':'Falecendo ou interditada a única sócia',
+    cl8titulo:    m?'CLÁUSULA OITAVA – DO FALECIMENTO E INTERDIÇÃO DO ÚNICO SÓCIO:':'CLÁUSULA OITAVA – DO FALECIMENTO E INTERDIÇÃO DA ÚNICA SÓCIA:',
   }
 }
 
@@ -156,7 +161,7 @@ function gerarHTML(f: F): string {
 <p style="${C}">(artigo 997, II, CC/2002)</p>
 <p style="${S}"><b>PARÁGRAFO ÚNICO:</b> O referido endereço é de uso exclusivo para correspondência.</p>
 <p style="${S}"><b>CLÁUSULA SEGUNDA – DO CAPITAL SOCIAL:</b></p>
-<p style="${S}">O capital social é de R$ ${cv} (${ce}), divididos em ${qn} (${qe}) quotas no valor de R$ 1,00 (Um real) cada uma, totalmente subscrito e integralizada em moeda corrente do país, em sua totalidade pelo único sócio <b>${nome}</b>.</p>
+<p style="${S}">O capital social é de R$ ${cv} (${ce}), divididos em ${qn} (${qe}) quotas no valor de R$ 1,00 (Um real) cada uma, totalmente subscrito e integralizada em moeda corrente do país, em sua totalidade ${g.pelo} <b>${nome}</b>.</p>
 <p style="${S}"><b>PARÁGRAFO ÚNICO:</b> Em consonância ao artigo 1.052 da Lei 10.406/2002 a responsabilidade ${g.do} é restrita ao valor de suas quotas, não havendo responsabilidade solidária pelas obrigações sociais, respondendo, no entanto, pela integralização do capital social.</p>
 <p style="${C}">(artigos 997, III; 1.052, 1.055, CC/2002)</p>
 <p style="${S}"><b>CLÁUSULA TERCEIRA – DO OBJETIVO SOCIAL:</b></p>
@@ -170,18 +175,18 @@ function gerarHTML(f: F): string {
 <p style="${S}"><b>CLÁUSULA SEXTA – DA ADMINISTRAÇÃO E GERENCIAMENTO:</b></p>
 <p style="${S}">A administração da sociedade caberá ${g.unico} ${g.trat} <b>${nome}</b>, assinando isoladamente, com os poderes e atribuições ilimitados autorizando o uso do nome empresarial, vedada, no entanto, em atividades estranhas ao interesse social ou assumir obrigações seja em forma de qualquer da quotista ou de terceiros, bem como onerar ou alienar bens imóveis da sociedade, obrigar a sociedade em atividades estranhas ao objeto social, tais como fiança, aval, endosso, aceite e de todo e qualquer título de favor.</p>
 <p style="${S}"><b>PARÁGRAFO PRIMEIRO:</b> ${g.Unico} poderá ter uma remuneração mensal a título de pró-labore, que será determinada mensalmente de acordo com a capacidade financeira da sociedade e os resultados apurados.</p>
-<p style="${S}"><b>PARÁGRAFO SEGUNDO:</b> O administrador da sociedade poderá nomear procuradores para agirem em nome da sociedade, cujo instrumento de mandato estabelecerá os poderes que lhes são atribuídos.</p>
+<p style="${S}"><b>PARÁGRAFO SEGUNDO:</b> ${g.administrador} da sociedade poderá nomear procuradores para agirem em nome da sociedade, cujo instrumento de mandato estabelecerá os poderes que lhes são atribuídos.</p>
 <p style="${C}">(artigos 997, VI; 1.013; 1.015; 1.064, CC/2002)</p>
 <p style="${S}"><b>CLÁUSULA SÉTIMA – DOS DEVERES CONTÁBEIS:</b></p>
 <p style="${S}">Ao término de cada exercício social, em 31 de dezembro, será procedido a elaboração do inventário, do balanço patrimonial e do balanço de resultado econômico, cabendo ${g.unico}, os lucros e perdas apuradas.</p>
 <p style="${S}"><b>PARÁGRAFO ÚNICO:</b> Fica a sociedade limitada unipessoal autorizada a levantar balanços ou balancetes intermediários em qualquer período do ano calendário, observadas as disposições legais, podendo inclusive, distribuir os resultados se houver e se for de interesse ${g.do}, inclusive a obrigação da reposição dos lucros, se os mesmos forem distribuídos com prejuízo do capital.</p>
 <p style="${C}">(artigo 1.065, CC/2002)</p>
-<p style="${S}"><b>CLÁUSULA OITAVA – DO FALECIMENTO E INTERDIÇÃO DO ÚNICO SÓCIO:</b></p>
-<p style="${S}">Falecendo ou interditado o único sócio da sociedade, a empresa continuará suas atividades com os herdeiros, sucessores. Não sendo possível ou inexistindo interesse destes, o valor de seus haveres será apurado e liquidado com base na situação patrimonial da empresa, à data da resolução, verificada em balanço especialmente levantado.</p>
+<p style="${S}"><b>${g.cl8titulo}</b></p>
+<p style="${S}">${g.falecendo} da sociedade, a empresa continuará suas atividades com os herdeiros, sucessores. Não sendo possível ou inexistindo interesse destes, o valor de seus haveres será apurado e liquidado com base na situação patrimonial da empresa, à data da resolução, verificada em balanço especialmente levantado.</p>
 <p style="${S}"><b>CLÁUSULA NONA – DA DISSOLUÇÃO E LIQUIDAÇÃO DA SOCIEDADE:</b></p>
 <p style="${S}">A sociedade poderá ser dissolvida por iniciativa ${g.do}, que, nessa hipótese, realizará diretamente a liquidação ou indicará um liquidante, ditando-lhe a forma de liquidação. Solvidas as dívidas e extintas as obrigações da sociedade, o patrimônio remanescente será integramente incorporado ao patrimônio ${g.do}.</p>
 <p style="${S}"><b>CLÁUSULA DÉCIMA – DOS DESIMPEDIMENTOS:</b></p>
-<p style="${S}">${g.Unico}, já qualificado, declara, sob as penas da lei, que não está impedido de exercer a administração da sociedade, nem por decorrência de lei especial, nem em virtude de condenação nas hipóteses mencionadas no artigo 1.011, § 1º, do Código Civil (Lei nº. 10.406 de 10/01/2002).</p>
+<p style="${S}">${g.Unico}, já ${g.qualificado}, declara, sob as penas da lei, que não está impedido de exercer a administração da sociedade, nem por decorrência de lei especial, nem em virtude de condenação nas hipóteses mencionadas no artigo 1.011, § 1º, do Código Civil (Lei nº. 10.406 de 10/01/2002).</p>
 <p style="${C}">(artigo 1.011, I, CC/2002)</p>
 <p style="${S}"><b>${cl11t}</b></p>
 <p style="${S}">${cl11b}</p>
@@ -251,7 +256,7 @@ async function gerarDocx(f: F): Promise<Blob> {
     pb('(artigo 997, II, CC/2002)', false, true),
     pm([{text:'PARÁGRAFO ÚNICO: ', bold:true},{text:'O referido endereço é de uso exclusivo para correspondência.'}]),
     pb('CLÁUSULA SEGUNDA – DO CAPITAL SOCIAL:', true),
-    pm([{text:`O capital social é de R$ ${f.capitalValor||'[valor]'} (${f.capitalExtenso||'[extenso]'}), divididos em ${f.quotasNumero||'[nº]'} (${f.quotasExtenso||'[extenso]'}) quotas no valor de R$ 1,00 (Um real) cada uma, totalmente subscrito e integralizada em moeda corrente do país, em sua totalidade pelo único sócio `},{text:nome,bold:true},{text:'.'}]),
+    pm([{text:`O capital social é de R$ ${f.capitalValor||'[valor]'} (${f.capitalExtenso||'[extenso]'}), divididos em ${f.quotasNumero||'[nº]'} (${f.quotasExtenso||'[extenso]'}) quotas no valor de R$ 1,00 (Um real) cada uma, totalmente subscrito e integralizada em moeda corrente do país, em sua totalidade ${g.pelo} `},{text:nome,bold:true},{text:'.'}]),
     pm([{text:'PARÁGRAFO ÚNICO: ', bold:true},{text:`Em consonância ao artigo 1.052 da Lei 10.406/2002 a responsabilidade ${g.do} é restrita ao valor de suas quotas, não havendo responsabilidade solidária pelas obrigações sociais, respondendo, no entanto, pela integralização do capital social.`}]),
     pb('(artigos 997, III; 1.052, 1.055, CC/2002)', false, true),
     pb('CLÁUSULA TERCEIRA – DO OBJETIVO SOCIAL:', true),
@@ -265,18 +270,18 @@ async function gerarDocx(f: F): Promise<Blob> {
     pb('CLÁUSULA SEXTA – DA ADMINISTRAÇÃO E GERENCIAMENTO:', true),
     pm([{text:`A administração da sociedade caberá ${g.unico} ${g.trat} `},{text:nome,bold:true},{text:', assinando isoladamente, com os poderes e atribuições ilimitados autorizando o uso do nome empresarial, vedada, no entanto, em atividades estranhas ao interesse social ou assumir obrigações seja em forma de qualquer da quotista ou de terceiros, bem como onerar ou alienar bens imóveis da sociedade, obrigar a sociedade em atividades estranhas ao objeto social, tais como fiança, aval, endosso, aceite e de todo e qualquer título de favor.'}]),
     pm([{text:'PARÁGRAFO PRIMEIRO: ', bold:true},{text:`${g.Unico} poderá ter uma remuneração mensal a título de pró-labore, que será determinada mensalmente de acordo com a capacidade financeira da sociedade e os resultados apurados.`}]),
-    pm([{text:'PARÁGRAFO SEGUNDO: ', bold:true},{text:'O administrador da sociedade poderá nomear procuradores para agirem em nome da sociedade, cujo instrumento de mandato estabelecerá os poderes que lhes são atribuídos.'}]),
+    pm([{text:'PARÁGRAFO SEGUNDO: ', bold:true},{text:`${g.administrador} da sociedade poderá nomear procuradores para agirem em nome da sociedade, cujo instrumento de mandato estabelecerá os poderes que lhes são atribuídos.`}]),
     pb('(artigos 997, VI; 1.013; 1.015; 1.064, CC/2002)', false, true),
     pb('CLÁUSULA SÉTIMA – DOS DEVERES CONTÁBEIS:', true),
     pb(`Ao término de cada exercício social, em 31 de dezembro, será procedido a elaboração do inventário, do balanço patrimonial e do balanço de resultado econômico, cabendo ${g.unico}, os lucros e perdas apuradas.`),
     pm([{text:'PARÁGRAFO ÚNICO: ', bold:true},{text:`Fica a sociedade limitada unipessoal autorizada a levantar balanços ou balancetes intermediários em qualquer período do ano calendário, observadas as disposições legais, podendo inclusive, distribuir os resultados se houver e se for de interesse ${g.do}, inclusive a obrigação da reposição dos lucros, se os mesmos forem distribuídos com prejuízo do capital.`}]),
     pb('(artigo 1.065, CC/2002)', false, true),
-    pb('CLÁUSULA OITAVA – DO FALECIMENTO E INTERDIÇÃO DO ÚNICO SÓCIO:', true),
-    pb('Falecendo ou interditado o único sócio da sociedade, a empresa continuará suas atividades com os herdeiros, sucessores. Não sendo possível ou inexistindo interesse destes, o valor de seus haveres será apurado e liquidado com base na situação patrimonial da empresa, à data da resolução, verificada em balanço especialmente levantado.'),
+    pb(g.cl8titulo, true),
+    pb(`${g.falecendo} da sociedade, a empresa continuará suas atividades com os herdeiros, sucessores. Não sendo possível ou inexistindo interesse destes, o valor de seus haveres será apurado e liquidado com base na situação patrimonial da empresa, à data da resolução, verificada em balanço especialmente levantado.`),
     pb('CLÁUSULA NONA – DA DISSOLUÇÃO E LIQUIDAÇÃO DA SOCIEDADE:', true),
     pb(`A sociedade poderá ser dissolvida por iniciativa ${g.do}, que, nessa hipótese, realizará diretamente a liquidação ou indicará um liquidante, ditando-lhe a forma de liquidação. Solvidas as dívidas e extintas as obrigações da sociedade, o patrimônio remanescente será integramente incorporado ao patrimônio ${g.do}.`),
     pb('CLÁUSULA DÉCIMA – DOS DESIMPEDIMENTOS:', true),
-    pb(`${g.Unico}, já qualificado, declara, sob as penas da lei, que não está impedido de exercer a administração da sociedade, nem por decorrência de lei especial, nem em virtude de condenação nas hipóteses mencionadas no artigo 1.011, § 1º, do Código Civil (Lei nº. 10.406 de 10/01/2002).`),
+    pb(`${g.Unico}, já ${g.qualificado}, declara, sob as penas da lei, que não está impedido de exercer a administração da sociedade, nem por decorrência de lei especial, nem em virtude de condenação nas hipóteses mencionadas no artigo 1.011, § 1º, do Código Civil (Lei nº. 10.406 de 10/01/2002).`),
     pb('(artigo 1.011, I, CC/2002)', false, true),
     pb(cl11t, true),
     pb(cl11b),
