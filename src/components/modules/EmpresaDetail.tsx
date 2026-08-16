@@ -10,6 +10,18 @@ interface Props {
   empresa: Empresa
 }
 
+// CNAE pode vir como string ou como objeto {codigo, descricao} dependendo de como foi salvo
+function cnaeStr(val: unknown): string {
+  if (!val) return ''
+  if (typeof val === 'string') return val
+  if (typeof val === 'object') {
+    const o = val as { codigo?: string; descricao?: string }
+    if (o.descricao) return o.codigo ? `${o.codigo} - ${o.descricao}` : o.descricao
+    return JSON.stringify(val)
+  }
+  return String(val)
+}
+
 const quickLinks = (emp: Empresa) => [
   { label: 'CND Federal', url: 'https://solucoes.receita.fazenda.gov.br/Servicos/certidaointer/default.aspx', color: 'blue' },
   { label: 'CNDT Trabalhista', url: 'https://cndt-certidao.tst.jus.br', color: 'purple' },
@@ -97,7 +109,7 @@ export default function EmpresaDetail({ empresa: emp }: Props) {
               ? <Row label="CNPJ" value={formatCNPJ(emp.cnpj)} mono />
               : <Row label="CNPJ" value="Em Abertura — ainda não disponível" muted />
             }
-            {(emp as any).natureza_juridica && <Row label="Natureza Jurídica" value={(emp as any).natureza_juridica} />}
+            {(emp as any).natureza_juridica && <Row label="Natureza Jurídica" value={cnaeStr((emp as any).natureza_juridica)} />}
             {(emp as any).data_abertura && (
               <Row label="Data de Abertura"
                 value={new Date((emp as any).data_abertura + 'T12:00:00').toLocaleDateString('pt-BR')} />
@@ -129,15 +141,15 @@ export default function EmpresaDetail({ empresa: emp }: Props) {
               {(emp as any).cnae_principal && (
                 <div className="flex items-start gap-2">
                   <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full flex-shrink-0 mt-0.5">Principal</span>
-                  <span className="text-gray-900">{(emp as any).cnae_principal}</span>
+                  <span className="text-gray-900">{cnaeStr((emp as any).cnae_principal)}</span>
                 </div>
               )}
               {cnaesSecundarios.length > 0 && (
                 <div className="space-y-1.5">
-                  {cnaesSecundarios.map((c: string, i: number) => (
+                  {cnaesSecundarios.map((c: unknown, i: number) => (
                     <div key={i} className="flex items-start gap-2">
                       <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full flex-shrink-0 mt-0.5">Secundário</span>
-                      <span className="text-gray-700">{c}</span>
+                      <span className="text-gray-700">{cnaeStr(c)}</span>
                     </div>
                   ))}
                 </div>
