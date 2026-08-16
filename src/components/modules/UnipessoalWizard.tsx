@@ -68,6 +68,7 @@ interface F {
   socioEstadoCivil: string; socioRegimeBens: string
   socioProfissao: string; socioRG: string; socioCPF: string
   socioEnderecoRes: string; enderecoIgual: boolean
+  enderecoCorrespondencia: boolean
   capitalValor: string; capitalExtenso: string
   quotasNumero: string; quotasExtenso: string
   objetoSocial: string; enquadramento: 'ME'|'EPP'
@@ -82,12 +83,22 @@ const VAZIO: F = {
   socioEstadoCivil:'solteiro', socioRegimeBens:'',
   socioProfissao:'', socioRG:'', socioCPF:'',
   socioEnderecoRes:'', enderecoIgual: false,
+  enderecoCorrespondencia: false,
   capitalValor:'', capitalExtenso:'',
   quotasNumero:'', quotasExtenso:'',
   objetoSocial:'', enquadramento:'ME',
   foro:'', localAssinatura:'', dataAssinatura:'',
   comTimbrado: true,
 }
+
+// Mapas para troca de gênero automática
+const EC_TO_FEM: Record<string,string> = {
+  'solteiro':'solteira','casado':'casada','divorciado':'divorciada',
+  'viúvo':'viúva','separado judicialmente':'separada judicialmente','em união estável':'em união estável',
+}
+const EC_TO_MASC: Record<string,string> = Object.fromEntries(Object.entries(EC_TO_FEM).map(([m,f])=>[f,m]))
+const NAC_TO_FEM: Record<string,string> = { 'brasileiro':'brasileira','estrangeiro':'estrangeira' }
+const NAC_TO_MASC: Record<string,string> = { 'brasileira':'brasileiro','estrangeira':'estrangeiro' }
 
 function fmtData(iso: string) {
   if (!iso) return '[data]'
@@ -175,8 +186,8 @@ function gerarHTML(f: F): string {
 <p style="${C}">(artigo 997, I, CC/2002)</p>
 <p style="${S}"><b>CLÁUSULA PRIMEIRA – DA DENOMINAÇÃO E SEDE:</b></p>
 <p style="${S}">A sociedade unipessoal gira sob o nome empresarial <b>${rs}</b>, e tem sede e domicílio na ${sede}, podendo abrir filiais, sucursais, agências e escritórios em qualquer parte do território nacional, a critério ${g.do}.</p>
+${f.enderecoCorrespondencia ? `<p style="${S}"><b>PARÁGRAFO ÚNICO:</b> O referido endereço é de uso exclusivo para correspondência.</p>` : ''}
 <p style="${C}">(artigo 997, II, CC/2002)</p>
-<p style="${S}"><b>PARÁGRAFO ÚNICO:</b> O referido endereço é de uso exclusivo para correspondência.</p>
 <p style="${S}"><b>CLÁUSULA SEGUNDA – DO CAPITAL SOCIAL:</b></p>
 <p style="${S}">O capital social é de R$ ${cv} (${ce}), divididos em ${qn} (${qe}) quotas no valor de R$ 1,00 (Um real) cada uma, totalmente subscrito e integralizada em moeda corrente do país, em sua totalidade ${g.pelo} <b>${nome}</b>.</p>
 <p style="${S}"><b>PARÁGRAFO ÚNICO:</b> Em consonância ao artigo 1.052 da Lei 10.406/2002 a responsabilidade ${g.do} é restrita ao valor de suas quotas, não havendo responsabilidade solidária pelas obrigações sociais, respondendo, no entanto, pela integralização do capital social.</p>
@@ -273,8 +284,8 @@ async function gerarDocx(f: F): Promise<Blob> {
     pb('(artigo 997, I, CC/2002)', false, true),
     pb('CLÁUSULA PRIMEIRA – DA DENOMINAÇÃO E SEDE:', true),
     pm([{text:'A sociedade unipessoal gira sob o nome empresarial '},{text:rs,bold:true},{text:`, e tem sede e domicílio na ${sede}, podendo abrir filiais, sucursais, agências e escritórios em qualquer parte do território nacional, a critério ${g.do}.`}]),
+    ...(f.enderecoCorrespondencia ? [pm([{text:'PARÁGRAFO ÚNICO: ', bold:true},{text:'O referido endereço é de uso exclusivo para correspondência.'}])] : []),
     pb('(artigo 997, II, CC/2002)', false, true),
-    pm([{text:'PARÁGRAFO ÚNICO: ', bold:true},{text:'O referido endereço é de uso exclusivo para correspondência.'}]),
     pb('CLÁUSULA SEGUNDA – DO CAPITAL SOCIAL:', true),
     pm([{text:`O capital social é de R$ ${f.capitalValor||'[valor]'} (${f.capitalExtenso||'[extenso]'}), divididos em ${f.quotasNumero||'[nº]'} (${f.quotasExtenso||'[extenso]'}) quotas no valor de R$ 1,00 (Um real) cada uma, totalmente subscrito e integralizada em moeda corrente do país, em sua totalidade ${g.pelo} `},{text:nome,bold:true},{text:'.'}]),
     pm([{text:'PARÁGRAFO ÚNICO: ', bold:true},{text:`Em consonância ao artigo 1.052 da Lei 10.406/2002 a responsabilidade ${g.do} é restrita ao valor de suas quotas, não havendo responsabilidade solidária pelas obrigações sociais, respondendo, no entanto, pela integralização do capital social.`}]),
@@ -379,6 +390,20 @@ export default function UnipessoalWizard() {
     setF(prev => ({ ...prev, [key]: val }))
   }
 
+  function handleGenero(gen: 'masculino'|'feminino') {
+    setF(prev => {
+      const toFem = gen === 'feminino'
+      const ecMap  = toFem ? EC_TO_FEM  : EC_TO_MASC
+      const nacMap = toFem ? NAC_TO_FEM : NAC_TO_MASC
+      return {
+        ...prev,
+        socioGenero: gen,
+        socioEstadoCivil:    ecMap[prev.socioEstadoCivil]    ?? prev.socioEstadoCivil,
+        socioNacionalidade:  nacMap[prev.socioNacionalidade] ?? prev.socioNacionalidade,
+      }
+    })
+  }
+
   function handleCapital(raw: string) {
     const n = parseBR(raw)
     setF(prev => ({
@@ -390,7 +415,7 @@ export default function UnipessoalWizard() {
     }))
   }
 
-  const precisaRegime = ['casado','casada','em união estável'].includes(f.socioEstadoCivil)
+  const precisaRegime = ['casado','casada','em união estável','separado judicialmente','separada judicialmente'].includes(f.socioEstadoCivil)
 
   async function exportarDocx() {
     setExporting(true)
@@ -472,8 +497,16 @@ export default function UnipessoalWizard() {
               </Lbl>
               <Lbl label="Endereço da Sede (completo) *">
                 <input className={inp} value={f.enderecoSede} onChange={e => set('enderecoSede', e.target.value)}
-                  placeholder="Rua Israel, 90 - Rochdale - Osasco/SP - CEP: 06220-053" />
+                  placeholder="Rua, n° - Bairro - Cidade/UF - CEP: 00000-000" />
               </Lbl>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="enderecoCorr" checked={f.enderecoCorrespondencia}
+                  onChange={e => set('enderecoCorrespondencia', e.target.checked)}
+                  className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 cursor-pointer" />
+                <label htmlFor="enderecoCorr" className="text-sm text-gray-700 cursor-pointer">
+                  Endereço da sede será usado exclusivamente para correspondência (insere Parágrafo Único na Cláusula 1)
+                </label>
+              </div>
             </div>
           </div>
 
@@ -484,25 +517,38 @@ export default function UnipessoalWizard() {
                 <input className={inp} value={f.socioNome} onChange={e => set('socioNome', e.target.value)} placeholder="NOME DO SÓCIO" />
               </Lbl>
               <Lbl label="Gênero">
-                <select className={sel} value={f.socioGenero} onChange={e => set('socioGenero', e.target.value as 'masculino'|'feminino')}>
+                <select className={sel} value={f.socioGenero} onChange={e => handleGenero(e.target.value as 'masculino'|'feminino')}>
                   <option value="masculino">Masculino</option>
                   <option value="feminino">Feminino</option>
                 </select>
               </Lbl>
               <Lbl label="Nacionalidade">
-                <input className={inp} value={f.socioNacionalidade} onChange={e => set('socioNacionalidade', e.target.value)} placeholder="brasileiro / brasileira" />
+                <select className={sel} value={f.socioNacionalidade} onChange={e => set('socioNacionalidade', e.target.value)}>
+                  {f.socioGenero === 'masculino'
+                    ? <><option value="brasileiro">Brasileiro</option><option value="estrangeiro">Estrangeiro</option></>
+                    : <><option value="brasileira">Brasileira</option><option value="estrangeira">Estrangeira</option></>}
+                </select>
               </Lbl>
               <Lbl label="Naturalidade (cidade/UF)">
                 <input className={inp} value={f.socioNaturalidade} onChange={e => set('socioNaturalidade', e.target.value)} placeholder="São Paulo/SP" />
               </Lbl>
               <Lbl label="Estado Civil">
                 <select className={sel} value={f.socioEstadoCivil} onChange={e => set('socioEstadoCivil', e.target.value)}>
-                  <option value="solteiro">Solteiro(a)</option>
-                  <option value="casado">Casado(a)</option>
-                  <option value="divorciado">Divorciado(a)</option>
-                  <option value="viúvo">Viúvo(a)</option>
-                  <option value="separado judicialmente">Separado(a) Judicialmente</option>
-                  <option value="em união estável">Em União Estável</option>
+                  {f.socioGenero === 'masculino' ? <>
+                    <option value="solteiro">Solteiro</option>
+                    <option value="casado">Casado</option>
+                    <option value="divorciado">Divorciado</option>
+                    <option value="viúvo">Viúvo</option>
+                    <option value="separado judicialmente">Separado Judicialmente</option>
+                    <option value="em união estável">Em União Estável</option>
+                  </> : <>
+                    <option value="solteira">Solteira</option>
+                    <option value="casada">Casada</option>
+                    <option value="divorciada">Divorciada</option>
+                    <option value="viúva">Viúva</option>
+                    <option value="separada judicialmente">Separada Judicialmente</option>
+                    <option value="em união estável">Em União Estável</option>
+                  </>}
                 </select>
               </Lbl>
               {precisaRegime && (
