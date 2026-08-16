@@ -217,14 +217,14 @@ ${obLines.map(l => `<p style="${S}"><b>• ${l.trim()}</b></p>`).join('')}
 <p style="${S}">${g.Unico}, já ${g.qualificado}, declara, sob as penas da lei, que não está impedido de exercer a administração da sociedade, nem por decorrência de lei especial, nem em virtude de condenação nas hipóteses mencionadas no artigo 1.011, § 1º, do Código Civil (Lei nº. 10.406 de 10/01/2002).</p>
 <p style="${C}">(artigo 1.011, I, CC/2002)</p>
 <p style="${S}"><b>${cl11t}</b></p>
-<p style="${S}"><b>${cl11b}</b></p>
+<p style="${S}">Declara, sob as penas da lei, que se enquadra na condição de <b>${f.enquadramento === 'ME' ? 'MICROEMPRESA – ME' : 'EMPRESA DE PEQUENO PORTE – EPP'}</b> nos termos da Lei Complementar nº 123, de 14/12/2006.</p>
 <p style="${S}"><b>CLÁUSULA DÉCIMA SEGUNDA –DE ASSINATURA ELETRÔNICA:</b></p>
 <p style="${S}">As partes reconhecem a veracidade, autenticidade, integridade, validade e eficácia do presente instrumento e seus termos, nos moldes do art. 219 do Código Civil, em formato eletrônico e/ou assinado por meio de plataformas eletrônicas, bem como expressamente anuem, autorizam, aceitam e reconhecem como valida qualquer forma de comprovação de autoria das partes signatárias deste instrumento por meio de suas respectivas assinaturas por meio de quaisquer meios eletrônicos validos emitidos ou não pela ICP Brasil, nos termos do art. 10, &amp; 2°, da Medida Provisória n°2.220-2, de 24 de agosto de 2001 ("MP n° 2.220-2").</p>
 <p style="${S}"><b>CLÁUSULA DÉCIMA TERCEIRA – DO FORO:</b></p>
 <p style="${S}">Fica eleito o foro de ${fo} para o exercício e o cumprimento dos direitos e obrigações resultantes deste contrato.</p>
 <p style="${S}">E, por assim estar de pleno acordo, assina o presente instrumento em 01 (uma) via, sendo arquivada digitalmente na <b>JUNTA COMERCIAL DO ESTADO DE ${estadoNome}</b>.</p>
 <p style="${S}">&nbsp;</p>
-<p style="${S}">${lo}, ${dt}</p>
+<p style="${C}">${lo}, ${dt}</p>
 <p style="${S}">&nbsp;</p>
 <p style="${S}">&nbsp;</p>
 <p style="${C}"><b>${nome}</b></p>`
@@ -315,14 +315,14 @@ async function gerarDocx(f: F): Promise<Blob> {
     pb(`${g.Unico}, já ${g.qualificado}, declara, sob as penas da lei, que não está impedido de exercer a administração da sociedade, nem por decorrência de lei especial, nem em virtude de condenação nas hipóteses mencionadas no artigo 1.011, § 1º, do Código Civil (Lei nº. 10.406 de 10/01/2002).`),
     pb('(artigo 1.011, I, CC/2002)', false, true),
     pb(cl11t, true),
-    pb(cl11b, true),
+    pm([{text:'Declara, sob as penas da lei, que se enquadra na condição de '},{text:f.enquadramento==='ME'?'MICROEMPRESA – ME':'EMPRESA DE PEQUENO PORTE – EPP',bold:true},{text:' nos termos da Lei Complementar nº 123, de 14/12/2006.'}]),
     pb('CLÁUSULA DÉCIMA SEGUNDA –DE ASSINATURA ELETRÔNICA:', true),
     pb('As partes reconhecem a veracidade, autenticidade, integridade, validade e eficácia do presente instrumento e seus termos, nos moldes do art. 219 do Código Civil, em formato eletrônico e/ou assinado por meio de plataformas eletrônicas, bem como expressamente anuem, autorizam, aceitam e reconhecem como valida qualquer forma de comprovação de autoria das partes signatárias deste instrumento por meio de suas respectivas assinaturas por meio de quaisquer meios eletrônicos validos emitidos ou não pela ICP Brasil, nos termos do art. 10, & 2°, da Medida Provisória n°2.220-2, de 24 de agosto de 2001 ("MP n° 2.220-2").'),
     pb('CLÁUSULA DÉCIMA TERCEIRA – DO FORO:', true),
     pb(`Fica eleito o foro de ${fo} para o exercício e o cumprimento dos direitos e obrigações resultantes deste contrato.`),
     pm([{text:'E, por assim estar de pleno acordo, assina o presente instrumento em 01 (uma) via, sendo arquivada digitalmente na '},{text:`JUNTA COMERCIAL DO ESTADO DE ${estadoNome}`,bold:true},{text:'.'}]),
     pBlank(),
-    pb(`${lo}, ${dt}`),
+    pb(`${lo}, ${dt}`, false, true),
     pBlank(), pBlank(), pBlank(),
     pb(nome, true, true),
   ]
