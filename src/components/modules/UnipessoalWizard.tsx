@@ -36,11 +36,16 @@ function n2ext(n: number, moeda = true, fem = false): string {
   const M = Math.floor(n/1_000_000)
   const K = Math.floor((n%1_000_000)/1_000)
   const R = n%1_000
-  const p: string[] = []
-  if (M) p.push(g3(M, fem)+(M===1?' milhão':' milhões'))
-  if (K) { const g=g3(K, fem); p.push((g==='um'||g==='uma')?'mil':g+' mil') }
-  if (R) p.push(g3(R, fem))
-  const txt = p.join(' e ')
+  const mPart  = M ? g3(M, fem)+(M===1?' milhão':' milhões') : ''
+  const kRaw   = K ? g3(K, fem) : ''
+  const kPart  = K ? ((kRaw==='um'||kRaw==='uma')?'mil':kRaw+' mil') : ''
+  const rPart  = R ? g3(R, fem) : ''
+  // comma between thousands and remainder (e.g. "dez mil, duzentas e trinta e nove")
+  const milRest = kPart && rPart ? `${kPart}, ${rPart}` : kPart || rPart
+  const parts: string[] = []
+  if (mPart) parts.push(mPart)
+  if (milRest) parts.push(milRest)
+  const txt = parts.join(' e ')
   const cap = txt.charAt(0).toUpperCase()+txt.slice(1)
   if (!moeda) return cap
   if (M && !K && !R) return cap+(M===1?' de real':' de reais')
@@ -113,6 +118,15 @@ function endRes(f: F) {
   return f.enderecoIgual ? f.enderecoSede : f.socioEnderecoRes
 }
 
+const UF_NOMES: Record<string,string> = {
+  AC:'ACRE',AL:'ALAGOAS',AM:'AMAZONAS',AP:'AMAPÁ',BA:'BAHIA',CE:'CEARÁ',
+  DF:'DISTRITO FEDERAL',ES:'ESPÍRITO SANTO',GO:'GOIÁS',MA:'MARANHÃO',
+  MG:'MINAS GERAIS',MS:'MATO GROSSO DO SUL',MT:'MATO GROSSO',PA:'PARÁ',
+  PB:'PARAÍBA',PE:'PERNAMBUCO',PI:'PIAUÍ',PR:'PARANÁ',RJ:'RIO DE JANEIRO',
+  RN:'RIO GRANDE DO NORTE',RO:'RONDÔNIA',RR:'RORAIMA',RS:'RIO GRANDE DO SUL',
+  SC:'SANTA CATARINA',SE:'SERGIPE',SP:'SÃO PAULO',TO:'TOCANTINS',
+}
+
 // ── HTML para preview + print ─────────────────────────────────────────────────
 function gerarHTML(f: F): string {
   const g = v(f)
@@ -135,7 +149,8 @@ function gerarHTML(f: F): string {
   const fo = f.foro || '[foro]'
   const lo = f.localAssinatura || '[Local]'
   const dt = fmtData(f.dataAssinatura)
-  const uf = lo.includes('/') ? lo.split('/').pop() : 'SP'
+  const uf = lo.includes('/') ? lo.split('/').pop()! : 'SP'
+  const estadoNome = UF_NOMES[uf] || uf
 
   const cl11t = f.enquadramento === 'ME'
     ? 'CLÁUSULA DÉCIMA PRIMEIRA – DA DECLARAÇÃO DE MICROEMPRESA-ME:'
@@ -143,6 +158,8 @@ function gerarHTML(f: F): string {
   const cl11b = f.enquadramento === 'ME'
     ? 'Declara, sob as penas da lei, que se enquadra na condição de MICROEMPRESA – ME nos termos da Lei Complementar nº 123, de 14/12/2006.'
     : 'Declara, sob as penas da lei, que se enquadra na condição de EMPRESA DE PEQUENO PORTE – EPP nos termos da Lei Complementar nº 123, de 14/12/2006.'
+
+  const obLines = (f.objetoSocial || '[objeto social]').split('\n').filter(l => l.trim())
 
   const S = `font-family:'Times New Roman',Times,serif;font-size:12pt;text-align:justify;margin:0 0 8pt 0;line-height:1.5`
   const C = `font-family:'Times New Roman',Times,serif;font-size:12pt;text-align:center;margin:0 0 8pt 0;line-height:1.5`
@@ -166,7 +183,7 @@ function gerarHTML(f: F): string {
 <p style="${C}">(artigos 997, III; 1.052, 1.055, CC/2002)</p>
 <p style="${S}"><b>CLÁUSULA TERCEIRA – DO OBJETIVO SOCIAL:</b></p>
 <p style="${S}">A sociedade tem como objetivo social o ramo de:</p>
-<p style="${S}"><b>• ${ob}</b></p>
+${obLines.map(l => `<p style="${S}"><b>• ${l.trim()}</b></p>`).join('')}
 <p style="${S}"><b>CLÁUSULA QUARTA – DO PRAZO DE DURAÇÃO E INÍCIO DAS ATIVIDADES:</b></p>
 <p style="${S}">A sociedade iniciará suas atividades a partir da assinatura do instrumento de constituição e o prazo de duração é por tempo indeterminado.</p>
 <p style="${C}">(artigo 997, II, CC/2002)</p>
@@ -189,12 +206,12 @@ function gerarHTML(f: F): string {
 <p style="${S}">${g.Unico}, já ${g.qualificado}, declara, sob as penas da lei, que não está impedido de exercer a administração da sociedade, nem por decorrência de lei especial, nem em virtude de condenação nas hipóteses mencionadas no artigo 1.011, § 1º, do Código Civil (Lei nº. 10.406 de 10/01/2002).</p>
 <p style="${C}">(artigo 1.011, I, CC/2002)</p>
 <p style="${S}"><b>${cl11t}</b></p>
-<p style="${S}">${cl11b}</p>
+<p style="${S}"><b>${cl11b}</b></p>
 <p style="${S}"><b>CLÁUSULA DÉCIMA SEGUNDA –DE ASSINATURA ELETRÔNICA:</b></p>
 <p style="${S}">As partes reconhecem a veracidade, autenticidade, integridade, validade e eficácia do presente instrumento e seus termos, nos moldes do art. 219 do Código Civil, em formato eletrônico e/ou assinado por meio de plataformas eletrônicas, bem como expressamente anuem, autorizam, aceitam e reconhecem como valida qualquer forma de comprovação de autoria das partes signatárias deste instrumento por meio de suas respectivas assinaturas por meio de quaisquer meios eletrônicos validos emitidos ou não pela ICP Brasil, nos termos do art. 10, &amp; 2°, da Medida Provisória n°2.220-2, de 24 de agosto de 2001 ("MP n° 2.220-2").</p>
 <p style="${S}"><b>CLÁUSULA DÉCIMA TERCEIRA – DO FORO:</b></p>
 <p style="${S}">Fica eleito o foro de ${fo} para o exercício e o cumprimento dos direitos e obrigações resultantes deste contrato.</p>
-<p style="${S}">E, por assim estar de pleno acordo, assina o presente instrumento em 01 (uma) via, sendo arquivada digitalmente na JUNTA COMERCIAL DO ESTADO DE ${uf}.</p>
+<p style="${S}">E, por assim estar de pleno acordo, assina o presente instrumento em 01 (uma) via, sendo arquivada digitalmente na <b>JUNTA COMERCIAL DO ESTADO DE ${estadoNome}</b>.</p>
 <p style="${S}">&nbsp;</p>
 <p style="${S}">${lo}, ${dt}</p>
 <p style="${S}">&nbsp;</p>
@@ -233,7 +250,8 @@ async function gerarDocx(f: F): Promise<Blob> {
   const fo = f.foro || '[foro]'
   const lo = f.localAssinatura || '[Local]'
   const dt = fmtData(f.dataAssinatura)
-  const uf = lo.includes('/') ? lo.split('/').pop() : 'SP'
+  const uf = lo.includes('/') ? lo.split('/').pop()! : 'SP'
+  const estadoNome = UF_NOMES[uf] || uf
 
   const cl11t = f.enquadramento === 'ME'
     ? 'CLÁUSULA DÉCIMA PRIMEIRA – DA DECLARAÇÃO DE MICROEMPRESA-ME:'
@@ -241,6 +259,8 @@ async function gerarDocx(f: F): Promise<Blob> {
   const cl11b = f.enquadramento === 'ME'
     ? 'Declara, sob as penas da lei, que se enquadra na condição de MICROEMPRESA – ME nos termos da Lei Complementar nº 123, de 14/12/2006.'
     : 'Declara, sob as penas da lei, que se enquadra na condição de EMPRESA DE PEQUENO PORTE – EPP nos termos da Lei Complementar nº 123, de 14/12/2006.'
+
+  const obAtividades = (f.objetoSocial || '').split('\n').filter(l => l.trim())
 
   const children: Paragraph[] = [
     pb('INSTRUMENTO PARTICULAR DE CONSTITUIÇÃO DE', true, true),
@@ -261,7 +281,7 @@ async function gerarDocx(f: F): Promise<Blob> {
     pb('(artigos 997, III; 1.052, 1.055, CC/2002)', false, true),
     pb('CLÁUSULA TERCEIRA – DO OBJETIVO SOCIAL:', true),
     pb('A sociedade tem como objetivo social o ramo de:'),
-    pb(`• ${f.objetoSocial||'[objeto social]'}`, true),
+    ...(obAtividades.length ? obAtividades.map(l => pb(`• ${l.trim()}`, true)) : [pb('• [objeto social]', true)]),
     pb('CLÁUSULA QUARTA – DO PRAZO DE DURAÇÃO E INÍCIO DAS ATIVIDADES:', true),
     pb('A sociedade iniciará suas atividades a partir da assinatura do instrumento de constituição e o prazo de duração é por tempo indeterminado.'),
     pb('(artigo 997, II, CC/2002)', false, true),
@@ -284,12 +304,12 @@ async function gerarDocx(f: F): Promise<Blob> {
     pb(`${g.Unico}, já ${g.qualificado}, declara, sob as penas da lei, que não está impedido de exercer a administração da sociedade, nem por decorrência de lei especial, nem em virtude de condenação nas hipóteses mencionadas no artigo 1.011, § 1º, do Código Civil (Lei nº. 10.406 de 10/01/2002).`),
     pb('(artigo 1.011, I, CC/2002)', false, true),
     pb(cl11t, true),
-    pb(cl11b),
+    pb(cl11b, true),
     pb('CLÁUSULA DÉCIMA SEGUNDA –DE ASSINATURA ELETRÔNICA:', true),
     pb('As partes reconhecem a veracidade, autenticidade, integridade, validade e eficácia do presente instrumento e seus termos, nos moldes do art. 219 do Código Civil, em formato eletrônico e/ou assinado por meio de plataformas eletrônicas, bem como expressamente anuem, autorizam, aceitam e reconhecem como valida qualquer forma de comprovação de autoria das partes signatárias deste instrumento por meio de suas respectivas assinaturas por meio de quaisquer meios eletrônicos validos emitidos ou não pela ICP Brasil, nos termos do art. 10, & 2°, da Medida Provisória n°2.220-2, de 24 de agosto de 2001 ("MP n° 2.220-2").'),
     pb('CLÁUSULA DÉCIMA TERCEIRA – DO FORO:', true),
     pb(`Fica eleito o foro de ${fo} para o exercício e o cumprimento dos direitos e obrigações resultantes deste contrato.`),
-    pb(`E, por assim estar de pleno acordo, assina o presente instrumento em 01 (uma) via, sendo arquivada digitalmente na JUNTA COMERCIAL DO ESTADO DE ${uf}.`),
+    pm([{text:'E, por assim estar de pleno acordo, assina o presente instrumento em 01 (uma) via, sendo arquivada digitalmente na '},{text:`JUNTA COMERCIAL DO ESTADO DE ${estadoNome}`,bold:true},{text:'.'}]),
     pBlank(),
     pb(`${lo}, ${dt}`),
     pBlank(), pBlank(), pBlank(),
