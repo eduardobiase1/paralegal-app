@@ -6,7 +6,7 @@ import { useOrg } from '@/lib/org-context'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 
-// ── Labels (mesmos do módulo societário) ─────────────────────────────────────
+// ── Labels ────────────────────────────────────────────────────────────────────
 const TIPO_LABELS: Record<string, string> = {
   abertura:              'Abertura',
   alteracao_contratual:  'Alteração Contratual',
@@ -15,42 +15,43 @@ const TIPO_LABELS: Record<string, string> = {
   transferencia_saida:   'Transferência (Saída)',
 }
 
-const TIPO_COLORS: Record<string, string> = {
-  abertura:              'bg-emerald-100 text-emerald-700',
-  alteracao_contratual:  'bg-blue-100 text-blue-700',
-  encerramento:          'bg-red-100 text-red-700',
-  transferencia_entrada: 'bg-purple-100 text-purple-700',
-  transferencia_saida:   'bg-orange-100 text-orange-700',
+const TIPO_STYLE: Record<string, { bg: string; color: string }> = {
+  abertura:              { bg: '#ECFDF5', color: '#065F46' },
+  alteracao_contratual:  { bg: '#EFF6FF', color: '#1D4ED8' },
+  encerramento:          { bg: '#FEF2F2', color: '#991B1B' },
+  transferencia_entrada: { bg: '#F5F3FF', color: '#5B21B6' },
+  transferencia_saida:   { bg: '#FFF7ED', color: '#C2410C' },
 }
 
 const DIAS_PT  = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado']
 const MESES_PT = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro']
 
-// ── Próxima etapa (igual ao módulo) ──────────────────────────────────────────
+const SNOOZE_OPTS = [
+  { days: 1, label: 'Amanhã' },
+  { days: 3, label: '3 dias' },
+  { days: 7, label: '7 dias' },
+  { days: 14, label: '14 dias' },
+]
+
+// ── Urgência ──────────────────────────────────────────────────────────────────
+function urgencia(dias: number, prio: boolean) {
+  if (prio)      return { bar: '#EA580C', wash: 'rgba(234,88,12,0.05)',  pill: { bg: '#FFF7ED', color: '#9A3412', border: '#FED7AA' }, grad: '#EA580C' }
+  if (dias > 30) return { bar: '#DC2626', wash: 'rgba(220,38,38,0.05)',  pill: { bg: '#FEF2F2', color: '#991B1B', border: '#FECACA' }, grad: '#DC2626' }
+  if (dias > 15) return { bar: '#F97316', wash: 'rgba(249,115,22,0.05)', pill: { bg: '#FFF7ED', color: '#9A3412', border: '#FED7AA' }, grad: '#F97316' }
+  if (dias >= 7) return { bar: '#D97706', wash: 'rgba(217,119,6,0.05)',  pill: { bg: '#FEFCE8', color: '#854D0E', border: '#FDE68A' }, grad: '#D97706' }
+  return               { bar: '#059669', wash: 'rgba(5,150,105,0.04)',   pill: { bg: '#ECFDF5', color: '#065F46', border: '#A7F3D0' }, grad: '#059669' }
+}
+
+// ── Próxima etapa ─────────────────────────────────────────────────────────────
 function proximaEtapa(checklist: any[]): string | null {
   const next = checklist?.find(i => i.status !== 'Concluido')
   if (!next) return null
   const t = next.etapa as string
-  return t.length > 60 ? t.substring(0, 60) + '…' : t
+  return t.length > 72 ? t.substring(0, 72) + '…' : t
 }
 
 function diasDesde(dateStr: string): number {
   return Math.max(0, Math.round((Date.now() - new Date(dateStr).getTime()) / 86_400_000))
-}
-
-function urgBorderClass(dias: number, prio: boolean) {
-  if (prio)      return 'border-l-orange-500'
-  if (dias > 30) return 'border-l-red-500'
-  if (dias > 15) return 'border-l-orange-400'
-  if (dias >= 7) return 'border-l-amber-400'
-  return          'border-l-emerald-400'
-}
-
-function diasPillClass(dias: number) {
-  if (dias > 30) return 'bg-red-100 text-red-700'
-  if (dias > 15) return 'bg-orange-100 text-orange-700'
-  if (dias >= 7) return 'bg-amber-100 text-amber-700'
-  return          'bg-emerald-100 text-emerald-700'
 }
 
 // ── LocalStorage ──────────────────────────────────────────────────────────────
@@ -74,16 +75,7 @@ function saveSnoozeLS(id: string, days: number) {
   const d = new Date(); d.setDate(d.getDate() + days)
   localStorage.setItem(`psnooze_${id}`, d.toISOString())
 }
-function clearSnoozeLS(id: string) {
-  localStorage.removeItem(`psnooze_${id}`)
-}
-
-const SNOOZE_OPTS = [
-  { days: 1,  label: 'Amanhã'  },
-  { days: 3,  label: '3 dias'  },
-  { days: 7,  label: '7 dias'  },
-  { days: 14, label: '14 dias' },
-]
+function clearSnoozeLS(id: string) { localStorage.removeItem(`psnooze_${id}`) }
 
 // ── Componente principal ──────────────────────────────────────────────────────
 export default function PainelProcessosPage() {
@@ -116,15 +108,9 @@ export default function PainelProcessosPage() {
     const lista = data || []
     const pm: Record<string, boolean>     = {}
     const sm: Record<string, Date | null> = {}
-    for (const p of lista) {
-      pm[p.id] = getPrio(p.id)
-      sm[p.id] = getSnooze(p.id)
-    }
-    setPrioMap(pm)
-    setSnoozeMap(sm)
-    setProcessos(lista)
-    setUpdatedAt(new Date())
-    setLoading(false)
+    for (const p of lista) { pm[p.id] = getPrio(p.id); sm[p.id] = getSnooze(p.id) }
+    setPrioMap(pm); setSnoozeMap(sm); setProcessos(lista)
+    setUpdatedAt(new Date()); setLoading(false)
   }, [supabase, orgId])
 
   useEffect(() => { load() }, [load])
@@ -138,14 +124,8 @@ export default function PainelProcessosPage() {
   // ── Ações ─────────────────────────────────────────────────────────────────
 
   async function handleFinalizar(id: string) {
-    const { error } = await supabase
-      .from('processos_societarios')
-      .update({ status: 'Finalizado' })
-      .eq('id', id)
-    if (!error) {
-      setProcessos(prev => prev.filter(p => p.id !== id))
-      toast.success('Processo finalizado!')
-    }
+    const { error } = await supabase.from('processos_societarios').update({ status: 'Finalizado' }).eq('id', id)
+    if (!error) { setProcessos(prev => prev.filter(p => p.id !== id)); toast.success('Processo finalizado!') }
     setOpenStatus(null)
   }
 
@@ -167,8 +147,7 @@ export default function PainelProcessosPage() {
     setPrioMap(prev => ({ ...prev, [id]: next }))
   }
 
-  // ── Derivar dados ─────────────────────────────────────────────────────────
-
+  // ── Dados derivados ───────────────────────────────────────────────────────
   const agora = new Date()
 
   const processosDados = processos.map(p => {
@@ -181,45 +160,54 @@ export default function PainelProcessosPage() {
     const ultimaMov = new Date(p.updated_at || p.created_at)
       .toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
     const nome = (p.empresas as any)?.razao_social || p.cliente_nome || '—'
-
-    return {
-      ...p,
-      nome,
-      diasParado: dias,
-      ultimaMov,
-      nextStep: next,
-      done,
-      total,
-      pct,
-      prioridade:  prioMap[p.id] || false,
-      snoozeUntil: snoozeMap[p.id] || null,
-    }
+    return { ...p, nome, diasParado: dias, ultimaMov, nextStep: next, done, total, pct, prioridade: prioMap[p.id] || false, snoozeUntil: snoozeMap[p.id] || null }
   })
 
   const snoozed = processosDados.filter(p => p.snoozeUntil && p.snoozeUntil > agora)
   const ativos  = processosDados.filter(p => !p.snoozeUntil || p.snoozeUntil <= agora)
   const priori  = ativos.filter(p =>  p.prioridade).sort((a, b) => b.diasParado - a.diasParado)
   const rotina  = ativos.filter(p => !p.prioridade).sort((a, b) => b.diasParado - a.diasParado)
+  const critical = ativos.filter(p => p.diasParado > 30 && !p.prioridade).length
 
   // ── Card ─────────────────────────────────────────────────────────────────
-
   function ProcessoCard({ p }: { p: typeof processosDados[0] }) {
-    const border = urgBorderClass(p.diasParado, p.prioridade)
+    const urg  = urgencia(p.diasParado, p.prioridade)
+    const tipo = TIPO_STYLE[p.tipo] || { bg: '#F8FAFC', color: '#475569' }
 
     return (
-      <div className={`bg-white rounded-2xl border border-slate-100 border-l-[5px] ${border} shadow-sm hover:shadow-md transition-shadow`}>
-        <div className="px-5 pt-4 pb-3 space-y-3">
+      <div
+        style={{
+          background: `linear-gradient(to right, ${urg.wash} 0%, white 240px), white`,
+          borderLeft: `4px solid ${urg.bar}`,
+          borderRadius: '0 14px 14px 0',
+          boxShadow: '0 1px 4px rgba(13,17,23,0.06), 0 4px 16px rgba(13,17,23,0.04)',
+          transition: 'box-shadow 0.2s ease, transform 0.2s ease',
+          cursor: 'default',
+        }}
+        onMouseEnter={e => {
+          e.currentTarget.style.boxShadow = '0 4px 20px rgba(13,17,23,0.1), 0 8px 32px rgba(13,17,23,0.06)'
+          e.currentTarget.style.transform = 'translateY(-2px)'
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.boxShadow = '0 1px 4px rgba(13,17,23,0.06), 0 4px 16px rgba(13,17,23,0.04)'
+          e.currentTarget.style.transform = 'translateY(0)'
+        }}
+      >
+        {/* Card body */}
+        <div style={{ padding: '18px 20px 14px' }}>
 
           {/* Empresa + prioridade */}
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex-1 min-w-0">
-              <p className="font-bold text-slate-900 text-[15px] leading-snug truncate">{p.nome}</p>
-              <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wide ${TIPO_COLORS[p.tipo] ?? 'bg-slate-100 text-slate-500'}`}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', marginBottom: '10px' }}>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <p style={{ fontSize: '17px', fontWeight: 800, color: '#0D1117', letterSpacing: '-0.025em', lineHeight: 1.15, marginBottom: '7px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {p.nome}
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+                <span style={{ fontSize: '9px', fontWeight: 800, padding: '3px 8px', borderRadius: '100px', background: tipo.bg, color: tipo.color, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                   {TIPO_LABELS[p.tipo] ?? p.tipo}
                 </span>
                 {p.titulo && (
-                  <span className="text-[10px] text-yellow-700 font-bold bg-yellow-50 border border-yellow-200 px-2 py-0.5 rounded-full truncate max-w-[200px]">
+                  <span style={{ fontSize: '11px', fontWeight: 600, color: '#B45309', background: '#FFFBEB', border: '1px solid #FDE68A', padding: '2px 9px', borderRadius: '100px', maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {p.titulo}
                   </span>
                 )}
@@ -227,105 +215,115 @@ export default function PainelProcessosPage() {
             </div>
             <button
               onClick={() => handleTogglePrio(p.id)}
-              className={`flex-shrink-0 text-[10px] font-bold px-2.5 py-1 rounded-full transition-all whitespace-nowrap ${
-                p.prioridade
-                  ? 'bg-orange-100 text-orange-700 ring-1 ring-orange-300'
-                  : 'bg-slate-100 text-slate-400 hover:bg-orange-50 hover:text-orange-500'
-              }`}
+              style={{
+                flexShrink: 0, fontSize: '10px', fontWeight: 700,
+                padding: '5px 11px', borderRadius: '100px', cursor: 'pointer',
+                border: p.prioridade ? '1px solid #FDBA74' : '1px solid #E2E8F0',
+                background: p.prioridade ? '#FFF7ED' : 'transparent',
+                color: p.prioridade ? '#EA580C' : '#94A3B8',
+                transition: 'all 0.15s ease', whiteSpace: 'nowrap',
+              }}
             >
               {p.prioridade ? '🔥 Prioritário' : '☆ Rotina'}
             </button>
           </div>
 
-          {/* Status + dias + última mov */}
-          <div className="flex flex-wrap items-center gap-2" onClick={e => e.stopPropagation()}>
-            <div className="relative">
+          {/* Metadata row */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '7px', alignItems: 'center', marginBottom: '13px' }} onClick={e => e.stopPropagation()}>
+
+            {/* Status dropdown */}
+            <div style={{ position: 'relative' }}>
               <button
                 onClick={() => setOpenStatus(prev => prev === p.id ? null : p.id)}
-                className="flex items-center gap-1 text-[10px] font-black px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 hover:opacity-80 uppercase tracking-wide"
+                style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px', fontWeight: 700, padding: '4px 10px', borderRadius: '100px', background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.06em' }}
               >
                 Em Andamento
-                <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                </svg>
+                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
               </button>
               {openStatus === p.id && (
-                <div className="absolute left-0 top-full mt-1.5 z-30 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 min-w-[170px]">
-                  <p className="px-3.5 py-1 text-[9px] font-black uppercase tracking-widest text-slate-400">Alterar status</p>
+                <div style={{ position: 'absolute', left: 0, top: 'calc(100% + 6px)', zIndex: 40, background: 'white', borderRadius: '12px', boxShadow: '0 8px 30px rgba(0,0,0,0.14)', border: '1px solid #E2E8F0', padding: '6px', minWidth: '175px' }}>
+                  <p style={{ fontSize: '9px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#94A3B8', padding: '4px 10px 6px', margin: 0 }}>Alterar status</p>
                   <button
                     onClick={() => handleFinalizar(p.id)}
-                    className="w-full text-left px-3.5 py-2.5 text-xs font-bold text-emerald-700 hover:bg-emerald-50 flex items-center gap-2"
+                    style={{ width: '100%', textAlign: 'left', padding: '8px 10px', fontSize: '12px', fontWeight: 600, color: '#065F46', background: 'transparent', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#ECFDF5'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                   >
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#059669', flexShrink: 0 }} />
                     Marcar como Finalizado
                   </button>
                 </div>
               )}
             </div>
 
-            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${diasPillClass(p.diasParado)}`}>
+            {/* Dias parado */}
+            <span style={{ fontSize: '10px', fontWeight: 700, padding: '4px 10px', borderRadius: '100px', background: urg.pill.bg, color: urg.pill.color, border: `1px solid ${urg.pill.border}` }}>
               {p.diasParado === 0 ? 'movido hoje' : `${p.diasParado}d parado`}
             </span>
 
-            <span className="text-[10px] text-slate-400">
+            {/* Última movimentação */}
+            <span style={{ fontSize: '10px', color: '#94A3B8', fontWeight: 500 }}>
               última mov. {p.ultimaMov}
             </span>
           </div>
 
           {/* Próxima etapa */}
           {p.nextStep ? (
-            <div className="flex items-start gap-2 bg-slate-50 rounded-xl px-3.5 py-2.5">
-              <svg className="w-3.5 h-3.5 text-slate-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
-              <div>
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Próxima etapa</p>
-                <p className="text-xs font-semibold text-slate-700 leading-snug">{p.nextStep}</p>
+            <div style={{ display: 'flex', gap: '10px', background: '#F8FAFC', borderRadius: '10px', padding: '11px 14px', marginBottom: '13px', borderLeft: '3px solid #CBD5E1' }}>
+              <div style={{ flex: 1 }}>
+                <p style={{ fontSize: '9px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#94A3B8', marginBottom: '4px' }}>Próxima etapa</p>
+                <p style={{ fontSize: '12px', fontWeight: 600, color: '#334155', lineHeight: 1.45 }}>{p.nextStep}</p>
               </div>
             </div>
           ) : (
-            <div className="flex items-center gap-2 bg-emerald-50 rounded-xl px-3.5 py-2.5">
-              <svg className="w-3.5 h-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
-              <p className="text-xs font-bold text-emerald-700">Todas as etapas concluídas</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#ECFDF5', borderRadius: '10px', padding: '11px 14px', marginBottom: '13px' }}>
+              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#059669" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+              <p style={{ fontSize: '12px', fontWeight: 600, color: '#065F46' }}>Todas as etapas concluídas</p>
             </div>
           )}
 
-          {/* Progresso */}
+          {/* Progress bar */}
           {p.total > 0 && (
-            <div className="flex items-center gap-2.5">
-              <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all ${p.pct === 100 ? 'bg-emerald-400' : 'bg-yellow-400'}`}
-                  style={{ width: `${p.pct}%` }}
-                />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ flex: 1, height: '5px', background: '#F1F5F9', borderRadius: '100px', overflow: 'hidden' }}>
+                <div style={{
+                  height: '100%',
+                  width: `${p.pct}%`,
+                  borderRadius: '100px',
+                  background: p.pct === 100 ? '#059669' : `linear-gradient(to right, ${urg.bar}AA, ${urg.bar})`,
+                  transition: 'width 0.6s ease',
+                }} />
               </div>
-              <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap flex-shrink-0">
-                {p.done}/{p.total} etapas · {p.pct}%
+              <span style={{ fontSize: '11px', fontWeight: 700, color: '#94A3B8', whiteSpace: 'nowrap', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
+                {p.done}/{p.total} · {p.pct}%
               </span>
             </div>
           )}
         </div>
 
-        {/* Rodapé do card */}
-        <div className="px-5 py-2.5 border-t border-slate-50 flex items-center justify-between gap-3">
-          <div className="relative" onClick={e => e.stopPropagation()}>
+        {/* Rodapé */}
+        <div style={{ borderTop: '1px solid #F1F5F9', padding: '10px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+
+          {/* Snooze */}
+          <div style={{ position: 'relative' }} onClick={e => e.stopPropagation()}>
             <button
               onClick={() => setOpenSnooze(prev => prev === p.id ? null : p.id)}
-              className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition-all"
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 600, color: '#94A3B8', background: '#F8FAFC', border: '1px solid #E2E8F0', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.15s' }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#F1F5F9'; e.currentTarget.style.color = '#475569' }}
+              onMouseLeave={e => { e.currentTarget.style.background = '#F8FAFC'; e.currentTarget.style.color = '#94A3B8' }}
             >
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-              </svg>
+              <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
               Adiar
             </button>
             {openSnooze === p.id && (
-              <div className="absolute left-0 bottom-full mb-1.5 z-30 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 min-w-[140px]">
-                <p className="px-3.5 py-1 text-[9px] font-black uppercase tracking-widest text-slate-400">Adiar por</p>
+              <div style={{ position: 'absolute', left: 0, bottom: 'calc(100% + 6px)', zIndex: 40, background: 'white', borderRadius: '12px', boxShadow: '0 8px 30px rgba(0,0,0,0.14)', border: '1px solid #E2E8F0', padding: '6px', minWidth: '145px' }}>
+                <p style={{ fontSize: '9px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#94A3B8', padding: '4px 10px 6px', margin: 0 }}>Adiar por</p>
                 {SNOOZE_OPTS.map(o => (
                   <button key={o.days} onClick={() => handleSnooze(p.id, o.days)}
-                    className="w-full text-left px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors">
+                    style={{ width: '100%', textAlign: 'left', padding: '7px 10px', fontSize: '12px', fontWeight: 500, color: '#334155', background: 'transparent', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
                     {o.label}
                   </button>
                 ))}
@@ -333,14 +331,11 @@ export default function PainelProcessosPage() {
             )}
           </div>
 
-          <Link
-            href={`/societario?processo=${p.id}`}
-            className="flex items-center gap-1.5 text-[11px] font-bold text-yellow-600 hover:text-yellow-800 transition-colors"
+          <Link href={`/societario?processo=${p.id}`}
+            style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', fontWeight: 700, color: '#D97706', textDecoration: 'none' }}
           >
             Abrir no módulo
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-            </svg>
+            <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
           </Link>
         </div>
       </div>
@@ -348,20 +343,16 @@ export default function PainelProcessosPage() {
   }
 
   // ── Seção ─────────────────────────────────────────────────────────────────
-
-  function Secao({
-    label, sublabel, dotColor, bg, border, badgeCls, count, children,
-  }: {
-    label: string; sublabel: string; dotColor: string; bg: string; border: string
-    badgeCls: string; count: number; children: React.ReactNode
+  function Secao({ label, sublabel, dot, count, children }: {
+    label: string; sublabel: string; dot: string; count: number; children: React.ReactNode
   }) {
     return (
       <div>
-        <div className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border mb-3 ${bg} ${border}`}>
-          <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${dotColor}`} />
-          <span className="text-sm font-bold text-slate-800">{label}</span>
-          <span className="text-xs text-slate-400 hidden sm:inline">— {sublabel}</span>
-          <span className={`ml-auto text-xs font-bold px-2 py-0.5 rounded-full ${badgeCls}`}>{count}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', paddingBottom: '10px', borderBottom: '1px solid #E4E8F0' }}>
+          <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: dot, flexShrink: 0 }} />
+          <span style={{ fontSize: '13px', fontWeight: 800, color: '#0D1117', letterSpacing: '-0.01em' }}>{label}</span>
+          <span style={{ fontSize: '12px', color: '#94A3B8', fontWeight: 400 }}>— {sublabel}</span>
+          <span style={{ marginLeft: 'auto', fontSize: '11px', fontWeight: 700, padding: '2px 9px', borderRadius: '100px', background: '#F1F5F9', color: '#64748B' }}>{count}</span>
         </div>
         {children}
       </div>
@@ -369,179 +360,183 @@ export default function PainelProcessosPage() {
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
-
   return (
-    <div className="p-6 max-w-3xl mx-auto font-sans bg-[#F8FAFC] min-h-screen">
+    <div style={{ minHeight: '100vh', background: '#F0F3F9' }}>
 
-      {/* Cabeçalho */}
-      <div className="mb-8">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-black rounded-2xl flex items-center justify-center shadow-sm">
-              <span className="text-yellow-400 font-black text-xl">⚖</span>
-            </div>
-            <div>
-              <h1 className="text-2xl font-black text-slate-900 tracking-tight">Painel de Processos</h1>
-              <p className="text-sm text-slate-400">{diaLabel} · {dateTxt}</p>
-            </div>
+      {/* ═══ DARK HEADER ═══════════════════════════════════════════════════ */}
+      <div style={{ background: 'linear-gradient(140deg, #0D1117 0%, #111827 55%, #0F1923 100%)', paddingBottom: '56px' }}>
+        <div style={{ maxWidth: '780px', margin: '0 auto', padding: '28px 24px 0' }}>
+
+          {/* Brand crumb */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '22px' }}>
+            <span style={{ fontSize: '9px', fontWeight: 900, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#F5C842' }}>PARALEGAL PRO</span>
+            <span style={{ color: '#2A3248' }}>·</span>
+            <span style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#3D4A60' }}>MÓDULO SOCIETÁRIO</span>
           </div>
-          <button onClick={load}
-            className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-700 transition-colors font-medium mt-1 flex-shrink-0">
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            Atualizar
-          </button>
-        </div>
 
-        {!loading && (
-          <div className="mt-5 flex flex-wrap items-center gap-2.5">
-            <div className="flex items-center gap-1.5 px-3.5 py-2 bg-orange-50 rounded-full ring-1 ring-orange-200">
-              <span className="w-2 h-2 rounded-full bg-orange-500" />
-              <span className="text-xs font-bold text-orange-700">
-                {priori.length} prioritário{priori.length !== 1 ? 's' : ''}
-              </span>
+          {/* Title + refresh */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', marginBottom: '26px' }}>
+            <div>
+              <h1 style={{ fontSize: '32px', fontWeight: 900, letterSpacing: '-0.035em', color: '#FFFFFF', lineHeight: 1.0, margin: 0 }}>
+                Painel de Processos
+              </h1>
+              <p style={{ fontSize: '13px', color: '#4A5A7A', fontWeight: 500, marginTop: '7px' }}>
+                {diaLabel} · {dateTxt}
+              </p>
             </div>
-            <div className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 rounded-full ring-1 ring-slate-200">
-              <span className="w-2 h-2 rounded-full bg-slate-400" />
-              <span className="text-xs font-bold text-slate-600">
-                {rotina.length} em rotina
-              </span>
+            <button onClick={load} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 600, color: '#4A5A7A', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '8px 14px', cursor: 'pointer', marginTop: '4px', flexShrink: 0, transition: 'all 0.15s' }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.09)'; e.currentTarget.style.color = '#8A9ABE' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = '#4A5A7A' }}
+            >
+              <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+              Atualizar
+            </button>
+          </div>
+
+          {/* Scorecard */}
+          {!loading && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+              {/* Total em andamento */}
+              <div style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '14px', padding: '14px 16px' }}>
+                <p style={{ fontSize: '9px', fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#4A5A7A', marginBottom: '6px' }}>Em andamento</p>
+                <p style={{ fontSize: '30px', fontWeight: 900, letterSpacing: '-0.04em', color: '#FFFFFF', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
+                  {ativos.length + snoozed.length}
+                </p>
+              </div>
+              {/* Prioritários */}
+              <div style={{ background: priori.length > 0 ? 'rgba(245,200,66,0.08)' : 'rgba(255,255,255,0.06)', border: priori.length > 0 ? '1px solid rgba(245,200,66,0.22)' : '1px solid rgba(255,255,255,0.08)', borderRadius: '14px', padding: '14px 16px' }}>
+                <p style={{ fontSize: '9px', fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: priori.length > 0 ? '#F5C842' : '#4A5A7A', marginBottom: '6px' }}>🔥 Prioritários</p>
+                <p style={{ fontSize: '30px', fontWeight: 900, letterSpacing: '-0.04em', color: priori.length > 0 ? '#F5C842' : '#FFFFFF', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
+                  {priori.length}
+                </p>
+              </div>
+              {/* Críticos +30d */}
+              <div style={{ background: critical > 0 ? 'rgba(220,38,38,0.08)' : 'rgba(255,255,255,0.06)', border: critical > 0 ? '1px solid rgba(220,38,38,0.25)' : '1px solid rgba(255,255,255,0.08)', borderRadius: '14px', padding: '14px 16px' }}>
+                <p style={{ fontSize: '9px', fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: critical > 0 ? '#F87171' : '#4A5A7A', marginBottom: '6px' }}>⚠ Acima de 30d</p>
+                <p style={{ fontSize: '30px', fontWeight: 900, letterSpacing: '-0.04em', color: critical > 0 ? '#F87171' : '#FFFFFF', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
+                  {critical}
+                </p>
+              </div>
             </div>
+          )}
+
+          {loading && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+              {[...Array(3)].map((_, i) => (
+                <div key={i} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '14px', height: '72px' }} />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ═══ CONTEÚDO (sobrepõe o header) ══════════════════════════════════ */}
+      <div style={{ maxWidth: '780px', margin: '-32px auto 0', padding: '0 24px 56px', position: 'relative', zIndex: 1 }}>
+
+        {loading ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {[...Array(4)].map((_, i) => (
+              <div key={i} style={{ height: '180px', background: 'white', borderRadius: '0 14px 14px 0', borderLeft: '4px solid #E2E8F0', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', animation: 'pulse 1.5s ease-in-out infinite', opacity: 0.7 }} />
+            ))}
+          </div>
+        ) : ativos.length === 0 && snoozed.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '64px 24px', background: 'white', borderRadius: '14px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+            <p style={{ fontSize: '48px', marginBottom: '16px' }}>🎉</p>
+            <p style={{ fontSize: '18px', fontWeight: 800, color: '#0D1117', letterSpacing: '-0.02em' }}>Nenhum processo em andamento!</p>
+            <p style={{ fontSize: '13px', color: '#94A3B8', marginTop: '6px' }}>Tudo finalizado ou adiado.</p>
+            <Link href="/societario" style={{ display: 'inline-block', marginTop: '20px', fontSize: '12px', fontWeight: 700, color: '#D97706', textDecoration: 'none' }}>
+              Ver módulo societário →
+            </Link>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+
+            {/* PRIORITÁRIOS */}
+            <Secao label="Prioritários" sublabel="precisam da sua atenção hoje" dot="#EA580C" count={priori.length}>
+              {priori.length === 0 ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 16px', background: 'white', borderRadius: '10px', border: '1px dashed #E2E8F0' }}>
+                  <span style={{ fontSize: '16px' }}>☆</span>
+                  <p style={{ fontSize: '13px', color: '#94A3B8' }}>
+                    Nenhum prioritário.
+                    <span style={{ marginLeft: '4px', color: '#64748B', fontWeight: 600 }}>Use ☆ Rotina nos cards para elevar.</span>
+                  </p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {priori.map(p => <ProcessoCard key={p.id} p={p} />)}
+                </div>
+              )}
+            </Secao>
+
+            {/* EM ROTINA */}
+            <Secao label="Em Rotina" sublabel="mais parado primeiro" dot="#94A3B8" count={rotina.length}>
+              {rotina.length === 0 ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '14px 16px', background: 'white', borderRadius: '10px', border: '1px dashed #E2E8F0' }}>
+                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#059669" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                  <p style={{ fontSize: '13px', color: '#94A3B8' }}>Sem processos em rotina.</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {rotina.map(p => <ProcessoCard key={p.id} p={p} />)}
+                </div>
+              )}
+            </Secao>
+
+            {/* ADIADOS */}
             {snoozed.length > 0 && (
-              <button onClick={() => setShowSnoozed(s => !s)}
-                className="flex items-center gap-1.5 px-3.5 py-2 bg-gray-50 rounded-full ring-1 ring-gray-200 hover:bg-gray-100 transition-all">
-                <span className="w-2 h-2 rounded-full bg-gray-400" />
-                <span className="text-xs font-bold text-gray-500">
-                  {snoozed.length} adiado{snoozed.length !== 1 ? 's' : ''} {showSnoozed ? '▲' : '▼'}
-                </span>
-              </button>
+              <div>
+                <button onClick={() => setShowSnoozed(s => !s)} style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', background: 'none', border: 'none', cursor: 'pointer', marginBottom: showSnoozed ? '12px' : '0', paddingBottom: showSnoozed ? '10px' : '0', borderBottom: showSnoozed ? '1px solid #E4E8F0' : 'none' }}>
+                  <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#CBD5E1', flexShrink: 0 }} />
+                  <span style={{ fontSize: '13px', fontWeight: 800, color: '#64748B', letterSpacing: '-0.01em' }}>Adiados</span>
+                  <span style={{ fontSize: '12px', color: '#94A3B8', fontWeight: 400 }}>— voltam automaticamente</span>
+                  <span style={{ marginLeft: 'auto', fontSize: '11px', fontWeight: 700, padding: '2px 9px', borderRadius: '100px', background: '#F1F5F9', color: '#64748B' }}>
+                    {snoozed.length} {showSnoozed ? '▲' : '▼'}
+                  </span>
+                </button>
+                {showSnoozed && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {snoozed.map(p => {
+                      const sn = snoozeMap[p.id]
+                      const daysLeft = sn ? Math.ceil((sn.getTime() - agora.getTime()) / 86_400_000) : 0
+                      return (
+                        <div key={p.id} style={{ background: 'white', borderRadius: '0 10px 10px 0', borderLeft: '3px solid #CBD5E1', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+                          <div style={{ minWidth: 0 }}>
+                            <p style={{ fontSize: '13px', fontWeight: 700, color: '#64748B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nome}</p>
+                            <p style={{ fontSize: '11px', color: '#94A3B8', marginTop: '2px' }}>
+                              {TIPO_LABELS[p.tipo] ?? p.tipo}
+                              <span style={{ margin: '0 6px', color: '#CBD5E1' }}>·</span>
+                              volta {daysLeft === 1 ? 'amanhã' : `em ${daysLeft} dias`}
+                              {sn && <span style={{ marginLeft: '4px', fontFamily: 'monospace' }}>({sn.toLocaleDateString('pt-BR')})</span>}
+                            </p>
+                          </div>
+                          <button onClick={() => handleClearSnooze(p.id)} style={{ flexShrink: 0, fontSize: '11px', fontWeight: 700, color: '#D97706', background: 'transparent', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                            Retomar →
+                          </button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
             )}
-            {updatedAt && (
-              <span className="text-[10px] text-slate-400 ml-auto">
-                atualizado às {updatedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-              </span>
-            )}
+          </div>
+        )}
+
+        {/* Rodapé */}
+        {!loading && (
+          <div style={{ marginTop: '32px', paddingTop: '16px', borderTop: '1px solid #E4E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <p style={{ fontSize: '10px', color: '#94A3B8' }}>
+              Prioridades e snooze salvos neste navegador · Processos em andamento
+              {updatedAt && <span style={{ marginLeft: '8px' }}>· atualizado às {updatedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>}
+            </p>
+            <Link href="/societario" style={{ fontSize: '11px', fontWeight: 700, color: '#D97706', textDecoration: 'none' }}>
+              Ver módulo completo →
+            </Link>
           </div>
         )}
       </div>
 
-      {/* Conteúdo */}
-      {loading ? (
-        <div className="space-y-3">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-48 bg-white rounded-2xl animate-pulse border border-slate-100" />
-          ))}
-        </div>
-      ) : ativos.length === 0 && snoozed.length === 0 ? (
-        <div className="text-center py-20 bg-white rounded-2xl border border-slate-100 shadow-sm">
-          <p className="text-5xl mb-4">🎉</p>
-          <p className="text-lg font-bold text-slate-900">Nenhum processo em andamento!</p>
-          <p className="text-sm text-slate-400 mt-1">Tudo finalizado ou adiado.</p>
-          <Link href="/societario" className="inline-block mt-5 text-xs font-bold text-yellow-600 hover:underline">
-            Ver módulo societário →
-          </Link>
-        </div>
-      ) : (
-        <div className="space-y-7">
-
-          <Secao
-            label="Prioritários"
-            sublabel="precisam da sua atenção hoje"
-            dotColor="bg-orange-500"
-            bg="bg-orange-50"
-            border="border-orange-200"
-            badgeCls="bg-orange-100 text-orange-700 ring-1 ring-orange-200"
-            count={priori.length}
-          >
-            {priori.length === 0 ? (
-              <div className="flex items-center gap-2.5 px-4 py-3.5 rounded-xl bg-slate-50 border border-dashed border-slate-200">
-                <span className="text-base">☆</span>
-                <p className="text-sm text-slate-400">
-                  Nenhum processo marcado como prioritário.
-                  <span className="ml-1 font-medium text-slate-500">Use o botão ☆ Rotina nos cards abaixo para elevar.</span>
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {priori.map(p => <ProcessoCard key={p.id} p={p} />)}
-              </div>
-            )}
-          </Secao>
-
-          <Secao
-            label="Em Rotina"
-            sublabel="ordenados pelo mais parado primeiro"
-            dotColor="bg-slate-400"
-            bg="bg-slate-50"
-            border="border-slate-200"
-            badgeCls="bg-slate-100 text-slate-600 ring-1 ring-slate-200"
-            count={rotina.length}
-          >
-            {rotina.length === 0 ? (
-              <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-slate-50 border border-dashed border-slate-200">
-                <svg className="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-                <p className="text-sm text-slate-400">Sem processos em rotina.</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {rotina.map(p => <ProcessoCard key={p.id} p={p} />)}
-              </div>
-            )}
-          </Secao>
-
-          {showSnoozed && snoozed.length > 0 && (
-            <Secao
-              label="Adiados"
-              sublabel="voltam automaticamente na data programada"
-              dotColor="bg-slate-300"
-              bg="bg-slate-50"
-              border="border-slate-200"
-              badgeCls="bg-slate-100 text-slate-400"
-              count={snoozed.length}
-            >
-              <div className="space-y-2">
-                {snoozed.map(p => {
-                  const sn = snoozeMap[p.id]
-                  const daysLeft = sn ? Math.ceil((sn.getTime() - agora.getTime()) / 86_400_000) : 0
-                  return (
-                    <div key={p.id} className="bg-white rounded-xl border border-slate-100 border-l-[4px] border-l-slate-300">
-                      <div className="px-4 py-3 flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="text-sm font-bold text-slate-500 truncate">{p.nome}</p>
-                          <p className="text-xs text-slate-400">
-                            {TIPO_LABELS[p.tipo] ?? p.tipo}
-                            <span className="mx-1.5 text-slate-300">·</span>
-                            volta {daysLeft === 1 ? 'amanhã' : `em ${daysLeft} dias`}
-                            {sn && <span className="ml-1 font-mono">({sn.toLocaleDateString('pt-BR')})</span>}
-                          </p>
-                        </div>
-                        <button onClick={() => handleClearSnooze(p.id)}
-                          className="flex-shrink-0 text-xs font-bold text-yellow-600 hover:text-yellow-800 transition-colors whitespace-nowrap">
-                          Retomar agora
-                        </button>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </Secao>
-          )}
-        </div>
-      )}
-
-      {!loading && (
-        <div className="mt-8 pt-4 border-t border-slate-200 flex items-center justify-between">
-          <p className="text-[10px] text-slate-400">
-            Prioridades e snooze salvos neste navegador · Exibindo apenas processos em andamento
-          </p>
-          <Link href="/societario" className="text-xs font-bold text-yellow-600 hover:text-yellow-800 transition-colors">
-            Ver módulo completo →
-          </Link>
-        </div>
-      )}
+      <style>{`@keyframes pulse { 0%, 100% { opacity: 0.7; } 50% { opacity: 0.4; } }`}</style>
     </div>
   )
 }
