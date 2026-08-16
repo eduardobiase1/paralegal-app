@@ -39,6 +39,7 @@ interface Item {
   detalhe: string
   detalheColor: 'red' | 'amber' | 'gray'
   score: number
+  subList?: string[]  // Lista de nomes para itens de gap/meta
 }
 
 // ── Icons ────────────────────────────────────────────────────────────────────
@@ -84,6 +85,7 @@ export default function BriefingPage() {
   const [loading,     setLoading]     = useState(true)
   const [updatedAt,   setUpdatedAt]   = useState<Date | null>(null)
   const [counts,      setCounts]      = useState({ red: 0, yellow: 0, green: 0, total: 0 })
+  const [expanded,    setExpanded]    = useState<Record<string, boolean>>({})
   const [supabase]                    = useState(createClient)
 
   const hoje      = new Date()
@@ -239,33 +241,41 @@ export default function BriefingPage() {
         })
       }
 
-      // ── Soft cap: max 3 por categoria, depois overflow ───────────────────
+      // ── Algoritmo: processos têm slots garantidos ────────────────────────
       candidates.sort((a, b) => b.score - a.score)
-      const catCount: Record<string, number> = {}
-      const final: Item[]    = []
-      const overflow: Item[] = []
-      for (const item of candidates) {
-        catCount[item.category] = (catCount[item.category] || 0) + 1
-        if (catCount[item.category] <= 3) final.push(item)
-        else overflow.push(item)
-      }
-      // Preenche slots restantes com overflow (diversidade foi garantida)
-      for (const item of overflow) {
-        if (final.length >= 8) break
-        final.push(item)
+
+      const PROC_CATS = ['proc_critico', 'proc_atencao']
+      const procCandidates  = candidates.filter(i => PROC_CATS.includes(i.category))
+      const otherCandidates = candidates.filter(i => !PROC_CATS.includes(i.category))
+
+      // Slots de processo: até 3 garantidos
+      const procSlots = procCandidates.slice(0, 3)
+
+      // Slots restantes: até (8 - processos) de outros, max 3 por sub-categoria
+      const remaining = 8 - procSlots.length
+      const otherCatCount: Record<string, number> = {}
+      const otherSlots: Item[] = []
+      for (const item of otherCandidates) {
+        if (otherSlots.length >= remaining) break
+        otherCatCount[item.category] = (otherCatCount[item.category] || 0) + 1
+        if (otherCatCount[item.category] <= 3) otherSlots.push(item)
       }
 
-      // ── Cadastro incompleto (slot 9) — apenas certidão e alvará ─────────
+      // Combina e reordena por score
+      const final: Item[] = [...procSlots, ...otherSlots].sort((a, b) => b.score - a.score)
+
+      // ── Cadastro incompleto (slot 9) — certidão e alvará ─────────────────
       const comCertIds   = new Set((empComCert   || []).map((r: any) => r.empresa_id))
       const comAlvaraIds = new Set((empComAlvara || []).map((r: any) => r.empresa_id))
-      let semCert = 0, semAlvara = 0
+      const semCertNomes:   string[] = []
+      const semAlvaraNomes: string[] = []
       for (const e of empresasAtivas || []) {
-        if (!comCertIds.has(e.id))   semCert++
-        if (!comAlvaraIds.has(e.id)) semAlvara++
+        if (!comCertIds.has(e.id))   semCertNomes.push(e.razao_social)
+        if (!comAlvaraIds.has(e.id)) semAlvaraNomes.push(e.razao_social)
       }
       const gaps = [
-        { count: semCert,   label: `${semCert} empresas ativas sem certidão cadastrada`,  href: '/certidoes' },
-        { count: semAlvara, label: `${semAlvara} empresas ativas sem alvará cadastrado`,   href: '/alvaras' },
+        { count: semCertNomes.length,   nomes: semCertNomes,   label: `${semCertNomes.length} empresas ativas sem certidão cadastrada`,  href: '/certidoes' },
+        { count: semAlvaraNomes.length, nomes: semAlvaraNomes, label: `${semAlvaraNomes.length} empresas ativas sem alvará cadastrado`,   href: '/alvaras' },
       ].filter(g => g.count > 0).sort((a, b) => b.count - a.count)
 
       if (gaps[0] && final.length < 10) {
@@ -281,6 +291,7 @@ export default function BriefingPage() {
           detalhe: 'dados faltando',
           detalheColor: 'gray',
           score: 20,
+          subList: gaps[0].nomes,
         })
       }
 
@@ -295,10 +306,11 @@ export default function BriefingPage() {
           icon: <IconMeta />,
           empresaNome: '',
           href: metaGap.href,
-          descricao: `${metaGap.label} — tente regularizar pelo menos 3 esta semana`,
+          descricao: `${metaGap.label} — regularize pelo menos 3 esta semana`,
           detalhe: '',
           detalheColor: 'gray',
           score: 10,
+          subList: metaGap.nomes,
         })
       }
 
@@ -388,9 +400,13 @@ export default function BriefingPage() {
         <div className="space-y-2">
           {items.map((item, idx) => {
             const u = U[item.urgency]
+            const isExpanded = expanded[item.key]
+            const hasSubList = item.subList && item.subList.length > 0
+
             return (
-              <Link key={item.key} href={item.href}
-                className={`flex items-center gap-4 px-5 py-4 bg-white rounded-2xl border border-gray-100 border-l-[5px] ${u.border} shadow-sm hover:shadow-md hover:border-gray-200 transition-all group`}>
+              <div key={item.key} className={`bg-white rounded-2xl border border-gray-100 border-l-[5px] ${u.border} shadow-sm hover:shadow-md transition-all`}>
+                <Link href={item.href}
+                  className="flex items-center gap-4 px-5 py-4 group">
 
                 {/* Número */}
                 <div className="flex-shrink-0 w-8 h-8 bg-gray-50 rounded-xl flex items-center justify-center text-xs font-bold text-gray-400 border border-gray-100 group-hover:border-gray-200">
@@ -426,11 +442,39 @@ export default function BriefingPage() {
                   </div>
                 )}
 
-                {/* Seta */}
-                <svg className="w-4 h-4 text-gray-300 group-hover:text-primary-400 flex-shrink-0 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </Link>
+                {/* Detalhe ou botão expandir */}
+                {hasSubList ? (
+                  <button
+                    onClick={e => { e.preventDefault(); setExpanded(prev => ({ ...prev, [item.key]: !prev[item.key] })) }}
+                    className="flex-shrink-0 flex items-center gap-1 text-xs text-emerald-600 font-semibold hover:text-emerald-700 transition-colors px-2"
+                  >
+                    {isExpanded ? 'ocultar' : 'ver lista'}
+                    <svg className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                ) : (
+                  <svg className="w-4 h-4 text-gray-300 group-hover:text-primary-400 flex-shrink-0 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                )}
+                </Link>
+
+                {/* Lista expandível de empresas */}
+                {hasSubList && isExpanded && (
+                  <div className="px-5 pb-4 border-t border-gray-50">
+                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mt-3 mb-2">Empresas</p>
+                    <div className="space-y-1 max-h-48 overflow-y-auto">
+                      {item.subList!.sort().map((nome, i) => (
+                        <p key={i} className="text-xs text-gray-700 flex items-center gap-1.5">
+                          <span className="w-1 h-1 rounded-full bg-gray-400 flex-shrink-0" />
+                          {nome}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             )
           })}
         </div>
