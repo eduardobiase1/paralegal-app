@@ -4,53 +4,89 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
+// ── Date helpers ─────────────────────────────────────────────────────────────
 const DIAS_PT  = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado']
 const MESES_PT = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro']
 
-function daysRemaining(dateStr: string): number {
-  const d = new Date(dateStr); d.setHours(0,0,0,0)
-  const n = new Date();        n.setHours(0,0,0,0)
-  return Math.round((d.getTime() - n.getTime()) / 86_400_000)
+function daysRemaining(d: string) {
+  const a = new Date(d); a.setHours(0,0,0,0)
+  const b = new Date();  b.setHours(0,0,0,0)
+  return Math.round((a.getTime() - b.getTime()) / 86_400_000)
 }
-
-function daysSince(dateStr: string): number {
-  const d = new Date(dateStr)
-  return Math.round((Date.now() - d.getTime()) / 86_400_000)
+function daysSinceMs(ms: number) {
+  return Math.round((Date.now() - ms) / 86_400_000)
 }
-
-function vencLabel(dias: number, tipo: 'f' | 'm' = 'm') {
-  const venc = tipo === 'f' ? 'vencida' : 'vencido'
-  if (dias < 0)  return `${venc} há ${Math.abs(dias)} ${Math.abs(dias) === 1 ? 'dia' : 'dias'}`
+function vencTxt(dias: number, fem = false) {
+  const venc = fem ? 'vencida' : 'vencido'
+  if (dias < 0)  return `${venc} há ${Math.abs(dias)}d`
   if (dias === 0) return 'vence hoje'
-  return `vence em ${dias} ${dias === 1 ? 'dia' : 'dias'}`
+  return `vence em ${dias}d`
 }
 
 // ── Types ────────────────────────────────────────────────────────────────────
+type Urgency  = 'red' | 'yellow' | 'green'
+type Category = 'proc_critico' | 'venc_critico' | 'proc_atencao' | 'venc_proximo' | 'incompleto' | 'meta'
 
-type Urgency = 'red' | 'yellow' | 'green'
-
-interface BriefingItem {
+interface Item {
   key: string
+  category: Category
   urgency: Urgency
-  label: string
+  badge: string
+  icon: React.ReactNode
   empresaNome: string
+  href: string
   descricao: string
   detalhe: string
-  href: string
+  detalheColor: 'red' | 'amber' | 'gray'
   score: number
 }
 
-// ── Component ────────────────────────────────────────────────────────────────
+// ── Icons ────────────────────────────────────────────────────────────────────
+const IconProcesso = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+  </svg>
+)
+const IconCertidao = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+)
+const IconAlvara = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138z" />
+  </svg>
+)
+const IconLicenca = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+  </svg>
+)
+const IconCertDig = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+  </svg>
+)
+const IconMeta = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+  </svg>
+)
+const IconWarning = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+  </svg>
+)
 
+// ── Component ────────────────────────────────────────────────────────────────
 export default function BriefingPage() {
-  const [items,       setItems]       = useState<BriefingItem[]>([])
+  const [items,       setItems]       = useState<Item[]>([])
   const [loading,     setLoading]     = useState(true)
-  const [totalIssues, setTotalIssues] = useState(0)
+  const [updatedAt,   setUpdatedAt]   = useState<Date | null>(null)
+  const [counts,      setCounts]      = useState({ red: 0, yellow: 0, green: 0, total: 0 })
   const [supabase]                    = useState(createClient)
 
-  const hoje    = new Date()
+  const hoje      = new Date()
   const diaLabel  = DIAS_PT[hoje.getDay()]
   const dateLabel = `${hoje.getDate()} de ${MESES_PT[hoje.getMonth()]} de ${hoje.getFullYear()}`
 
@@ -68,7 +104,6 @@ export default function BriefingPage() {
         { data: empresasAtivas },
         { data: empComCert },
         { data: empComAlvara },
-        { data: empComCertDig },
       ] = await Promise.all([
         supabase.from('processos_societarios')
           .select('id, titulo, tipo, updated_at, empresa_id, empresa:empresas(razao_social), etapas:processo_etapas(id, updated_at)')
@@ -88,260 +123,309 @@ export default function BriefingPage() {
         supabase.from('empresas').select('id, razao_social').eq('status', 'ativa'),
         supabase.from('certidoes').select('empresa_id').not('empresa_id', 'is', null),
         supabase.from('alvaras').select('empresa_id').not('empresa_id', 'is', null),
-        supabase.from('certificados_digitais').select('empresa_id').not('empresa_id', 'is', null),
       ])
 
-      const allItems: BriefingItem[] = []
+      const candidates: Item[] = []
 
-      // ── SLOT 1 & 2 — Processos parados 🔴 >15 dias ───────────────────────
-      const processosRed: BriefingItem[] = []
+      // ── Processos parados ────────────────────────────────────────────────
       for (const p of processos || []) {
-        // Use last etapa update OR processo.updated_at, whichever is more recent
         const etapas = (p as any).etapas || []
-        const lastActivity = etapas.length
+        const lastMs = etapas.length
           ? Math.max(new Date(p.updated_at).getTime(), ...etapas.map((e: any) => new Date(e.updated_at).getTime()))
           : new Date(p.updated_at).getTime()
-        const dias = Math.round((Date.now() - lastActivity) / 86_400_000)
-        if (dias > 15) {
-          processosRed.push({
-            key: `proc-red-${p.id}`,
-            urgency: 'red',
-            label: 'Processo Parado',
-            empresaNome: (p as any).empresa?.razao_social || '—',
-            descricao: (p as any).titulo || (p as any).tipo || 'Processo societário',
-            detalhe: `parado há ${dias} dias`,
-            href: '/societario',
-            score: dias * 6,
-          })
-        }
+        const dias = daysSinceMs(lastMs)
+        if (dias < 7) continue
+        const critico = dias > 15
+        candidates.push({
+          key: `proc-${p.id}`,
+          category: critico ? 'proc_critico' : 'proc_atencao',
+          urgency: critico ? 'red' : 'yellow',
+          badge: critico ? 'Processo Parado' : 'Processo em Atenção',
+          icon: <IconProcesso />,
+          empresaNome: (p as any).empresa?.razao_social || '—',
+          href: `/societario/${p.id}`,
+          descricao: (p as any).titulo || (p as any).tipo || 'Processo societário',
+          detalhe: `${dias} dias parado`,
+          detalheColor: critico ? 'red' : 'amber',
+          score: critico ? dias * 6 : dias * 4,
+        })
       }
-      processosRed.sort((a, b) => b.score - a.score)
-      allItems.push(...processosRed.slice(0, 2))
 
-      // ── SLOT 3 & 4 — Vencimentos críticos 🔴 ────────────────────────────
-      const vencCrit: BriefingItem[] = []
+      // ── Certidões ────────────────────────────────────────────────────────
       for (const c of certidoes || []) {
         const dias = daysRemaining(c.data_vencimento)
-        if (dias <= 5) vencCrit.push({
-          key: `cert-crit-${c.id}`, urgency: 'red', label: 'Certidão',
+        if (dias > 30) continue
+        const critico = dias <= 5
+        candidates.push({
+          key: `cert-${c.id}`,
+          category: critico ? 'venc_critico' : 'venc_proximo',
+          urgency: critico ? 'red' : 'yellow',
+          badge: 'Certidão Negativa',
+          icon: <IconCertidao />,
           empresaNome: (c as any).empresa?.razao_social || '—',
-          descricao: c.tipo || 'Certidão Negativa',
-          detalhe: vencLabel(dias, 'f'), href: '/certidoes',
-          score: dias < 0 ? 100 + Math.abs(dias) * 2 : 100 - dias * 10,
+          href: `/empresas/${c.empresa_id}`,
+          descricao: c.tipo || 'Certidão',
+          detalhe: vencTxt(dias, true),
+          detalheColor: dias < 0 ? 'red' : 'amber',
+          score: critico
+            ? (dias < 0 ? 100 + Math.abs(dias) * 2 : 100 - dias * 10)
+            : 50 - dias,
         })
       }
+
+      // ── Alvarás ──────────────────────────────────────────────────────────
       for (const a of alvaras || []) {
         const dias = daysRemaining(a.data_vencimento)
-        if (dias <= 5) vencCrit.push({
-          key: `alv-crit-${a.id}`, urgency: 'red', label: 'Alvará',
+        if (dias > 30) continue
+        const critico = dias <= 5
+        candidates.push({
+          key: `alv-${a.id}`,
+          category: critico ? 'venc_critico' : 'venc_proximo',
+          urgency: critico ? 'red' : 'yellow',
+          badge: 'Alvará',
+          icon: <IconAlvara />,
           empresaNome: (a as any).empresa?.razao_social || '—',
+          href: `/empresas/${a.empresa_id}`,
           descricao: `Alvará ${a.tipo || ''}`.trim(),
-          detalhe: vencLabel(dias), href: '/alvaras',
-          score: dias < 0 ? 95 + Math.abs(dias) * 2 : 95 - dias * 10,
+          detalhe: vencTxt(dias),
+          detalheColor: dias < 0 ? 'red' : 'amber',
+          score: critico
+            ? (dias < 0 ? 95 + Math.abs(dias) * 2 : 95 - dias * 10)
+            : 48 - dias,
         })
       }
+
+      // ── Licenças Sanitárias ──────────────────────────────────────────────
       for (const l of licencas || []) {
         const dias = daysRemaining(l.data_vencimento)
-        if (dias <= 5) vencCrit.push({
-          key: `lic-crit-${l.id}`, urgency: 'red', label: 'Licença Sanitária',
+        if (dias > 30) continue
+        const critico = dias <= 5
+        candidates.push({
+          key: `lic-${l.id}`,
+          category: critico ? 'venc_critico' : 'venc_proximo',
+          urgency: critico ? 'red' : 'yellow',
+          badge: 'Licença Sanitária',
+          icon: <IconLicenca />,
           empresaNome: (l as any).empresa?.razao_social || '—',
+          href: `/empresas/${l.empresa_id}`,
           descricao: 'Licença Sanitária',
-          detalhe: vencLabel(dias, 'f'), href: '/licencas',
-          score: dias < 0 ? 90 + Math.abs(dias) * 2 : 90 - dias * 10,
+          detalhe: vencTxt(dias, true),
+          detalheColor: dias < 0 ? 'red' : 'amber',
+          score: critico
+            ? (dias < 0 ? 90 + Math.abs(dias) * 2 : 90 - dias * 10)
+            : 46 - dias,
         })
       }
+
+      // ── Certificados Digitais (apenas vencimentos) ───────────────────────
       for (const cd of certificados || []) {
         const dias = daysRemaining(cd.data_vencimento)
-        if (dias <= 7) vencCrit.push({
-          key: `certdig-crit-${cd.id}`, urgency: 'red', label: 'Certificado Digital',
+        if (dias > 30) continue
+        const critico = dias <= 7
+        candidates.push({
+          key: `certdig-${cd.id}`,
+          category: critico ? 'venc_critico' : 'venc_proximo',
+          urgency: critico ? 'red' : 'yellow',
+          badge: 'Certificado Digital',
+          icon: <IconCertDig />,
           empresaNome: (cd as any).empresa?.razao_social || '—',
-          descricao: [`${(cd as any).tipo || ''}`, `${(cd as any).uso || ''}`].filter(Boolean).join(' ') || 'Certificado Digital',
-          detalhe: vencLabel(dias), href: '/certificados',
-          score: dias < 0 ? 88 + Math.abs(dias) * 2 : 88 - dias * 8,
+          href: `/empresas/${cd.empresa_id}`,
+          descricao: [(cd as any).tipo, (cd as any).uso].filter(Boolean).join(' ') || 'Certificado Digital',
+          detalhe: vencTxt(dias),
+          detalheColor: dias < 0 ? 'red' : 'amber',
+          score: critico
+            ? (dias < 0 ? 88 + Math.abs(dias) * 2 : 88 - dias * 8)
+            : 44 - dias,
         })
       }
-      vencCrit.sort((a, b) => b.score - a.score)
-      allItems.push(...vencCrit.slice(0, 2))
 
-      // ── SLOT 5 & 6 — Processos parados 🟡 7-15 dias ─────────────────────
-      const processosYel: BriefingItem[] = []
-      for (const p of processos || []) {
-        const etapas = (p as any).etapas || []
-        const lastActivity = etapas.length
-          ? Math.max(new Date(p.updated_at).getTime(), ...etapas.map((e: any) => new Date(e.updated_at).getTime()))
-          : new Date(p.updated_at).getTime()
-        const dias = Math.round((Date.now() - lastActivity) / 86_400_000)
-        if (dias >= 7 && dias <= 15) {
-          processosYel.push({
-            key: `proc-yel-${p.id}`,
-            urgency: 'yellow',
-            label: 'Processo em Atenção',
-            empresaNome: (p as any).empresa?.razao_social || '—',
-            descricao: (p as any).titulo || (p as any).tipo || 'Processo societário',
-            detalhe: `parado há ${dias} dias`,
-            href: '/societario',
-            score: dias * 4,
-          })
-        }
+      // ── Soft cap: max 3 por categoria, depois overflow ───────────────────
+      candidates.sort((a, b) => b.score - a.score)
+      const catCount: Record<string, number> = {}
+      const final: Item[]    = []
+      const overflow: Item[] = []
+      for (const item of candidates) {
+        catCount[item.category] = (catCount[item.category] || 0) + 1
+        if (catCount[item.category] <= 3) final.push(item)
+        else overflow.push(item)
       }
-      processosYel.sort((a, b) => b.score - a.score)
-      allItems.push(...processosYel.slice(0, 2))
+      // Preenche slots restantes com overflow (diversidade foi garantida)
+      for (const item of overflow) {
+        if (final.length >= 8) break
+        final.push(item)
+      }
 
-      // ── SLOT 7 & 8 — Vencimentos próximos 🟡 ────────────────────────────
-      const vencProx: BriefingItem[] = []
-      for (const c of certidoes || []) {
-        const dias = daysRemaining(c.data_vencimento)
-        if (dias > 5 && dias <= 30) vencProx.push({
-          key: `cert-prox-${c.id}`, urgency: 'yellow', label: 'Certidão',
-          empresaNome: (c as any).empresa?.razao_social || '—',
-          descricao: c.tipo || 'Certidão Negativa',
-          detalhe: `vence em ${dias} dias`, href: '/certidoes',
-          score: 50 - dias,
-        })
-      }
-      for (const a of alvaras || []) {
-        const dias = daysRemaining(a.data_vencimento)
-        if (dias > 5 && dias <= 30) vencProx.push({
-          key: `alv-prox-${a.id}`, urgency: 'yellow', label: 'Alvará',
-          empresaNome: (a as any).empresa?.razao_social || '—',
-          descricao: `Alvará ${a.tipo || ''}`.trim(),
-          detalhe: `vence em ${dias} dias`, href: '/alvaras',
-          score: 48 - dias,
-        })
-      }
-      for (const cd of certificados || []) {
-        const dias = daysRemaining(cd.data_vencimento)
-        if (dias > 7 && dias <= 30) vencProx.push({
-          key: `certdig-prox-${cd.id}`, urgency: 'yellow', label: 'Certificado Digital',
-          empresaNome: (cd as any).empresa?.razao_social || '—',
-          descricao: [`${(cd as any).tipo || ''}`, `${(cd as any).uso || ''}`].filter(Boolean).join(' ') || 'Certificado Digital',
-          detalhe: `vence em ${dias} dias`, href: '/certificados',
-          score: 45 - dias,
-        })
-      }
-      vencProx.sort((a, b) => b.score - a.score)
-      allItems.push(...vencProx.slice(0, 2))
-
-      // ── SLOT 9 — Empresa incompleta 🟢 ───────────────────────────────────
-      const comCertIds    = new Set((empComCert    || []).map((r: any) => r.empresa_id))
-      const comAlvaraIds  = new Set((empComAlvara  || []).map((r: any) => r.empresa_id))
-      const comCertDigIds = new Set((empComCertDig || []).map((r: any) => r.empresa_id))
-      let semCert = 0, semAlvara = 0, semCertDig = 0
+      // ── Cadastro incompleto (slot 9) — apenas certidão e alvará ─────────
+      const comCertIds   = new Set((empComCert   || []).map((r: any) => r.empresa_id))
+      const comAlvaraIds = new Set((empComAlvara || []).map((r: any) => r.empresa_id))
+      let semCert = 0, semAlvara = 0
       for (const e of empresasAtivas || []) {
-        if (!comCertIds.has(e.id))    semCert++
-        if (!comAlvaraIds.has(e.id))  semAlvara++
-        if (!comCertDigIds.has(e.id)) semCertDig++
+        if (!comCertIds.has(e.id))   semCert++
+        if (!comAlvaraIds.has(e.id)) semAlvara++
       }
-
       const gaps = [
-        { count: semCert,    label: `${semCert} empresas sem certidão cadastrada`,     href: '/certidoes' },
-        { count: semAlvara,  label: `${semAlvara} empresas sem alvará cadastrado`,      href: '/alvaras' },
-        { count: semCertDig, label: `${semCertDig} empresas sem certificado digital`,   href: '/certificados' },
+        { count: semCert,   label: `${semCert} empresas ativas sem certidão cadastrada`,  href: '/certidoes' },
+        { count: semAlvara, label: `${semAlvara} empresas ativas sem alvará cadastrado`,   href: '/alvaras' },
       ].filter(g => g.count > 0).sort((a, b) => b.count - a.count)
 
-      if (gaps[0]) allItems.push({
-        key: 'incompleta',
-        urgency: 'green',
-        label: 'Cadastro Pendente',
-        empresaNome: 'Varredura do sistema',
-        descricao: gaps[0].label,
-        detalhe: '',
-        href: gaps[0].href,
-        score: 20,
-      })
+      if (gaps[0] && final.length < 10) {
+        final.push({
+          key: 'incompleto',
+          category: 'incompleto',
+          urgency: 'green',
+          badge: 'Cadastro Pendente',
+          icon: <IconWarning />,
+          empresaNome: 'Varredura do sistema',
+          href: gaps[0].href,
+          descricao: gaps[0].label,
+          detalhe: 'dados faltando',
+          detalheColor: 'gray',
+          score: 20,
+        })
+      }
 
-      // ── SLOT 10 — Meta da semana 🟢 ──────────────────────────────────────
+      // ── Meta da semana (slot 10) ─────────────────────────────────────────
       const metaGap = gaps[1] || gaps[0]
-      if (metaGap) allItems.push({
-        key: 'meta',
-        urgency: 'green',
-        label: '⭐ Meta da Semana',
-        empresaNome: '',
-        descricao: metaGap.label + ' — tente regularizar pelo menos 3 esta semana',
-        detalhe: '',
-        href: metaGap.href,
-        score: 10,
-      })
+      if (metaGap && final.length < 10) {
+        final.push({
+          key: 'meta',
+          category: 'meta',
+          urgency: 'green',
+          badge: 'Meta da Semana',
+          icon: <IconMeta />,
+          empresaNome: '',
+          href: metaGap.href,
+          descricao: `${metaGap.label} — tente regularizar pelo menos 3 esta semana`,
+          detalhe: '',
+          detalheColor: 'gray',
+          score: 10,
+        })
+      }
 
-      const total = processosRed.length + vencCrit.length + processosYel.length + vencProx.length
-      setTotalIssues(total)
-      setItems(allItems.slice(0, 10))
+      // ── Contadores para o cabeçalho ──────────────────────────────────────
+      const red    = final.filter(i => i.urgency === 'red').length
+      const yellow = final.filter(i => i.urgency === 'yellow').length
+      const green  = final.filter(i => i.urgency === 'green').length
+      setCounts({ red, yellow, green, total: candidates.length })
+      setItems(final.slice(0, 10))
+      setUpdatedAt(new Date())
     } catch (e) {
       console.error('Briefing error:', e)
     }
     setLoading(false)
   }
 
-  const C = {
-    red:    { border: 'border-l-red-500',     badge: 'bg-red-50 text-red-700 border border-red-100' },
-    yellow: { border: 'border-l-amber-400',   badge: 'bg-amber-50 text-amber-700 border border-amber-100' },
-    green:  { border: 'border-l-emerald-500', badge: 'bg-emerald-50 text-emerald-700 border border-emerald-100' },
+  // ── Estilos por urgência ─────────────────────────────────────────────────
+  const U = {
+    red:    { border: 'border-l-red-500',     icon: 'text-red-500',    badgeBg: 'bg-red-50 text-red-700 ring-1 ring-red-200' },
+    yellow: { border: 'border-l-amber-400',   icon: 'text-amber-500',  badgeBg: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200' },
+    green:  { border: 'border-l-emerald-500', icon: 'text-emerald-500',badgeBg: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' },
+  }
+  const DC = {
+    red:   'bg-red-100 text-red-700',
+    amber: 'bg-amber-100 text-amber-700',
+    gray:  'bg-gray-100 text-gray-600',
   }
 
   return (
-    <div className="p-6 max-w-2xl">
+    <div className="p-6 max-w-3xl mx-auto">
 
-      {/* ── Header ── */}
+      {/* ── Cabeçalho ─────────────────────────────────────────────────────── */}
       <div className="mb-8">
-        <div className="flex items-start gap-3">
-          <span className="text-3xl leading-none mt-0.5">☀️</span>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Briefing Diário</h1>
-            <p className="text-sm text-gray-500 mt-0.5">{diaLabel}, {dateLabel}</p>
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center text-2xl shadow-sm border border-amber-100">
+              ☀️
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Briefing Diário</h1>
+              <p className="text-sm text-gray-500">{diaLabel} · {dateLabel}</p>
+            </div>
           </div>
+          {updatedAt && (
+            <span className="text-xs text-gray-400 mt-1">
+              Atualizado às {updatedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          )}
         </div>
+
+        {/* Pills de contagem */}
         {!loading && (
-          <div className="mt-4 ml-11 p-3 bg-gray-50 rounded-lg border border-gray-100">
-            <p className="text-sm text-gray-600">
-              O sistema encontrou <strong className="text-gray-900">{totalIssues}</strong> pendências nos seus módulos.
-              Abaixo estão suas <strong className="text-gray-900">{items.length}</strong> prioridades de hoje —
-              distribuídas para que nenhum módulo domine o dia.
-            </p>
+          <div className="mt-5 flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 rounded-full ring-1 ring-red-200">
+              <span className="w-2 h-2 rounded-full bg-red-500" />
+              <span className="text-xs font-semibold text-red-700">{counts.red} crítico{counts.red !== 1 ? 's' : ''}</span>
+            </div>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 rounded-full ring-1 ring-amber-200">
+              <span className="w-2 h-2 rounded-full bg-amber-400" />
+              <span className="text-xs font-semibold text-amber-700">{counts.yellow} em atenção</span>
+            </div>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 rounded-full ring-1 ring-emerald-200">
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              <span className="text-xs font-semibold text-emerald-700">{counts.green} meta</span>
+            </div>
+            <span className="text-xs text-gray-400 ml-1">
+              de {counts.total} pendências encontradas · exibindo top {items.length}
+            </span>
           </div>
         )}
       </div>
 
-      {/* ── Lista ── */}
+      {/* ── Lista de prioridades ───────────────────────────────────────────── */}
       {loading ? (
         <div className="space-y-3">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="h-[72px] bg-gray-100 rounded-xl animate-pulse" />
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="h-[76px] bg-gray-50 rounded-2xl animate-pulse border border-gray-100" />
           ))}
         </div>
       ) : items.length === 0 ? (
-        <div className="text-center py-16">
+        <div className="text-center py-20 bg-white rounded-2xl border border-gray-100 shadow-sm">
           <p className="text-5xl mb-4">🎉</p>
-          <p className="text-lg font-semibold text-gray-900">Tudo em dia!</p>
-          <p className="text-sm text-gray-500 mt-1">Nenhuma pendência crítica encontrada hoje. Bom trabalho!</p>
+          <p className="text-lg font-bold text-gray-900">Tudo em dia!</p>
+          <p className="text-sm text-gray-500 mt-1">Nenhuma pendência encontrada. Continue assim!</p>
         </div>
       ) : (
-        <div className="space-y-2.5">
+        <div className="space-y-2">
           {items.map((item, idx) => {
-            const c = C[item.urgency]
+            const u = U[item.urgency]
             return (
               <Link key={item.key} href={item.href}
-                className={`flex items-center gap-4 px-4 py-3.5 bg-white rounded-xl border border-gray-100 border-l-4 ${c.border} hover:shadow-md hover:border-gray-200 transition-all group`}>
+                className={`flex items-center gap-4 px-5 py-4 bg-white rounded-2xl border border-gray-100 border-l-[5px] ${u.border} shadow-sm hover:shadow-md hover:border-gray-200 transition-all group`}>
+
                 {/* Número */}
-                <div className="w-6 h-6 flex-shrink-0 bg-gray-100 rounded-full flex items-center justify-center text-[11px] font-bold text-gray-400">
-                  {idx + 1}
+                <div className="flex-shrink-0 w-8 h-8 bg-gray-50 rounded-xl flex items-center justify-center text-xs font-bold text-gray-400 border border-gray-100 group-hover:border-gray-200">
+                  {String(idx + 1).padStart(2, '0')}
                 </div>
+
+                {/* Ícone */}
+                <div className={`flex-shrink-0 ${u.icon}`}>
+                  {item.icon}
+                </div>
+
                 {/* Conteúdo */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                    <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${c.badge}`}>
-                      {item.label}
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide ${u.badgeBg}`}>
+                      {item.badge}
                     </span>
-                    {item.detalhe && (
-                      <span className="text-xs text-gray-400">{item.detalhe}</span>
-                    )}
                   </div>
                   {item.empresaNome && (
-                    <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-primary-600 transition-colors">
+                    <p className="text-sm font-bold text-gray-900 truncate group-hover:text-primary-600 transition-colors leading-tight">
                       {item.empresaNome}
                     </p>
                   )}
-                  <p className="text-xs text-gray-500 truncate">{item.descricao}</p>
+                  <p className="text-xs text-gray-500 truncate mt-0.5">{item.descricao}</p>
                 </div>
+
+                {/* Detalhe temporal */}
+                {item.detalhe && (
+                  <div className="flex-shrink-0">
+                    <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${DC[item.detalheColor]}`}>
+                      {item.detalhe}
+                    </span>
+                  </div>
+                )}
+
                 {/* Seta */}
                 <svg className="w-4 h-4 text-gray-300 group-hover:text-primary-400 flex-shrink-0 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -352,15 +436,20 @@ export default function BriefingPage() {
         </div>
       )}
 
-      {/* ── Atualizar ── */}
+      {/* ── Rodapé ────────────────────────────────────────────────────────── */}
       {!loading && (
-        <button onClick={load}
-          className="mt-6 flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 transition-colors">
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-          Atualizar briefing
-        </button>
+        <div className="mt-6 flex items-center justify-between">
+          <p className="text-xs text-gray-400">
+            Prioridades distribuídas entre todos os módulos para manter o equilíbrio.
+          </p>
+          <button onClick={load}
+            className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-700 transition-colors font-medium">
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Atualizar briefing
+          </button>
+        </div>
       )}
     </div>
   )
