@@ -142,15 +142,15 @@ function gerarHTML(f: F): string {
 <p style="${C}"><b>${rs}</b></p>
 <p style="${S}">&nbsp;</p>
 <p style="${S}">Por este instrumento decidiram por unanimidade e na melhor forma de direito, constituir uma Sociedade Empresária, sob a forma de Sociedade Limitada Unipessoal, em obediência aos termos dos artigos 1.052 e seguintes do Código Civil (Lei nº. 10.406 de 10/01/2002) ${g.abaixo}:</p>
-<p style="${S}">${nome}, ${nac}, natural de ${nat}, ${ec}${regime}, ${prof}, ${g.port} do RG nº. ${rg}, e CPF nº. ${cpf}, ${g.res} na ${er}.</p>
+<p style="${S}"><b>${nome}</b>, ${nac}, natural de ${nat}, ${ec}${regime}, ${prof}, ${g.port} do RG nº. ${rg}, e CPF nº. ${cpf}, ${g.res} na ${er}.</p>
 <p style="${S}">O presente instrumento será regido pelas seguintes cláusulas e condições ora determinadas:</p>
 <p style="${C}">(artigo 997, I, CC/2002)</p>
 <p style="${S}"><b>CLÁUSULA PRIMEIRA – DA DENOMINAÇÃO E SEDE:</b></p>
-<p style="${S}">A sociedade unipessoal gira sob o nome empresarial ${rs}, e tem sede e domicílio na ${sede}, podendo abrir filiais, sucursais, agências e escritórios em qualquer parte do território nacional, a critério ${g.do}.</p>
+<p style="${S}">A sociedade unipessoal gira sob o nome empresarial <b>${rs}</b>, e tem sede e domicílio na ${sede}, podendo abrir filiais, sucursais, agências e escritórios em qualquer parte do território nacional, a critério ${g.do}.</p>
 <p style="${C}">(artigo 997, II, CC/2002)</p>
 <p style="${S}"><b>PARÁGRAFO ÚNICO:</b> O referido endereço é de uso exclusivo para correspondência.</p>
 <p style="${S}"><b>CLÁUSULA SEGUNDA – DO CAPITAL SOCIAL:</b></p>
-<p style="${S}">O capital social é de R$ ${cv} (${ce}), divididos em ${qn} (${qe}) quotas no valor de R$ 1,00 (Um real) cada uma, totalmente subscrito e integralizada em moeda corrente do país, em sua totalidade pelo único sócio ${nome}.</p>
+<p style="${S}">O capital social é de R$ ${cv} (${ce}), divididos em ${qn} (${qe}) quotas no valor de R$ 1,00 (Um real) cada uma, totalmente subscrito e integralizada em moeda corrente do país, em sua totalidade pelo único sócio <b>${nome}</b>.</p>
 <p style="${S}"><b>PARÁGRAFO ÚNICO:</b> Em consonância ao artigo 1.052 da Lei 10.406/2002 a responsabilidade ${g.do} é restrita ao valor de suas quotas, não havendo responsabilidade solidária pelas obrigações sociais, respondendo, no entanto, pela integralização do capital social.</p>
 <p style="${C}">(artigos 997, III; 1.052, 1.055, CC/2002)</p>
 <p style="${S}"><b>CLÁUSULA TERCEIRA – DO OBJETIVO SOCIAL:</b></p>
@@ -162,7 +162,7 @@ function gerarHTML(f: F): string {
 <p style="${S}"><b>CLÁUSULA QUINTA – DO CONSELHO FISCAL:</b></p>
 <p style="${S}">Fica estabelecido que a sociedade não terá conselho fiscal.</p>
 <p style="${S}"><b>CLÁUSULA SEXTA – DA ADMINISTRAÇÃO E GERENCIAMENTO:</b></p>
-<p style="${S}">A administração da sociedade caberá ${g.unico} ${g.trat} ${nome}, assinando isoladamente, com os poderes e atribuições ilimitados autorizando o uso do nome empresarial, vedada, no entanto, em atividades estranhas ao interesse social ou assumir obrigações seja em forma de qualquer da quotista ou de terceiros, bem como onerar ou alienar bens imóveis da sociedade, obrigar a sociedade em atividades estranhas ao objeto social, tais como fiança, aval, endosso, aceite e de todo e qualquer título de favor.</p>
+<p style="${S}">A administração da sociedade caberá ${g.unico} ${g.trat} <b>${nome}</b>, assinando isoladamente, com os poderes e atribuições ilimitados autorizando o uso do nome empresarial, vedada, no entanto, em atividades estranhas ao interesse social ou assumir obrigações seja em forma de qualquer da quotista ou de terceiros, bem como onerar ou alienar bens imóveis da sociedade, obrigar a sociedade em atividades estranhas ao objeto social, tais como fiança, aval, endosso, aceite e de todo e qualquer título de favor.</p>
 <p style="${S}"><b>PARÁGRAFO PRIMEIRO:</b> ${g.Unico} poderá ter uma remuneração mensal a título de pró-labore, que será determinada mensalmente de acordo com a capacidade financeira da sociedade e os resultados apurados.</p>
 <p style="${S}"><b>PARÁGRAFO SEGUNDO:</b> O administrador da sociedade poderá nomear procuradores para agirem em nome da sociedade, cujo instrumento de mandato estabelecerá os poderes que lhes são atribuídos.</p>
 <p style="${C}">(artigos 997, VI; 1.013; 1.015; 1.064, CC/2002)</p>
@@ -188,8 +188,7 @@ function gerarHTML(f: F): string {
 <p style="${S}">${lo}, ${dt}</p>
 <p style="${S}">&nbsp;</p>
 <p style="${S}">&nbsp;</p>
-<p style="${C}">${nome}</p>
-<p style="${C}">${nome}</p>`
+<p style="${C}"><b>${nome}</b></p>`
 }
 
 // ── DOCX generation ───────────────────────────────────────────────────────────
@@ -238,15 +237,15 @@ async function gerarDocx(f: F): Promise<Blob> {
     pb(rs, true, true),
     pBlank(),
     pb(`Por este instrumento decidiram por unanimidade e na melhor forma de direito, constituir uma Sociedade Empresária, sob a forma de Sociedade Limitada Unipessoal, em obediência aos termos dos artigos 1.052 e seguintes do Código Civil (Lei nº. 10.406 de 10/01/2002) ${g.abaixo}:`),
-    pb(`${nome}, ${f.socioNacionalidade||'brasileiro(a)'}, natural de ${f.socioNaturalidade||'[naturalidade]'}, ${f.socioEstadoCivil||'[estado civil]'}${regime}, ${f.socioProfissao||'[profissão]'}, ${g.port} do RG nº. ${f.socioRG||'[RG]'}, e CPF nº. ${f.socioCPF||'[CPF]'}, ${g.res} na ${er}.`),
+    pm([{text:nome,bold:true},{text:`, ${f.socioNacionalidade||'brasileiro(a)'}, natural de ${f.socioNaturalidade||'[naturalidade]'}, ${f.socioEstadoCivil||'[estado civil]'}${regime}, ${f.socioProfissao||'[profissão]'}, ${g.port} do RG nº. ${f.socioRG||'[RG]'}, e CPF nº. ${f.socioCPF||'[CPF]'}, ${g.res} na ${er}.`}]),
     pb('O presente instrumento será regido pelas seguintes cláusulas e condições ora determinadas:'),
     pb('(artigo 997, I, CC/2002)', false, true),
     pb('CLÁUSULA PRIMEIRA – DA DENOMINAÇÃO E SEDE:', true),
-    pb(`A sociedade unipessoal gira sob o nome empresarial ${rs}, e tem sede e domicílio na ${sede}, podendo abrir filiais, sucursais, agências e escritórios em qualquer parte do território nacional, a critério ${g.do}.`),
+    pm([{text:'A sociedade unipessoal gira sob o nome empresarial '},{text:rs,bold:true},{text:`, e tem sede e domicílio na ${sede}, podendo abrir filiais, sucursais, agências e escritórios em qualquer parte do território nacional, a critério ${g.do}.`}]),
     pb('(artigo 997, II, CC/2002)', false, true),
     pm([{text:'PARÁGRAFO ÚNICO: ', bold:true},{text:'O referido endereço é de uso exclusivo para correspondência.'}]),
     pb('CLÁUSULA SEGUNDA – DO CAPITAL SOCIAL:', true),
-    pb(`O capital social é de R$ ${f.capitalValor||'[valor]'} (${f.capitalExtenso||'[extenso]'}), divididos em ${f.quotasNumero||'[nº]'} (${f.quotasExtenso||'[extenso]'}) quotas no valor de R$ 1,00 (Um real) cada uma, totalmente subscrito e integralizada em moeda corrente do país, em sua totalidade pelo único sócio ${nome}.`),
+    pm([{text:`O capital social é de R$ ${f.capitalValor||'[valor]'} (${f.capitalExtenso||'[extenso]'}), divididos em ${f.quotasNumero||'[nº]'} (${f.quotasExtenso||'[extenso]'}) quotas no valor de R$ 1,00 (Um real) cada uma, totalmente subscrito e integralizada em moeda corrente do país, em sua totalidade pelo único sócio `},{text:nome,bold:true},{text:'.'}]),
     pm([{text:'PARÁGRAFO ÚNICO: ', bold:true},{text:`Em consonância ao artigo 1.052 da Lei 10.406/2002 a responsabilidade ${g.do} é restrita ao valor de suas quotas, não havendo responsabilidade solidária pelas obrigações sociais, respondendo, no entanto, pela integralização do capital social.`}]),
     pb('(artigos 997, III; 1.052, 1.055, CC/2002)', false, true),
     pb('CLÁUSULA TERCEIRA – DO OBJETIVO SOCIAL:', true),
@@ -258,7 +257,7 @@ async function gerarDocx(f: F): Promise<Blob> {
     pb('CLÁUSULA QUINTA – DO CONSELHO FISCAL:', true),
     pb('Fica estabelecido que a sociedade não terá conselho fiscal.'),
     pb('CLÁUSULA SEXTA – DA ADMINISTRAÇÃO E GERENCIAMENTO:', true),
-    pb(`A administração da sociedade caberá ${g.unico} ${g.trat} ${nome}, assinando isoladamente, com os poderes e atribuições ilimitados autorizando o uso do nome empresarial, vedada, no entanto, em atividades estranhas ao interesse social ou assumir obrigações seja em forma de qualquer da quotista ou de terceiros, bem como onerar ou alienar bens imóveis da sociedade, obrigar a sociedade em atividades estranhas ao objeto social, tais como fiança, aval, endosso, aceite e de todo e qualquer título de favor.`),
+    pm([{text:`A administração da sociedade caberá ${g.unico} ${g.trat} `},{text:nome,bold:true},{text:', assinando isoladamente, com os poderes e atribuições ilimitados autorizando o uso do nome empresarial, vedada, no entanto, em atividades estranhas ao interesse social ou assumir obrigações seja em forma de qualquer da quotista ou de terceiros, bem como onerar ou alienar bens imóveis da sociedade, obrigar a sociedade em atividades estranhas ao objeto social, tais como fiança, aval, endosso, aceite e de todo e qualquer título de favor.'}]),
     pm([{text:'PARÁGRAFO PRIMEIRO: ', bold:true},{text:`${g.Unico} poderá ter uma remuneração mensal a título de pró-labore, que será determinada mensalmente de acordo com a capacidade financeira da sociedade e os resultados apurados.`}]),
     pm([{text:'PARÁGRAFO SEGUNDO: ', bold:true},{text:'O administrador da sociedade poderá nomear procuradores para agirem em nome da sociedade, cujo instrumento de mandato estabelecerá os poderes que lhes são atribuídos.'}]),
     pb('(artigos 997, VI; 1.013; 1.015; 1.064, CC/2002)', false, true),
@@ -284,7 +283,6 @@ async function gerarDocx(f: F): Promise<Blob> {
     pb(`${lo}, ${dt}`),
     pBlank(), pBlank(), pBlank(),
     pb(nome, true, true),
-    pb(nome, false, true),
   ]
 
   let headerSection: object = {}
@@ -317,7 +315,7 @@ async function gerarDocx(f: F): Promise<Blob> {
       properties: {
         page: {
           size: { width: 11906, height: 16838 },
-          margin: { top: 1701, bottom: 1134, left: 1701, right: 1134 },
+          margin: { top: 2805, bottom: 1418, left: 1077, right: 1134 },
         },
       },
       ...headerSection,
@@ -395,8 +393,8 @@ export default function UnipessoalWizard() {
       <style>
         *{margin:0;padding:0;box-sizing:border-box}
         body{font-family:'Times New Roman',Times,serif;font-size:12pt;color:#000}
-        @media print{@page{size:A4;margin:3cm 2cm 2cm 3cm}body{margin:0}}
-        @media screen{body{margin:3cm 2cm 2cm 3cm}}
+        @media print{@page{size:A4;margin:5cm 2cm 2.5cm 2cm}body{margin:0}}
+        @media screen{body{margin:5cm 2cm 2.5cm 2cm}}
         ${bg}
       </style>
     </head><body>${html}</body></html>`)
@@ -608,7 +606,7 @@ export default function UnipessoalWizard() {
           </div>
 
           <div className="border rounded-lg bg-white shadow-sm overflow-auto"
-            style={{ maxHeight: '72vh', padding: '3cm 2cm 2cm 3cm', background: '#fff' }}>
+            style={{ maxHeight: '72vh', padding: '5cm 2cm 2.5cm 2cm', background: '#fff' }}>
             <div dangerouslySetInnerHTML={{ __html: gerarHTML(f) }} />
           </div>
         </div>
