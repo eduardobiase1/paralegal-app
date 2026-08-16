@@ -8,7 +8,7 @@ import Modal from '@/components/ui/Modal'
 import ContratoWizard from '@/components/modules/ContratoWizard'
 import ContratoReverse from '@/components/modules/ContratoReverse'
 import TemplateUpload from '@/components/modules/TemplateUpload'
-import SLUWizard from '@/components/modules/SLUWizard'
+import UnipessoalWizard from '@/components/modules/UnipessoalWizard'
 import toast from 'react-hot-toast'
 import { useSearchParams } from 'next/navigation'
 
@@ -71,7 +71,7 @@ function ContratosPageInner() {
   useEffect(() => { load() }, [])
 
   const TABS = [
-    { key: 'slu',       label: '✦ Assistente SLU' },
+    { key: 'slu',       label: '✦ Contrato Unipessoal' },
     { key: 'gerar',     label: 'Gerar por Template' },
     { key: 'reversa',   label: 'Nova via PDF' },
     { key: 'historico', label: 'Histórico' },
@@ -99,7 +99,7 @@ function ContratosPageInner() {
       {/* ── Assistente SLU ── */}
       {tab === 'slu' && (
         <div className="card p-6">
-          <SLUWizard />
+          <UnipessoalWizard />
         </div>
       )}
 
