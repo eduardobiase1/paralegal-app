@@ -8,32 +8,38 @@ import {
 import toast from 'react-hot-toast'
 
 // ── Number → Portuguese words ────────────────────────────────────────────────
-const UNID = ['','um','dois','três','quatro','cinco','seis','sete','oito','nove',
+const UNID  = ['','um','dois','três','quatro','cinco','seis','sete','oito','nove',
   'dez','onze','doze','treze','quatorze','quinze','dezesseis','dezessete','dezoito','dezenove']
-const DEZ = ['','','vinte','trinta','quarenta','cinquenta','sessenta','setenta','oitenta','noventa']
-const CENT = ['','cento','duzentos','trezentos','quatrocentos','quinhentos',
+const UNID_F= ['','uma','duas','três','quatro','cinco','seis','sete','oito','nove',
+  'dez','onze','doze','treze','quatorze','quinze','dezesseis','dezessete','dezoito','dezenove']
+const DEZ   = ['','','vinte','trinta','quarenta','cinquenta','sessenta','setenta','oitenta','noventa']
+const CENT  = ['','cento','duzentos','trezentos','quatrocentos','quinhentos',
   'seiscentos','setecentos','oitocentos','novecentos']
+const CENT_F= ['','cento','duzentas','trezentas','quatrocentas','quinhentas',
+  'seiscentas','setecentas','oitocentas','novecentas']
 
-function g3(x: number): string {
+function g3(x: number, fem = false): string {
   if (x === 0) return ''
   if (x === 100) return 'cem'
   const c = Math.floor(x/100), r = x%100, d = Math.floor(r/10), u = r%10
+  const U = fem ? UNID_F : UNID
+  const C = fem ? CENT_F : CENT
   const p: string[] = []
-  if (c) p.push(c === 1 && r ? 'cento' : CENT[c])
-  if (r >= 20) { p.push(DEZ[d]); if (u) p.push(UNID[u]) }
-  else if (r) p.push(UNID[r])
+  if (c) p.push(c === 1 && r ? 'cento' : C[c])
+  if (r >= 20) { p.push(DEZ[d]); if (u) p.push(U[u]) }
+  else if (r) p.push(U[r])
   return p.join(' e ')
 }
 
-function n2ext(n: number, moeda = true): string {
+function n2ext(n: number, moeda = true, fem = false): string {
   if (!n || n <= 0) return ''
   const M = Math.floor(n/1_000_000)
   const K = Math.floor((n%1_000_000)/1_000)
   const R = n%1_000
   const p: string[] = []
-  if (M) p.push(g3(M)+(M===1?' milhão':' milhões'))
-  if (K) { const g=g3(K); p.push(g==='um'?'mil':g+' mil') }
-  if (R) p.push(g3(R))
+  if (M) p.push(g3(M, fem)+(M===1?' milhão':' milhões'))
+  if (K) { const g=g3(K, fem); p.push((g==='um'||g==='uma')?'mil':g+' mil') }
+  if (R) p.push(g3(R, fem))
   const txt = p.join(' e ')
   const cap = txt.charAt(0).toUpperCase()+txt.slice(1)
   if (!moeda) return cap
@@ -355,7 +361,7 @@ export default function UnipessoalWizard() {
       capitalValor: raw,
       capitalExtenso: n > 0 ? n2ext(n, true) : prev.capitalExtenso,
       quotasNumero: n > 0 ? fmtBR(n) : prev.quotasNumero,
-      quotasExtenso: n > 0 ? n2ext(n, false) : prev.quotasExtenso,
+      quotasExtenso: n > 0 ? n2ext(n, false, true) : prev.quotasExtenso,
     }))
   }
 
