@@ -100,7 +100,7 @@ function AlvarasPage() {
           <h1 className="text-xl md:text-2xl font-bold text-slate-900">Alvarás de Funcionamento</h1>
           <p className="text-[10px] font-black uppercase text-blue-600 tracking-widest mt-1">{empresaNome || orgName}</p>
         </div>
-        <button onClick={() => setForm(f => ({ ...f, empresa_id: empresaFiltro || '' })) || setModal(true)}
+        <button onClick={() => { setForm(f => ({ ...f, empresa_id: empresaFiltro || '' })); setModal(true) }}
           className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-800 transition-all whitespace-nowrap">
           + Novo Alvará
         </button>
