@@ -12,6 +12,7 @@ const navigation = [
   {
     label: 'Principal',
     items: [
+      { href: '/briefing',  label: 'Briefing Diário', icon: BriefingIcon },
       { href: '/dashboard', label: 'Dashboard', icon: HomeIcon },
       { href: '/empresas', label: 'Empresas', icon: BuildingIcon },
       { href: '/financeiro', label: 'Financeiro PRO', icon: CurrencyDollarIcon },
@@ -335,6 +336,14 @@ function LogoutIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+    </svg>
+  )
+}
+
+function BriefingIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1M4.22 4.22l.707.707m12.02 12.02l.707.707M1 12h2m18 0h2M4.22 19.78l.707-.707M18.95 5.05l.707-.707M12 7a5 5 0 100 10A5 5 0 0012 7z" />
     </svg>
   )
 }
