@@ -14,11 +14,15 @@ export default async function EmpresaPage({ params, searchParams }: Props) {
   const { id } = await params
   const { edit } = await searchParams
   const supabase = await createClient()
-  const { data: empresa } = await supabase
+  const { data: empresa, error } = await supabase
     .from('empresas')
     .select('*')
     .eq('id', id)
     .single()
+
+  if (error && error.code !== 'PGRST116') {
+    throw new Error(`Supabase: ${error.message} (code: ${error.code})`)
+  }
 
   if (!empresa) notFound()
 
