@@ -21,10 +21,11 @@ const navigation = [
   {
     label: 'Controles',
     items: [
-      { href: '/certidoes', label: 'Certidões Negativas', icon: DocumentCheckIcon },
-      { href: '/alvaras', label: 'Alvarás', icon: BadgeCheckIcon },
-      { href: '/licencas', label: 'Licenças Sanitárias', icon: ShieldIcon },
-      { href: '/certificados', label: 'Certificados Digitais', icon: KeyIcon },
+      { href: '/certidoes',     label: 'Certidões Negativas',        icon: DocumentCheckIcon },
+      { href: '/alvaras',       label: 'Alvarás',                    icon: BadgeCheckIcon },
+      { href: '/licencas',      label: 'Licenças Sanitárias',        icon: ShieldIcon },
+      { href: '/certificados',  label: 'Certificados Digitais',      icon: KeyIcon },
+      { href: '/taxas-licenca', label: 'Taxas de Licença',           icon: TaxaLicencaIcon },
     ],
   },
   {
@@ -272,6 +273,14 @@ function KeyIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+    </svg>
+  )
+}
+
+function TaxaLicencaIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
     </svg>
   )
 }
