@@ -23,7 +23,7 @@ function cnaeStr(val: unknown): string {
 }
 
 const quickLinks = (emp: Empresa) => [
-  { label: 'CND Federal', url: 'https://solucoes.receita.fazenda.gov.br/Servicos/certidaointer/default.aspx', color: 'blue' },
+  { label: 'CND Federal', url: 'https://servicos.receitafederal.gov.br/servico/certidoes/#/home/cnpj', color: 'blue' },
   { label: 'CNDT Trabalhista', url: 'https://cndt-certidao.tst.jus.br', color: 'purple' },
   { label: 'FGTS (CRF)', url: 'https://consulta-crf.caixa.gov.br', color: 'orange' },
   { label: 'e-CAC', url: 'https://cav.receita.fazenda.gov.br', color: 'red' },
