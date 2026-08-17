@@ -33,11 +33,7 @@ const SNOOZE_OPTS = [
   { days: 14, label: '14 dias' },
 ]
 
-// ── Urgência: borda esquerda fina + badge sutil ─────────────────────────────
-// ≤7d  → cinza neutro
-// 8–30d → âmbar
-// >30d  → vermelho
-// Prio  → laranja brand
+// ── Urgência ────────────────────────────────────────────────────────────────
 function urgConfig(dias: number, prio: boolean) {
   if (prio) return {
     borderLeft: '4px solid #F97316',
@@ -95,6 +91,399 @@ function saveSnoozeLS(id: string, days: number) {
   localStorage.setItem(`psnooze_${id}`, d.toISOString())
 }
 function clearSnoozeLS(id: string) { localStorage.removeItem(`psnooze_${id}`) }
+
+// ── CardProps ──────────────────────────────────────────────────────────────────
+interface CardProps {
+  p: {
+    id: string
+    nome: string
+    tipo: string
+    titulo?: string
+    prioridade: boolean
+    diasParado: number
+    ultimaMov: string
+    nextStep: string | null
+    done: number
+    total: number
+    pct: number
+    docsTotal: number
+    docsReceb: number
+    docsPend: number
+    empresa_id?: string
+  }
+  openStatus: string | null
+  notesCt: number
+  notesOpen: boolean
+  notasCache: any[] | null | undefined
+  notaInputValue: string
+  isSaving: boolean
+  onTogglePrio: () => void
+  onSetOpenStatus: React.Dispatch<React.SetStateAction<string | null>>
+  onFinalizar: () => void
+  onSnooze: () => void
+  onToggleNotes: () => void
+  onNotaChange: (val: string) => void
+  onSaveNota: () => void
+}
+
+// ── ProcessoCard (module-level — never re-defined on parent re-render) ─────────
+function ProcessoCard({
+  p, openStatus, notesCt, notesOpen, notasCache,
+  notaInputValue, isSaving,
+  onTogglePrio, onSetOpenStatus, onFinalizar, onSnooze,
+  onToggleNotes, onNotaChange, onSaveNota,
+}: CardProps) {
+  const urg  = urgConfig(p.diasParado, p.prioridade)
+  const tipo = TIPO_STYLE[p.tipo] || { bg: '#F8FAFC', color: '#64748B' }
+
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column',
+      background: '#FFFFFF',
+      border: '1px solid #E2E8F0',
+      borderLeft: urg.borderLeft,
+      borderRadius: '12px',
+      boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+      transition: 'box-shadow 0.2s ease, transform 0.2s ease',
+      overflow: 'hidden',
+      height: '100%',
+    }}
+      onMouseEnter={e => {
+        e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04)'
+        e.currentTarget.style.transform = 'translateY(-2px)'
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)'
+        e.currentTarget.style.transform = 'translateY(0)'
+      }}
+    >
+
+      {/* ── BODY ─────────────────────────────────────────────────────── */}
+      <div style={{ padding: '16px 18px 0', flex: 1, display: 'flex', flexDirection: 'column', gap: '11px' }}>
+
+        {/* Empresa + botão prio */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{
+              fontSize: '15px', fontWeight: 700, color: '#0F172A',
+              letterSpacing: '-0.015em', lineHeight: 1.2, marginBottom: '6px',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
+              {p.nome}
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', alignItems: 'center' }}>
+              <span style={{
+                fontSize: '9px', fontWeight: 700, padding: '3px 8px',
+                borderRadius: '100px', background: tipo.bg, color: tipo.color,
+                textTransform: 'uppercase', letterSpacing: '0.07em',
+              }}>
+                {TIPO_LABELS[p.tipo] ?? p.tipo}
+              </span>
+              {p.titulo && (
+                <span style={{
+                  fontSize: '10px', fontWeight: 500, color: '#94A3B8',
+                  background: '#F8FAFC', border: '1px solid #E2E8F0',
+                  padding: '2px 8px', borderRadius: '100px',
+                  maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>
+                  {p.titulo}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <button
+            onClick={() => onTogglePrio()}
+            style={{
+              flexShrink: 0, fontSize: '10px', fontWeight: 600,
+              padding: '4px 10px', borderRadius: '100px', cursor: 'pointer',
+              border: p.prioridade ? '1px solid #FED7AA' : '1px solid #E2E8F0',
+              background: p.prioridade ? '#FFF7ED' : 'transparent',
+              color: p.prioridade ? '#C2410C' : '#94A3B8',
+              transition: 'all 0.15s', whiteSpace: 'nowrap',
+            }}
+          >
+            {p.prioridade ? '🔥 Prio' : '☆'}
+          </button>
+        </div>
+
+        {/* Status + Dias badge */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}
+          onClick={e => e.stopPropagation()}>
+
+          {/* Status dropdown */}
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => onSetOpenStatus(prev => prev === p.id ? null : p.id)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '4px',
+                fontSize: '10px', fontWeight: 700, padding: '3px 9px', borderRadius: '100px',
+                background: '#EFF6FF', color: '#1D4ED8',
+                border: '1px solid #BFDBFE', cursor: 'pointer',
+                textTransform: 'uppercase', letterSpacing: '0.06em',
+              }}>
+              Em Andamento
+              <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {openStatus === p.id && (
+              <div style={{
+                position: 'absolute', left: 0, top: 'calc(100% + 6px)', zIndex: 50,
+                background: '#FFFFFF', borderRadius: '12px',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.06)',
+                padding: '6px', minWidth: '175px',
+              }}>
+                <p style={{ fontSize: '9px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#94A3B8', padding: '4px 10px 6px', margin: 0 }}>
+                  Alterar status
+                </p>
+                <button
+                  onClick={() => onFinalizar()}
+                  style={{
+                    width: '100%', textAlign: 'left', padding: '8px 10px',
+                    fontSize: '12px', fontWeight: 600, color: '#065F46',
+                    background: 'transparent', border: 'none', borderRadius: '8px',
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#ECFDF5'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22C55E', flexShrink: 0 }} />
+                  Marcar como Finalizado
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Dias parado */}
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: '4px',
+            fontSize: '10px', fontWeight: 700, padding: '3px 9px', borderRadius: '100px',
+            background: urg.tag.bg, color: urg.tag.color, border: `1px solid ${urg.tag.border}`,
+          }}>
+            {urg.alertIcon && (
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            )}
+            {p.diasParado === 0 ? 'hoje' : `${p.diasParado}d parado`}
+          </span>
+
+          <span style={{ fontSize: '10px', color: '#94A3B8', fontWeight: 500 }}>
+            {p.ultimaMov}
+          </span>
+        </div>
+
+        {/* Próxima etapa */}
+        {p.nextStep ? (
+          <div style={{
+            background: '#F8FAFC', borderRadius: '8px',
+            padding: '10px 12px', borderLeft: '2px solid #CBD5E1',
+          }}>
+            <p style={{ fontSize: '9px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#94A3B8', marginBottom: '4px' }}>
+              Próxima etapa
+            </p>
+            <p style={{ fontSize: '12px', fontWeight: 500, color: '#475569', lineHeight: 1.45 }}>
+              {p.nextStep}
+            </p>
+          </div>
+        ) : (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '7px',
+            background: '#F0FDF4', borderRadius: '8px',
+            padding: '10px 12px', border: '1px solid #BBF7D0',
+          }}>
+            <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="#16A34A" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+            <p style={{ fontSize: '12px', fontWeight: 600, color: '#15803D' }}>Todas as etapas concluídas</p>
+          </div>
+        )}
+
+        {/* Progress bar */}
+        {p.total > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ flex: 1, height: '4px', background: '#F1F5F9', borderRadius: '100px', overflow: 'hidden' }}>
+              <div style={{
+                height: '100%', width: `${p.pct}%`, borderRadius: '100px',
+                background: p.pct === 100 ? '#22C55E' : '#3B82F6',
+                transition: 'width 0.6s ease',
+              }} />
+            </div>
+            <span style={{ fontSize: '10px', fontWeight: 600, color: '#94A3B8', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+              {p.done}/{p.total}
+            </span>
+          </div>
+        )}
+
+        <div style={{ flex: 1 }} />
+      </div>
+
+      {/* ── BARRA DE AÇÕES ────────────────────────────────────────────────── */}
+      <div style={{
+        borderTop: '1px solid #F1F5F9',
+        padding: '9px 12px',
+        display: 'flex', alignItems: 'center', gap: '2px',
+        background: '#FAFAFA',
+        marginTop: '12px',
+      }}>
+
+        {/* Adiar */}
+        <button
+          onClick={() => onSnooze()}
+          style={lightBtnStyle(false)} title="Adiar processo"
+          onMouseEnter={e => lightBtnHover(e, true)}
+          onMouseLeave={e => lightBtnHover(e, false)}>
+          <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+          </svg>
+          Adiar
+        </button>
+
+        <LightSep />
+
+        {/* Notas */}
+        <button onClick={() => onToggleNotes()}
+          style={lightBtnStyle(notesOpen)}
+          onMouseEnter={e => { if (!notesOpen) lightBtnHover(e, true) }}
+          onMouseLeave={e => { if (!notesOpen) lightBtnHover(e, false) }}>
+          <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          Notas
+          {notesCt > 0 && (
+            <span style={{
+              fontSize: '9px', fontWeight: 700, padding: '1px 5px', borderRadius: '100px',
+              background: notesOpen ? '#DBEAFE' : '#F1F5F9',
+              color: notesOpen ? '#1D4ED8' : '#64748B', lineHeight: 1.4,
+            }}>
+              {notesCt}
+            </span>
+          )}
+        </button>
+
+        {/* Docs */}
+        <Link href={`/societario?processo=${p.id}`}
+          onClick={e => e.stopPropagation()} title="Documentos"
+          style={{ ...lightBtnStyle(false) as React.CSSProperties, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' } as React.CSSProperties}
+          onMouseEnter={(e: React.MouseEvent<HTMLAnchorElement>) => lightBtnHover(e as unknown as React.MouseEvent<HTMLButtonElement>, true)}
+          onMouseLeave={(e: React.MouseEvent<HTMLAnchorElement>) => lightBtnHover(e as unknown as React.MouseEvent<HTMLButtonElement>, false)}>
+          <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+          </svg>
+          Docs
+          {p.docsTotal > 0 && (
+            <span style={{
+              fontSize: '9px', fontWeight: 700, padding: '1px 5px', borderRadius: '100px',
+              background: p.docsPend > 0 ? '#FEF9C3' : '#DCFCE7',
+              color: p.docsPend > 0 ? '#854D0E' : '#15803D', lineHeight: 1.4,
+            }}>
+              {p.docsReceb}/{p.docsTotal}
+            </span>
+          )}
+        </Link>
+
+        {/* Empresa */}
+        {p.empresa_id && (
+          <Link href={`/empresas/${p.empresa_id}`}
+            onClick={e => e.stopPropagation()} title="Empresa"
+            style={{ ...lightBtnStyle(false) as React.CSSProperties, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' } as React.CSSProperties}
+            onMouseEnter={(e: React.MouseEvent<HTMLAnchorElement>) => lightBtnHover(e as unknown as React.MouseEvent<HTMLButtonElement>, true)}
+            onMouseLeave={(e: React.MouseEvent<HTMLAnchorElement>) => lightBtnHover(e as unknown as React.MouseEvent<HTMLButtonElement>, false)}>
+            <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+            </svg>
+            Empresa
+          </Link>
+        )}
+
+        <div style={{ flex: 1 }} />
+
+        {/* Abrir — azul primário */}
+        <Link href={`/societario?processo=${p.id}`}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '5px',
+            padding: '6px 13px', borderRadius: '8px',
+            background: '#2563EB', color: 'white',
+            fontSize: '11px', fontWeight: 700, textDecoration: 'none',
+            transition: 'background 0.15s', flexShrink: 0,
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = '#1D4ED8'}
+          onMouseLeave={e => e.currentTarget.style.background = '#2563EB'}
+        >
+          Abrir
+          <svg width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </Link>
+      </div>
+
+      {/* ── PAINEL NOTAS INLINE ───────────────────────────────────────── */}
+      {notesOpen && (
+        <div style={{ borderTop: '1px solid #F1F5F9', background: '#F8FAFC', padding: '14px 18px' }}>
+          <p style={{ fontSize: '9px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#94A3B8', marginBottom: '10px' }}>
+            Notas Rápidas
+          </p>
+
+          {notasCache === null ? (
+            <p style={{ fontSize: '12px', color: '#94A3B8', fontStyle: 'italic', marginBottom: '10px' }}>Carregando...</p>
+          ) : notasCache !== undefined && (notasCache as any[]).length === 0 ? (
+            <p style={{ fontSize: '12px', color: '#94A3B8', fontStyle: 'italic', marginBottom: '10px' }}>Sem notas ainda.</p>
+          ) : notasCache !== undefined ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '10px' }}>
+              {(notasCache as any[]).slice(0, 3).map((nota: any) => (
+                <div key={nota.id} style={{ background: '#FFFFFF', borderRadius: '8px', padding: '8px 11px', border: '1px solid #E2E8F0' }}>
+                  <p style={{ fontSize: '12px', color: '#334155', lineHeight: 1.5 }}>{nota.texto}</p>
+                  <p style={{ fontSize: '10px', color: '#94A3B8', marginTop: '4px', fontFamily: 'monospace' }}>
+                    {new Date(nota.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </div>
+              ))}
+              {(notasCache as any[]).length > 3 && (
+                <Link href={`/societario?processo=${p.id}`} style={{ fontSize: '11px', color: '#2563EB', fontWeight: 600, textDecoration: 'none' }}>
+                  Ver todas no módulo →
+                </Link>
+              )}
+            </div>
+          ) : null}
+
+          <div style={{ display: 'flex', gap: '7px' }} onClick={e => e.stopPropagation()}>
+            <textarea
+              rows={2}
+              value={notaInputValue}
+              onChange={e => onNotaChange(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) onSaveNota() }}
+              placeholder="Nova nota... (Ctrl+Enter)"
+              style={{
+                flex: 1, fontSize: '12px', resize: 'none', fontFamily: 'inherit',
+                border: '1px solid #E2E8F0', borderRadius: '8px',
+                padding: '8px 10px', outline: 'none', color: '#334155',
+                background: '#FFFFFF', transition: 'border-color 0.15s',
+              }}
+              onFocus={e => e.target.style.borderColor = '#93C5FD'}
+              onBlur={e => e.target.style.borderColor = '#E2E8F0'}
+            />
+            <button
+              onClick={() => onSaveNota()}
+              disabled={isSaving || !notaInputValue.trim()}
+              style={{
+                padding: '0 13px', background: '#2563EB', color: 'white',
+                border: 'none', borderRadius: '8px', fontSize: '11px', fontWeight: 700,
+                cursor: 'pointer', flexShrink: 0,
+                opacity: (isSaving || !notaInputValue.trim()) ? 0.4 : 1,
+                transition: 'opacity 0.15s, background 0.15s',
+              }}
+              onMouseEnter={e => { if (!(isSaving || !notaInputValue.trim())) e.currentTarget.style.background = '#1D4ED8' }}
+              onMouseLeave={e => e.currentTarget.style.background = '#2563EB'}
+            >
+              Salvar
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
 // ══════════════════════════════════════════════════════════════════════════════
 export default function PainelProcessosPage() {
@@ -241,389 +630,6 @@ export default function PainelProcessosPage() {
   const rotina        = ativos.filter(p => !p.prioridade).sort((a, b) => b.diasParado - a.diasParado)
   const criticalCount = ativos.filter(p => !p.prioridade && p.diasParado > 30).length
 
-  // ── Card ──────────────────────────────────────────────────────────────────
-  function ProcessoCard({ p }: { p: typeof processosDados[0] }) {
-    const urg      = urgConfig(p.diasParado, p.prioridade)
-    const tipo     = TIPO_STYLE[p.tipo] || { bg: '#F8FAFC', color: '#64748B' }
-    const notesCt  = notaCount[p.id] || 0
-    const notesOpen = expandNotes[p.id]
-
-    return (
-      <div style={{
-        display: 'flex', flexDirection: 'column',
-        background: '#FFFFFF',
-        border: '1px solid #E2E8F0',
-        borderLeft: urg.borderLeft,
-        borderRadius: '12px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-        transition: 'box-shadow 0.2s ease, transform 0.2s ease',
-        overflow: 'hidden',
-        height: '100%',
-      }}
-        onMouseEnter={e => {
-          e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04)'
-          e.currentTarget.style.transform = 'translateY(-2px)'
-        }}
-        onMouseLeave={e => {
-          e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)'
-          e.currentTarget.style.transform = 'translateY(0)'
-        }}
-      >
-
-        {/* ── BODY ─────────────────────────────────────────────────────── */}
-        <div style={{ padding: '16px 18px 0', flex: 1, display: 'flex', flexDirection: 'column', gap: '11px' }}>
-
-          {/* Empresa + botão prio */}
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{
-                fontSize: '15px', fontWeight: 700, color: '#0F172A',
-                letterSpacing: '-0.015em', lineHeight: 1.2, marginBottom: '6px',
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              }}>
-                {p.nome}
-              </p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', alignItems: 'center' }}>
-                <span style={{
-                  fontSize: '9px', fontWeight: 700, padding: '3px 8px',
-                  borderRadius: '100px', background: tipo.bg, color: tipo.color,
-                  textTransform: 'uppercase', letterSpacing: '0.07em',
-                }}>
-                  {TIPO_LABELS[p.tipo] ?? p.tipo}
-                </span>
-                {p.titulo && (
-                  <span style={{
-                    fontSize: '10px', fontWeight: 500, color: '#94A3B8',
-                    background: '#F8FAFC', border: '1px solid #E2E8F0',
-                    padding: '2px 8px', borderRadius: '100px',
-                    maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                  }}>
-                    {p.titulo}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <button
-              onClick={() => handleTogglePrio(p.id)}
-              style={{
-                flexShrink: 0, fontSize: '10px', fontWeight: 600,
-                padding: '4px 10px', borderRadius: '100px', cursor: 'pointer',
-                border: p.prioridade ? '1px solid #FED7AA' : '1px solid #E2E8F0',
-                background: p.prioridade ? '#FFF7ED' : 'transparent',
-                color: p.prioridade ? '#C2410C' : '#94A3B8',
-                transition: 'all 0.15s', whiteSpace: 'nowrap',
-              }}
-            >
-              {p.prioridade ? '🔥 Prio' : '☆'}
-            </button>
-          </div>
-
-          {/* Status + Dias badge */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}
-            onClick={e => e.stopPropagation()}>
-
-            {/* Status dropdown */}
-            <div style={{ position: 'relative' }}>
-              <button
-                onClick={() => setOpenStatus(prev => prev === p.id ? null : p.id)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '4px',
-                  fontSize: '10px', fontWeight: 700, padding: '3px 9px', borderRadius: '100px',
-                  background: '#EFF6FF', color: '#1D4ED8',
-                  border: '1px solid #BFDBFE', cursor: 'pointer',
-                  textTransform: 'uppercase', letterSpacing: '0.06em',
-                }}>
-                Em Andamento
-                <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-              {openStatus === p.id && (
-                <div style={{
-                  position: 'absolute', left: 0, top: 'calc(100% + 6px)', zIndex: 50,
-                  background: '#FFFFFF', borderRadius: '12px',
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.06)',
-                  padding: '6px', minWidth: '175px',
-                }}>
-                  <p style={{ fontSize: '9px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#94A3B8', padding: '4px 10px 6px', margin: 0 }}>
-                    Alterar status
-                  </p>
-                  <button
-                    onClick={() => handleFinalizar(p.id)}
-                    style={{
-                      width: '100%', textAlign: 'left', padding: '8px 10px',
-                      fontSize: '12px', fontWeight: 600, color: '#065F46',
-                      background: 'transparent', border: 'none', borderRadius: '8px',
-                      cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = '#ECFDF5'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                  >
-                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22C55E', flexShrink: 0 }} />
-                    Marcar como Finalizado
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Dias parado */}
-            <span style={{
-              display: 'inline-flex', alignItems: 'center', gap: '4px',
-              fontSize: '10px', fontWeight: 700, padding: '3px 9px', borderRadius: '100px',
-              background: urg.tag.bg, color: urg.tag.color, border: `1px solid ${urg.tag.border}`,
-            }}>
-              {urg.alertIcon && (
-                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-              )}
-              {p.diasParado === 0 ? 'hoje' : `${p.diasParado}d parado`}
-            </span>
-
-            <span style={{ fontSize: '10px', color: '#94A3B8', fontWeight: 500 }}>
-              {p.ultimaMov}
-            </span>
-          </div>
-
-          {/* Próxima etapa */}
-          {p.nextStep ? (
-            <div style={{
-              background: '#F8FAFC', borderRadius: '8px',
-              padding: '10px 12px', borderLeft: '2px solid #CBD5E1',
-            }}>
-              <p style={{ fontSize: '9px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#94A3B8', marginBottom: '4px' }}>
-                Próxima etapa
-              </p>
-              <p style={{ fontSize: '12px', fontWeight: 500, color: '#475569', lineHeight: 1.45 }}>
-                {p.nextStep}
-              </p>
-            </div>
-          ) : (
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: '7px',
-              background: '#F0FDF4', borderRadius: '8px',
-              padding: '10px 12px', border: '1px solid #BBF7D0',
-            }}>
-              <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="#16A34A" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
-              <p style={{ fontSize: '12px', fontWeight: 600, color: '#15803D' }}>Todas as etapas concluídas</p>
-            </div>
-          )}
-
-          {/* Progress bar */}
-          {p.total > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{ flex: 1, height: '4px', background: '#F1F5F9', borderRadius: '100px', overflow: 'hidden' }}>
-                <div style={{
-                  height: '100%', width: `${p.pct}%`, borderRadius: '100px',
-                  background: p.pct === 100 ? '#22C55E' : '#3B82F6',
-                  transition: 'width 0.6s ease',
-                }} />
-              </div>
-              <span style={{ fontSize: '10px', fontWeight: 600, color: '#94A3B8', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
-                {p.done}/{p.total}
-              </span>
-            </div>
-          )}
-
-          <div style={{ flex: 1 }} />
-        </div>
-
-        {/* ── BARRA DE AÇÕES ────────────────────────────────────────────── */}
-        <div style={{
-          borderTop: '1px solid #F1F5F9',
-          padding: '9px 12px',
-          display: 'flex', alignItems: 'center', gap: '2px',
-          background: '#FAFAFA',
-          marginTop: '12px',
-        }}>
-
-          {/* Adiar */}
-          <button
-            onClick={() => setSnoozeModal({ id: p.id, nome: p.nome })}
-            style={lightBtnStyle(false)} title="Adiar processo"
-            onMouseEnter={e => lightBtnHover(e, true)}
-            onMouseLeave={e => lightBtnHover(e, false)}>
-            <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-            </svg>
-            Adiar
-          </button>
-
-          <LightSep />
-
-          {/* Notas */}
-          <button onClick={() => toggleNotes(p.id)}
-            style={lightBtnStyle(notesOpen)}
-            onMouseEnter={e => { if (!notesOpen) lightBtnHover(e, true) }}
-            onMouseLeave={e => { if (!notesOpen) lightBtnHover(e, false) }}>
-            <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            Notas
-            {notesCt > 0 && (
-              <span style={{
-                fontSize: '9px', fontWeight: 700, padding: '1px 5px', borderRadius: '100px',
-                background: notesOpen ? '#DBEAFE' : '#F1F5F9',
-                color: notesOpen ? '#1D4ED8' : '#64748B', lineHeight: 1.4,
-              }}>
-                {notesCt}
-              </span>
-            )}
-          </button>
-
-          {/* Docs */}
-          <Link href={`/societario?processo=${p.id}`}
-            onClick={e => e.stopPropagation()} title="Documentos"
-            style={{ ...lightBtnStyle(false) as React.CSSProperties, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' } as React.CSSProperties}
-            onMouseEnter={(e: React.MouseEvent<HTMLAnchorElement>) => lightBtnHover(e as unknown as React.MouseEvent<HTMLButtonElement>, true)}
-            onMouseLeave={(e: React.MouseEvent<HTMLAnchorElement>) => lightBtnHover(e as unknown as React.MouseEvent<HTMLButtonElement>, false)}>
-            <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-            </svg>
-            Docs
-            {p.docsTotal > 0 && (
-              <span style={{
-                fontSize: '9px', fontWeight: 700, padding: '1px 5px', borderRadius: '100px',
-                background: p.docsPend > 0 ? '#FEF9C3' : '#DCFCE7',
-                color: p.docsPend > 0 ? '#854D0E' : '#15803D', lineHeight: 1.4,
-              }}>
-                {p.docsReceb}/{p.docsTotal}
-              </span>
-            )}
-          </Link>
-
-          {/* Empresa */}
-          {p.empresa_id && (
-            <Link href={`/empresas/${p.empresa_id}`}
-              onClick={e => e.stopPropagation()} title="Empresa"
-              style={{ ...lightBtnStyle(false) as React.CSSProperties, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' } as React.CSSProperties}
-              onMouseEnter={(e: React.MouseEvent<HTMLAnchorElement>) => lightBtnHover(e as unknown as React.MouseEvent<HTMLButtonElement>, true)}
-              onMouseLeave={(e: React.MouseEvent<HTMLAnchorElement>) => lightBtnHover(e as unknown as React.MouseEvent<HTMLButtonElement>, false)}>
-              <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-              </svg>
-              Empresa
-            </Link>
-          )}
-
-          <div style={{ flex: 1 }} />
-
-          {/* Abrir — azul primário */}
-          <Link href={`/societario?processo=${p.id}`}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '5px',
-              padding: '6px 13px', borderRadius: '8px',
-              background: '#2563EB', color: 'white',
-              fontSize: '11px', fontWeight: 700, textDecoration: 'none',
-              transition: 'background 0.15s', flexShrink: 0,
-            }}
-            onMouseEnter={e => e.currentTarget.style.background = '#1D4ED8'}
-            onMouseLeave={e => e.currentTarget.style.background = '#2563EB'}
-          >
-            Abrir
-            <svg width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-            </svg>
-          </Link>
-        </div>
-
-        {/* ── PAINEL NOTAS INLINE ───────────────────────────────────────── */}
-        {notesOpen && (
-          <div style={{ borderTop: '1px solid #F1F5F9', background: '#F8FAFC', padding: '14px 18px' }}>
-            <p style={{ fontSize: '9px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#94A3B8', marginBottom: '10px' }}>
-              Notas Rápidas
-            </p>
-
-            {notasCache[p.id] === null ? (
-              <p style={{ fontSize: '12px', color: '#94A3B8', fontStyle: 'italic', marginBottom: '10px' }}>Carregando...</p>
-            ) : notasCache[p.id] !== undefined && (notasCache[p.id] as any[]).length === 0 ? (
-              <p style={{ fontSize: '12px', color: '#94A3B8', fontStyle: 'italic', marginBottom: '10px' }}>Sem notas ainda.</p>
-            ) : notasCache[p.id] !== undefined ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '10px' }}>
-                {(notasCache[p.id] as any[]).slice(0, 3).map((nota: any) => (
-                  <div key={nota.id} style={{ background: '#FFFFFF', borderRadius: '8px', padding: '8px 11px', border: '1px solid #E2E8F0' }}>
-                    <p style={{ fontSize: '12px', color: '#334155', lineHeight: 1.5 }}>{nota.texto}</p>
-                    <p style={{ fontSize: '10px', color: '#94A3B8', marginTop: '4px', fontFamily: 'monospace' }}>
-                      {new Date(nota.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                  </div>
-                ))}
-                {(notasCache[p.id] as any[]).length > 3 && (
-                  <Link href={`/societario?processo=${p.id}`} style={{ fontSize: '11px', color: '#2563EB', fontWeight: 600, textDecoration: 'none' }}>
-                    Ver todas no módulo →
-                  </Link>
-                )}
-              </div>
-            ) : null}
-
-            <div style={{ display: 'flex', gap: '7px' }} onClick={e => e.stopPropagation()}>
-              <textarea
-                rows={2}
-                value={notaInput[p.id] || ''}
-                onChange={e => setNotaInput(prev => ({ ...prev, [p.id]: e.target.value }))}
-                onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) saveNota(p.id) }}
-                placeholder="Nova nota... (Ctrl+Enter)"
-                style={{
-                  flex: 1, fontSize: '12px', resize: 'none', fontFamily: 'inherit',
-                  border: '1px solid #E2E8F0', borderRadius: '8px',
-                  padding: '8px 10px', outline: 'none', color: '#334155',
-                  background: '#FFFFFF', transition: 'border-color 0.15s',
-                }}
-                onFocus={e => e.target.style.borderColor = '#93C5FD'}
-                onBlur={e => e.target.style.borderColor = '#E2E8F0'}
-              />
-              <button
-                onClick={() => saveNota(p.id)}
-                disabled={savingNota[p.id] || !(notaInput[p.id] || '').trim()}
-                style={{
-                  padding: '0 13px', background: '#2563EB', color: 'white',
-                  border: 'none', borderRadius: '8px', fontSize: '11px', fontWeight: 700,
-                  cursor: 'pointer', flexShrink: 0,
-                  opacity: (savingNota[p.id] || !(notaInput[p.id] || '').trim()) ? 0.4 : 1,
-                  transition: 'opacity 0.15s, background 0.15s',
-                }}
-                onMouseEnter={e => { if (!(savingNota[p.id] || !(notaInput[p.id] || '').trim())) e.currentTarget.style.background = '#1D4ED8' }}
-                onMouseLeave={e => e.currentTarget.style.background = '#2563EB'}
-              >
-                Salvar
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  // ── Seção ─────────────────────────────────────────────────────────────────
-  function Secao({ label, sublabel, dot, count, children }: {
-    label: string; sublabel: string; dot: string; count: number; children: React.ReactNode
-  }) {
-    return (
-      <section>
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: '10px',
-          padding: '24px 0 14px',
-          borderTop: '1px solid #E2E8F0',
-        }}>
-          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: dot, flexShrink: 0 }} />
-          <span style={{ fontSize: '11px', fontWeight: 800, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-            {label}
-          </span>
-          <span style={{ fontSize: '11px', color: '#94A3B8', fontWeight: 400 }}>
-            {sublabel}
-          </span>
-          <span style={{ marginLeft: 'auto', fontSize: '10px', fontWeight: 700, padding: '2px 9px', borderRadius: '100px', background: '#F1F5F9', color: '#64748B' }}>
-            {count}
-          </span>
-        </div>
-        {children}
-      </section>
-    )
-  }
-
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div style={{ minHeight: '100vh', background: '#F8FAFC' }}>
@@ -721,7 +727,24 @@ export default function PainelProcessosPage() {
                 <EmptyState>Nenhum prioritário — use <strong>☆</strong> nos cards abaixo para elevar.</EmptyState>
               ) : (
                 <CardGrid>
-                  {priori.map(p => <ProcessoCard key={p.id} p={p} />)}
+                  {priori.map(p => (
+                    <ProcessoCard
+                      key={p.id} p={p}
+                      openStatus={openStatus}
+                      notesCt={notaCount[p.id] || 0}
+                      notesOpen={expandNotes[p.id] || false}
+                      notasCache={notasCache[p.id]}
+                      notaInputValue={notaInput[p.id] || ''}
+                      isSaving={savingNota[p.id] || false}
+                      onTogglePrio={() => handleTogglePrio(p.id)}
+                      onSetOpenStatus={setOpenStatus}
+                      onFinalizar={() => handleFinalizar(p.id)}
+                      onSnooze={() => setSnoozeModal({ id: p.id, nome: p.nome })}
+                      onToggleNotes={() => toggleNotes(p.id)}
+                      onNotaChange={(val) => setNotaInput(prev => ({ ...prev, [p.id]: val }))}
+                      onSaveNota={() => saveNota(p.id)}
+                    />
+                  ))}
                 </CardGrid>
               )}
             </Secao>
@@ -731,7 +754,24 @@ export default function PainelProcessosPage() {
                 <EmptyState>Sem processos em rotina.</EmptyState>
               ) : (
                 <CardGrid>
-                  {rotina.map(p => <ProcessoCard key={p.id} p={p} />)}
+                  {rotina.map(p => (
+                    <ProcessoCard
+                      key={p.id} p={p}
+                      openStatus={openStatus}
+                      notesCt={notaCount[p.id] || 0}
+                      notesOpen={expandNotes[p.id] || false}
+                      notasCache={notasCache[p.id]}
+                      notaInputValue={notaInput[p.id] || ''}
+                      isSaving={savingNota[p.id] || false}
+                      onTogglePrio={() => handleTogglePrio(p.id)}
+                      onSetOpenStatus={setOpenStatus}
+                      onFinalizar={() => handleFinalizar(p.id)}
+                      onSnooze={() => setSnoozeModal({ id: p.id, nome: p.nome })}
+                      onToggleNotes={() => toggleNotes(p.id)}
+                      onNotaChange={(val) => setNotaInput(prev => ({ ...prev, [p.id]: val }))}
+                      onSaveNota={() => saveNota(p.id)}
+                    />
+                  ))}
                 </CardGrid>
               )}
             </Secao>
@@ -886,6 +926,32 @@ export default function PainelProcessosPage() {
 }
 
 // ── Atoms ──────────────────────────────────────────────────────────────────────
+
+function Secao({ label, sublabel, dot, count, children }: {
+  label: string; sublabel: string; dot: string; count: number; children: React.ReactNode
+}) {
+  return (
+    <section>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: '10px',
+        padding: '24px 0 14px',
+        borderTop: '1px solid #E2E8F0',
+      }}>
+        <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: dot, flexShrink: 0 }} />
+        <span style={{ fontSize: '11px', fontWeight: 800, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+          {label}
+        </span>
+        <span style={{ fontSize: '11px', color: '#94A3B8', fontWeight: 400 }}>
+          {sublabel}
+        </span>
+        <span style={{ marginLeft: 'auto', fontSize: '10px', fontWeight: 700, padding: '2px 9px', borderRadius: '100px', background: '#F1F5F9', color: '#64748B' }}>
+          {count}
+        </span>
+      </div>
+      {children}
+    </section>
+  )
+}
 
 function CardGrid({ children }: { children: React.ReactNode }) {
   return (
