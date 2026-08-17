@@ -282,7 +282,7 @@ export const SEFAZ_URLS: Record<string, string> = {
   RS: 'https://www.sefaz.rs.gov.br',
   SC: 'https://www.sef.sc.gov.br',
   SE: 'https://www.sefaz.se.gov.br',
-  SP: 'https://www.fazenda.sp.gov.br',
+  SP: 'https://www10.fazenda.sp.gov.br/CertidaoNegativaDeb/Pages/EmissaoCertidaoNegativa.aspx',
   TO: 'https://www.sefaz.to.gov.br',
 }
 
