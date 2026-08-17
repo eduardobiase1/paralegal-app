@@ -108,9 +108,9 @@ export default function PainelProcessosPage() {
   const [prioMap,     setPrioMap]     = useState<Record<string, boolean>>({})
   const [snoozeMap,   setSnoozeMap]   = useState<Record<string, Date | null>>({})
 
-  const [openStatus,  setOpenStatus]  = useState<string | null>(null)
-  const [openSnooze,  setOpenSnooze]  = useState<string | null>(null)
-  const [showSnoozed, setShowSnoozed] = useState(false)
+  const [openStatus,   setOpenStatus]   = useState<string | null>(null)
+  const [snoozeModal,  setSnoozeModal]  = useState<{ id: string; nome: string } | null>(null)
+  const [showSnoozed,  setShowSnoozed]  = useState(false)
 
   const [expandNotes, setExpandNotes] = useState<Record<string, boolean>>({})
   const [notasCache,  setNotasCache]  = useState<Record<string, any[] | null>>({})
@@ -152,7 +152,7 @@ export default function PainelProcessosPage() {
   useEffect(() => { load() }, [load])
 
   useEffect(() => {
-    const h = () => { setOpenStatus(null); setOpenSnooze(null) }
+    const h = () => setOpenStatus(null)
     document.addEventListener('click', h)
     return () => document.removeEventListener('click', h)
   }, [])
@@ -168,8 +168,8 @@ export default function PainelProcessosPage() {
     saveSnoozeLS(id, days)
     const d = new Date(); d.setDate(d.getDate() + days)
     setSnoozeMap(prev => ({ ...prev, [id]: d }))
-    setOpenSnooze(null)
-    toast.success(`Adiado por ${days === 1 ? 'amanhã' : `${days} dias`}`)
+    setSnoozeModal(null)
+    toast.success(`Processo adiado por ${days === 1 ? '1 dia' : `${days} dias`}`)
   }
 
   function handleClearSnooze(id: string) {
@@ -441,36 +441,16 @@ export default function PainelProcessosPage() {
         }}>
 
           {/* Adiar */}
-          <div style={{ position: 'relative' }} onClick={e => e.stopPropagation()}>
-            <button onClick={() => setOpenSnooze(prev => prev === p.id ? null : p.id)}
-              style={lightBtnStyle(false)} title="Adiar"
-              onMouseEnter={e => lightBtnHover(e, true)}
-              onMouseLeave={e => lightBtnHover(e, false)}>
-              <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-              </svg>
-              Adiar
-            </button>
-            {openSnooze === p.id && (
-              <div style={{
-                position: 'absolute', left: 0, bottom: 'calc(100% + 6px)', zIndex: 50,
-                background: '#FFFFFF', borderRadius: '12px',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.06)',
-                padding: '6px', minWidth: '140px',
-              }}>
-                <p style={{ fontSize: '9px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#94A3B8', padding: '4px 10px 6px', margin: 0 }}>
-                  Adiar por
-                </p>
-                {SNOOZE_OPTS.map(o => (
-                  <button key={o.days} onClick={() => handleSnooze(p.id, o.days)}
-                    style={{ width: '100%', textAlign: 'left', padding: '7px 10px', fontSize: '12px', fontWeight: 500, color: '#334155', background: 'transparent', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
-                    onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                  >{o.label}</button>
-                ))}
-              </div>
-            )}
-          </div>
+          <button
+            onClick={() => setSnoozeModal({ id: p.id, nome: p.nome })}
+            style={lightBtnStyle(false)} title="Adiar processo"
+            onMouseEnter={e => lightBtnHover(e, true)}
+            onMouseLeave={e => lightBtnHover(e, false)}>
+            <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+            </svg>
+            Adiar
+          </button>
 
           <LightSep />
 
@@ -818,6 +798,87 @@ export default function PainelProcessosPage() {
           </div>
         )}
       </div>
+
+      {/* ══ MODAL ADIAR ════════════════════════════════════════════════════ */}
+      {snoozeModal && (
+        <div
+          onClick={() => setSnoozeModal(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 100,
+            background: 'rgba(15,23,42,0.4)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '24px',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: '#FFFFFF', borderRadius: '16px',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.06)',
+              padding: '28px', width: '100%', maxWidth: '360px',
+            }}
+          >
+            <div style={{ marginBottom: '20px' }}>
+              <p style={{ fontSize: '9px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.14em', color: '#94A3B8', marginBottom: '6px' }}>
+                Adiar processo
+              </p>
+              <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#0F172A', lineHeight: 1.3 }}>
+                Por quanto tempo deseja adiar?
+              </h3>
+              <p style={{ fontSize: '12px', color: '#64748B', marginTop: '5px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {snoozeModal.nome}
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {SNOOZE_OPTS.map(o => (
+                <button
+                  key={o.days}
+                  onClick={() => handleSnooze(snoozeModal.id, o.days)}
+                  style={{
+                    width: '100%', padding: '12px 16px',
+                    borderRadius: '10px', border: '1px solid #E2E8F0',
+                    background: '#F8FAFC', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    fontSize: '13px', fontWeight: 600, color: '#1E293B',
+                    transition: 'all 0.15s',
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.background = '#EFF6FF'
+                    e.currentTarget.style.borderColor = '#BFDBFE'
+                    e.currentTarget.style.color = '#1D4ED8'
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.background = '#F8FAFC'
+                    e.currentTarget.style.borderColor = '#E2E8F0'
+                    e.currentTarget.style.color = '#1E293B'
+                  }}
+                >
+                  <span>{o.label}</span>
+                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={() => setSnoozeModal(null)}
+              style={{
+                marginTop: '16px', width: '100%', padding: '10px',
+                borderRadius: '10px', border: 'none',
+                background: 'transparent', cursor: 'pointer',
+                fontSize: '12px', fontWeight: 600, color: '#94A3B8',
+                transition: 'color 0.15s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.color = '#475569'}
+              onMouseLeave={e => e.currentTarget.style.color = '#94A3B8'}
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
 
       <style>{`@keyframes pulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 0.3; } }`}</style>
     </div>
