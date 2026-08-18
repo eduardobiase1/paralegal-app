@@ -37,6 +37,7 @@ export default function EmpresaForm({ empresa }: EmpresaFormProps) {
 
   const [loading, setLoading] = useState(false)
   const [buscandoCEP, setBuscandoCEP] = useState(false)
+  const [prioritaria, setPrioritaria] = useState<boolean>((empresa as any)?.prioritaria ?? false)
   const [form, setForm] = useState({
     // Identificação
     razao_social:         empresa?.razao_social ?? '',
@@ -155,6 +156,7 @@ export default function EmpresaForm({ empresa }: EmpresaFormProps) {
       url_portal_alvara:   form.url_portal_alvara,
       url_certidao_municipal: form.url_certidao_municipal,
       url_portal_visa:     form.url_portal_visa,
+      prioritaria,
     }
 
     // Vincula à organização apenas no insert (não sobrescreve no update)
@@ -211,6 +213,40 @@ export default function EmpresaForm({ empresa }: EmpresaFormProps) {
               <option value="inativa">Inativa</option>
               <option value="em_abertura">Em Abertura</option>
             </select>
+          </div>
+
+          {/* Empresa Prioritária */}
+          <div className="md:col-span-2">
+            <button
+              type="button"
+              onClick={() => setPrioritaria(p => !p)}
+              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-all ${
+                prioritaria
+                  ? 'border-violet-400 bg-violet-50'
+                  : 'border-gray-200 bg-gray-50 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-lg">{prioritaria ? '⭐' : '☆'}</span>
+                <div className="text-left">
+                  <p className={`text-sm font-semibold ${prioritaria ? 'text-violet-800' : 'text-gray-700'}`}>
+                    Empresa Prioritária
+                  </p>
+                  <p className={`text-xs ${prioritaria ? 'text-violet-600' : 'text-gray-400'}`}>
+                    {prioritaria
+                      ? 'Certidões, alvarás e licenças aparecem no Briefing a cada 30 dias'
+                      : 'Ativar para monitorar esta empresa mensalmente no Briefing Diário'}
+                  </p>
+                </div>
+              </div>
+              <div className={`w-11 h-6 rounded-full transition-colors flex items-center px-0.5 flex-shrink-0 ${
+                prioritaria ? 'bg-violet-500' : 'bg-gray-300'
+              }`}>
+                <div className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                  prioritaria ? 'translate-x-5' : 'translate-x-0'
+                }`} />
+              </div>
+            </button>
           </div>
           <div>
             <label className="label">

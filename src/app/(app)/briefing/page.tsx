@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useOrg } from '@/lib/org-context'
 import Link from 'next/link'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -24,6 +25,18 @@ function vencTxt(dias: number, fem = false) {
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 type Tier = 'critico' | 'urgente' | 'atencao' | 'controle'
+
+interface PriorityDoc {
+  key: string
+  tipo: 'certidao' | 'alvara' | 'licenca'
+  empresaNome: string
+  empresaId: string
+  docId: string
+  descricao: string
+  dataVencimento: string | null
+  diasRestantes: number | null
+  href: string
+}
 
 interface WorkItem {
   key:          string
@@ -86,11 +99,13 @@ const IcoWarning   = () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 
 
 // ── Componente principal ──────────────────────────────────────────────────────
 export default function BriefingPage() {
-  const [groups,     setGroups]     = useState<Record<Tier, WorkItem[]>>({ critico: [], urgente: [], atencao: [], controle: [] })
-  const [loading,    setLoading]    = useState(true)
-  const [updatedAt,  setUpdatedAt]  = useState<Date | null>(null)
-  const [expanded,   setExpanded]   = useState<Record<string, boolean>>({})
-  const [supabase]                  = useState(createClient)
+  const { orgId } = useOrg()
+  const [groups,        setGroups]        = useState<Record<Tier, WorkItem[]>>({ critico: [], urgente: [], atencao: [], controle: [] })
+  const [priorityDocs,  setPriorityDocs]  = useState<PriorityDoc[]>([])
+  const [loading,       setLoading]       = useState(true)
+  const [updatedAt,     setUpdatedAt]     = useState<Date | null>(null)
+  const [expanded,      setExpanded]      = useState<Record<string, boolean>>({})
+  const [supabase]                        = useState(createClient)
 
   const hoje      = new Date()
   const diaLabel  = DIAS_PT[hoje.getDay()]
@@ -309,6 +324,93 @@ export default function BriefingPage() {
       }
 
       setGroups(result)
+
+      // ── Empresas Prioritárias — revisão a cada 30 dias ───────────────────
+      const trintaDiasAtras = new Date(Date.now() - 30 * 86_400_000).toISOString()
+
+      const { data: empPriori } = await supabase
+        .from('empresas')
+        .select('id, razao_social')
+        .eq('prioritaria', true)
+
+      if (empPriori && empPriori.length > 0) {
+        const ids = empPriori.map((e: any) => e.id)
+        const nomeMap: Record<string, string> = {}
+        for (const e of empPriori) nomeMap[(e as any).id] = (e as any).razao_social
+
+        const [
+          { data: certPriori },
+          { data: alvPriori },
+          { data: licPriori },
+        ] = await Promise.all([
+          supabase.from('certidoes')
+            .select('id, tipo, data_vencimento, briefing_revisado_em, empresa_id')
+            .in('empresa_id', ids)
+            .or(`briefing_revisado_em.is.null,briefing_revisado_em.lt.${trintaDiasAtras}`),
+          supabase.from('alvaras')
+            .select('id, tipo, data_vencimento, briefing_revisado_em, empresa_id')
+            .in('empresa_id', ids)
+            .or(`briefing_revisado_em.is.null,briefing_revisado_em.lt.${trintaDiasAtras}`),
+          supabase.from('licencas_sanitarias')
+            .select('id, data_vencimento, briefing_revisado_em, empresa_id')
+            .in('empresa_id', ids)
+            .or(`briefing_revisado_em.is.null,briefing_revisado_em.lt.${trintaDiasAtras}`),
+        ])
+
+        const docs: PriorityDoc[] = []
+
+        for (const c of certPriori || []) {
+          const dias = c.data_vencimento ? daysRemaining(c.data_vencimento) : null
+          docs.push({
+            key:             `priori-cert-${c.id}`,
+            tipo:            'certidao',
+            empresaNome:     nomeMap[c.empresa_id] || '—',
+            empresaId:       c.empresa_id,
+            docId:           c.id,
+            descricao:       c.tipo || 'Certidão Negativa',
+            dataVencimento:  c.data_vencimento,
+            diasRestantes:   dias,
+            href:            `/certidoes?empresa=${c.empresa_id}`,
+          })
+        }
+
+        for (const a of alvPriori || []) {
+          const dias = a.data_vencimento ? daysRemaining(a.data_vencimento) : null
+          docs.push({
+            key:             `priori-alv-${a.id}`,
+            tipo:            'alvara',
+            empresaNome:     nomeMap[a.empresa_id] || '—',
+            empresaId:       a.empresa_id,
+            docId:           a.id,
+            descricao:       `Alvará ${(a as any).tipo || ''}`.trim(),
+            dataVencimento:  a.data_vencimento,
+            diasRestantes:   dias,
+            href:            `/alvaras?empresa=${a.empresa_id}`,
+          })
+        }
+
+        for (const l of licPriori || []) {
+          const dias = l.data_vencimento ? daysRemaining(l.data_vencimento) : null
+          docs.push({
+            key:             `priori-lic-${l.id}`,
+            tipo:            'licenca',
+            empresaNome:     nomeMap[l.empresa_id] || '—',
+            empresaId:       l.empresa_id,
+            docId:           l.id,
+            descricao:       'Licença Sanitária',
+            dataVencimento:  l.data_vencimento,
+            diasRestantes:   dias,
+            href:            `/licencas?empresa=${l.empresa_id}`,
+          })
+        }
+
+        // Ordena por empresa, depois por tipo
+        docs.sort((a, b) => a.empresaNome.localeCompare(b.empresaNome) || a.tipo.localeCompare(b.tipo))
+        setPriorityDocs(docs)
+      } else {
+        setPriorityDocs([])
+      }
+
       setUpdatedAt(new Date())
     } catch (e) {
       console.error('Briefing error:', e)
@@ -323,6 +425,87 @@ export default function BriefingPage() {
   const totalControle = groups.controle.length
   const totalGeral    = totalCritico + totalUrgente + totalAtencao + totalControle
   const tudoEmDia     = !loading && totalGeral === 0
+
+  // ── Seção Empresas Prioritárias ───────────────────────────────────────────
+  function PrioritySection() {
+    if (priorityDocs.length === 0) return null
+
+    const tipoIcon = {
+      certidao: <IcoCertidao />,
+      alvara:   <IcoAlvara />,
+      licenca:  <IcoLicenca />,
+    }
+    const tipoLabel = {
+      certidao: 'Certidão Negativa',
+      alvara:   'Alvará',
+      licenca:  'Licença Sanitária',
+    }
+
+    return (
+      <div className="mb-6">
+        <div className="flex items-center justify-between px-4 py-2.5 rounded-xl border mb-3 bg-violet-50 border-violet-200">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-violet-500 flex-shrink-0" />
+            <span className="text-sm font-bold text-violet-700">⭐ Revisão Mensal</span>
+            <span className="text-xs text-violet-600 opacity-70">— empresas prioritárias · ciclo de 30 dias</span>
+          </div>
+          <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 ring-1 ring-violet-200">
+            {priorityDocs.length} {priorityDocs.length === 1 ? 'item' : 'itens'}
+          </span>
+        </div>
+
+        <div className="space-y-2">
+          {priorityDocs.map(doc => {
+            const diasColor = doc.diasRestantes === null
+              ? 'bg-gray-100 text-gray-500'
+              : doc.diasRestantes < 0
+                ? 'bg-red-100 text-red-700'
+                : doc.diasRestantes <= 15
+                  ? 'bg-orange-100 text-orange-700'
+                  : 'bg-violet-50 text-violet-700'
+
+            const diasTxt = doc.diasRestantes === null
+              ? 'sem data'
+              : doc.diasRestantes < 0
+                ? `vencida há ${Math.abs(doc.diasRestantes)}d`
+                : doc.diasRestantes === 0
+                  ? 'vence hoje'
+                  : `vence em ${doc.diasRestantes}d`
+
+            return (
+              <Link key={doc.key} href={doc.href}
+                className="flex items-center gap-3 px-4 py-3.5 bg-white rounded-xl border border-gray-100 border-l-[4px] border-l-violet-400 shadow-sm hover:shadow-md transition-all group">
+                <div className="flex-shrink-0 text-violet-500">{tipoIcon[doc.tipo]}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wide bg-violet-50 text-violet-700 ring-1 ring-violet-200">
+                      {tipoLabel[doc.tipo]}
+                    </span>
+                  </div>
+                  <p className="text-sm font-bold text-gray-900 truncate group-hover:text-violet-700 transition-colors leading-tight">
+                    {doc.empresaNome}
+                  </p>
+                  <p className="text-xs text-gray-500 truncate">{doc.descricao}</p>
+                </div>
+                {doc.dataVencimento && (
+                  <span className={`flex-shrink-0 text-[11px] font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${diasColor}`}>
+                    {diasTxt}
+                  </span>
+                )}
+                <svg className="w-4 h-4 text-gray-300 group-hover:text-violet-400 flex-shrink-0 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </Link>
+            )
+          })}
+        </div>
+
+        <p className="text-[10px] text-violet-400 mt-2 px-1">
+          Itens desaparecem por 30 dias ao renovar o documento com nova data de vencimento.
+        </p>
+      </div>
+    )
+  }
 
   // ── Card de item ──────────────────────────────────────────────────────────
   function ItemCard({ item }: { item: WorkItem }) {
@@ -494,6 +677,7 @@ export default function BriefingPage() {
         </div>
       ) : (
         <>
+          <PrioritySection />
           <TierSection tier="critico" />
           <TierSection tier="urgente" />
           <TierSection tier="atencao" />
