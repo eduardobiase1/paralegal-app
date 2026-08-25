@@ -161,7 +161,7 @@ function MensalCard({ docs, expanded, onToggle }: {
   const tipoLabel = { certidao: 'Certidão', alvara: 'Alvará', licenca: 'Licença Sanitária' }
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-violet-500 shadow-sm mb-2 overflow-hidden">
+    <div className="bg-white rounded-xl border border-gray-200 border-l-4 border-l-violet-500 shadow-sm overflow-hidden">
       <button onClick={onToggle}
         className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-violet-50 transition-colors text-left">
         <div className="w-9 h-9 rounded-xl bg-violet-100 border border-violet-200 flex items-center justify-center text-base flex-shrink-0">⭐</div>
@@ -229,7 +229,7 @@ function CompanyCard({ group, expanded, onToggle, onSnooze, subListExpanded, onT
   const tot  = group.items.length
 
   return (
-    <div className={`bg-white rounded-2xl border border-gray-100 border-l-4 ${ts.border} shadow-sm hover:shadow-md transition-shadow`}>
+    <div className={`bg-white rounded-xl border border-gray-200 border-l-4 ${ts.border} shadow-sm hover:shadow-md transition-shadow`}>
       {/* Header */}
       <button onClick={onToggle}
         className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-gray-50 transition-colors text-left">
@@ -367,7 +367,7 @@ function ControleCard({ item, subListExpanded, onToggleSubList }: {
 }) {
   const subOpen = subListExpanded[item.key]
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-blue-400 shadow-sm hover:shadow-md transition-shadow">
+    <div className="bg-white rounded-xl border border-gray-200 border-l-4 border-l-blue-400 shadow-sm hover:shadow-md transition-shadow">
       <div className="flex items-center gap-3 px-4 py-3.5">
         <div className="w-9 h-9 rounded-xl bg-blue-100 border border-blue-200 flex items-center justify-center flex-shrink-0 text-blue-600">
           <IcoWarning />
@@ -658,44 +658,49 @@ export default function BriefingPage() {
   function collapseAll(){ const m: Record<string, boolean> = {}; compGroups.forEach(g => { m[g.empresaNome] = false }); setCoExpanded(m) }
 
   return (
-    <div>
-      {/* ── Header compacto ──────────────────────────────────────────────── */}
-      <div className="bg-white border-b border-gray-100 -mx-6 px-6 mb-6 sticky top-0 z-40">
-        <div className="flex items-center h-[62px] gap-3 max-w-3xl">
-          <div className="w-9 h-9 bg-gradient-to-br from-amber-300 to-amber-500 rounded-[10px] flex items-center justify-center text-[18px] flex-shrink-0 shadow-sm">☀️</div>
-          <div className="flex-shrink-0">
-            <h1 className="text-[17px] font-black text-gray-900 leading-tight tracking-tight">Briefing Diário</h1>
-            <p className="text-[11px] text-gray-400 font-medium">{diaLabel} · {dateLbl}</p>
+    <div className="p-4 md:p-6 space-y-4">
+
+      {/* ── Header ───────────────────────────────────────────────────────── */}
+      <header className="flex flex-wrap justify-between items-center gap-3 bg-white p-4 md:p-5 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center flex-shrink-0">
+            <svg className="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1M4.22 4.22l.707.707m12.02 12.02l.707.707M1 12h2m18 0h2M4.22 19.78l.707-.707M18.95 5.05l.707-.707M12 7a5 5 0 100 10A5 5 0 0012 7z" />
+            </svg>
           </div>
-          <div className="hidden sm:block w-px h-7 bg-gray-100 mx-1" />
+          <div>
+            <h1 className="text-xl font-bold text-slate-900">Briefing Diário</h1>
+            <p className="text-xs text-slate-500 mt-0.5">{diaLabel} · {dateLbl}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
           {!loading && (
-            <div className="hidden sm:flex items-center gap-1.5 flex-1 min-w-0">
-              {totalCritico > 0  && <span className="flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full bg-red-50    text-red-700    border border-red-200   "><span className="w-1.5 h-1.5 rounded-full bg-red-500"    />{totalCritico} críticos</span>}
-              {totalUrgente > 0  && <span className="flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full bg-orange-50  text-orange-700  border border-orange-200"><span className="w-1.5 h-1.5 rounded-full bg-orange-500"  />{totalUrgente} urgentes</span>}
-              {totalAtencao > 0  && <span className="flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-50   text-amber-700   border border-amber-200 "><span className="w-1.5 h-1.5 rounded-full bg-amber-400"   />{totalAtencao} atenção</span>}
-              {priorityDocs.length > 0 && <span className="flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full bg-violet-50  text-violet-700  border border-violet-200"><span className="w-1.5 h-1.5 rounded-full bg-violet-500"  />{priorityDocs.length} revisão</span>}
-            </div>
+            <>
+              {totalCritico > 0  && <span className="flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg bg-red-50    text-red-700    border border-red-200   "><span className="w-1.5 h-1.5 rounded-full bg-red-500"    />{totalCritico} críticos</span>}
+              {totalUrgente > 0  && <span className="flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg bg-orange-50  text-orange-700  border border-orange-200"><span className="w-1.5 h-1.5 rounded-full bg-orange-500"  />{totalUrgente} urgentes</span>}
+              {totalAtencao > 0  && <span className="flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg bg-amber-50   text-amber-700   border border-amber-200 "><span className="w-1.5 h-1.5 rounded-full bg-amber-400"   />{totalAtencao} atenção</span>}
+              {priorityDocs.length > 0 && <span className="flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg bg-violet-50  text-violet-700  border border-violet-200"><span className="w-1.5 h-1.5 rounded-full bg-violet-500"  />{priorityDocs.length} revisão</span>}
+            </>
           )}
-          <div className="flex-1" />
           <button onClick={load} title="Atualizar"
-            className="w-8 h-8 rounded-lg bg-gray-50 hover:bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors flex-shrink-0">
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+            className="btn-secondary px-3">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
           </button>
         </div>
-      </div>
+      </header>
 
       {/* ── Conteúdo ─────────────────────────────────────────────────────── */}
-      <div className="max-w-3xl">
+      <div>
         {loading ? (
           <div className="space-y-2">
             {[...Array(5)].map((_, i) => (
-              <div key={i} className="h-16 bg-white rounded-2xl animate-pulse border border-gray-100" />
+              <div key={i} className="h-16 bg-white rounded-xl animate-pulse border border-gray-200" />
             ))}
           </div>
         ) : tudoEmDia ? (
-          <div className="text-center py-24 bg-white rounded-2xl border border-gray-100 shadow-sm">
+          <div className="text-center py-24 bg-white rounded-2xl border border-slate-200 shadow-sm">
             <p className="text-5xl mb-4">🎉</p>
             <p className="text-lg font-bold text-gray-900">100% sob controle!</p>
             <p className="text-sm text-gray-500 mt-1">Nenhuma pendência encontrada. Continue assim!</p>
@@ -704,7 +709,7 @@ export default function BriefingPage() {
           <>
             {/* Ação imediata */}
             {groups.critico.length > 0 && (
-              <div className="bg-red-50 border border-red-200 rounded-2xl overflow-hidden mb-4">
+              <div className="bg-red-50 border border-red-200 rounded-xl overflow-hidden">
                 <div className="flex items-center gap-2.5 px-4 py-3">
                   <span className="relative flex h-2.5 w-2.5 flex-shrink-0">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
@@ -732,26 +737,26 @@ export default function BriefingPage() {
             )}
 
             {/* Toolbar */}
-            <div className="flex flex-wrap gap-2 mb-4 items-center">
+            <div className="flex flex-wrap gap-2 items-center bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
               <div className="relative flex-1 min-w-[160px]">
-                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none"
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
                   fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
                 <input type="text" value={searchQ} onChange={e => setSearchQ(e.target.value)}
                   placeholder="Buscar empresa…"
-                  className="w-full pl-8 pr-3 py-2 text-sm bg-white border border-gray-200 rounded-xl outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all placeholder:text-gray-400" />
+                  className="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-50 transition-all placeholder:text-gray-400" />
               </div>
-              <div className="flex gap-1.5">
+              <div className="flex gap-1.5 flex-wrap">
                 {(['todos','critico','urgente','atencao'] as const).map(f => (
                   <button key={f} onClick={() => setFilterTier(f)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all whitespace-nowrap
-                      ${filterTier === f ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all whitespace-nowrap
+                      ${filterTier === f ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>
                     {f === 'todos' ? 'Todos' : f === 'critico' ? 'Crítico' : f === 'urgente' ? 'Urgente' : 'Atenção'}
                   </button>
                 ))}
               </div>
-              <div className="flex gap-1.5">
+              <div className="flex gap-1.5 ml-auto">
                 <button onClick={expandAll}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors whitespace-nowrap">
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 8h16M4 16h16"/></svg>
@@ -806,7 +811,7 @@ export default function BriefingPage() {
               )}
 
               {filteredGroups.length === 0 && (filterTier !== 'todos' || searchQ) && (
-                <div className="text-center py-10 bg-white rounded-2xl border border-gray-100">
+                <div className="text-center py-10 bg-white rounded-xl border border-gray-200">
                   <p className="text-2xl mb-2">🔍</p>
                   <p className="text-sm font-medium text-gray-500">Nenhuma empresa encontrada</p>
                 </div>

@@ -5,17 +5,35 @@ import Sidebar from '@/components/layout/Sidebar'
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(true)
+  const [isDark, setIsDark] = useState(false)
 
-  // On mobile (< 768px), default to closed
   useEffect(() => {
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
       setOpen(false)
     }
+    const saved = localStorage.getItem('paralegal-theme')
+    if (saved === 'dark') {
+      setIsDark(true)
+      document.documentElement.classList.add('dark')
+    }
   }, [])
 
+  function toggleDark() {
+    setIsDark(prev => {
+      const next = !prev
+      if (next) {
+        document.documentElement.classList.add('dark')
+        localStorage.setItem('paralegal-theme', 'dark')
+      } else {
+        document.documentElement.classList.remove('dark')
+        localStorage.setItem('paralegal-theme', 'light')
+      }
+      return next
+    })
+  }
+
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50">
-      {/* Mobile overlay backdrop */}
+    <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-gray-950">
       {open && (
         <div
           className="fixed inset-0 bg-black/60 z-20 md:hidden"
@@ -23,15 +41,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         />
       )}
 
-      <Sidebar isOpen={open} onToggle={() => setOpen(o => !o)} />
+      <Sidebar isOpen={open} onToggle={() => setOpen(o => !o)} isDark={isDark} onToggleDark={toggleDark} />
 
-      {/* Main content */}
       <div
         className={`flex-1 flex flex-col min-w-0 transition-all duration-300 overflow-hidden ${
           open ? 'md:ml-64' : 'ml-0'
         }`}
       >
-        {/* Mobile top bar (hamburger) */}
         <div className="flex md:hidden items-center gap-3 px-4 py-3 bg-[#0d0d0d] border-b border-white/[0.06] sticky top-0 z-10">
           <button
             onClick={() => setOpen(true)}
@@ -52,7 +68,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </main>
       </div>
 
-      {/* Desktop: floating button to reopen when sidebar is hidden */}
       {!open && (
         <button
           onClick={() => setOpen(true)}

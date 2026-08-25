@@ -47,7 +47,9 @@ const navigation = [
   },
 ]
 
-export default function Sidebar({ isOpen = true, onToggle }: { isOpen?: boolean; onToggle?: () => void }) {
+export default function Sidebar({ isOpen = true, onToggle, isDark = false, onToggleDark }: {
+  isOpen?: boolean; onToggle?: () => void; isDark?: boolean; onToggleDark?: () => void
+}) {
   const pathname = usePathname()
   const router = useRouter()
   const [supabase] = useState(createClient)
@@ -206,6 +208,27 @@ export default function Sidebar({ isOpen = true, onToggle }: { isOpen?: boolean;
             Usuários
           </Link>
         )}
+
+        {/* Dark mode toggle */}
+        {onToggleDark && (
+          <button
+            onClick={onToggleDark}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all text-gray-400 hover:bg-white/5 hover:text-gray-100 border border-transparent"
+            title={isDark ? 'Modo claro' : 'Modo escuro'}
+          >
+            {isDark ? (
+              <svg className="w-4 h-4 flex-shrink-0 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1M4.22 4.22l.707.707m12.02 12.02l.707.707M1 12h2m18 0h2M4.22 19.78l.707-.707M18.95 5.05l.707-.707M12 7a5 5 0 100 10A5 5 0 0012 7z" />
+              </svg>
+            ) : (
+              <svg className="w-4 h-4 flex-shrink-0 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+              </svg>
+            )}
+            {isDark ? 'Modo claro' : 'Modo escuro'}
+          </button>
+        )}
+
         <button
           onClick={handleLogout}
           disabled={loggingOut}
