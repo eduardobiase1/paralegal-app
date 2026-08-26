@@ -59,6 +59,7 @@ function CertidoesPage() {
   const [search, setSearch] = useState('')
   const [filterPendencia, setFilterPendencia] = useState('todas')
   const [filterPrazo, setFilterPrazo] = useState<'todas' | 'vencidas' | 'alerta' | 'ok'>('todas')
+  const [comunicandoItem, setComunicandoItem] = useState<any | null>(null)
 
   const [form, setForm] = useState<typeof EMPTY_FORM>({ ...EMPTY_FORM })
 
@@ -158,6 +159,26 @@ function CertidoesPage() {
     await supabase.from('certidoes').delete().eq('id', id)
     setData(prev => prev.filter(i => i.id !== id))
     toast.success('Certidão excluída.')
+  }
+
+  async function handleRegistrarComunicado(para: string, canal: string) {
+    if (!comunicandoItem) return
+    const { error } = await supabase.from('certidoes').update({
+      comunicado_em: new Date().toISOString(),
+      comunicado_para: para,
+      comunicado_canal: canal,
+    }).eq('id', comunicandoItem.id)
+    if (error) {
+      if (error.message.includes('comunicado_em') || error.message.includes('comunicado_para')) {
+        toast('Execute a migration_v10 no Supabase SQL Editor para habilitar o registro de comunicações.')
+      } else {
+        toast.error('Erro ao registrar: ' + error.message)
+      }
+    } else {
+      toast.success('Comunicação registrada!')
+      setComunicandoItem(null)
+      load()
+    }
   }
 
   // Métricas
@@ -308,7 +329,23 @@ function CertidoesPage() {
                       )}
                     </td>
                     <td className="px-5 py-3.5 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
+                      <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                        {/* Comunicar — só para impossível renovar */}
+                        {(i.pendencia_status || 'nenhuma') === 'impossivel_renovar' && !i.comunicado_em && (
+                          <button onClick={() => setComunicandoItem(i)} title="Gerar comunicado"
+                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-violet-50 hover:bg-violet-100 text-violet-700 text-[10px] font-black uppercase transition-all">
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                            </svg>
+                            Comunicar
+                          </button>
+                        )}
+                        {(i.pendencia_status || 'nenhuma') === 'impossivel_renovar' && i.comunicado_em && (
+                          <button onClick={() => setComunicandoItem(i)} title={`Comunicado para ${i.comunicado_para || '?'} em ${new Date(i.comunicado_em).toLocaleDateString('pt-BR')}`}
+                            className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-[9px] font-black transition-all hover:bg-green-200">
+                            ✓ Comunicado
+                          </button>
+                        )}
                         {/* Renovar */}
                         <button
                           onClick={() => openRenovar(i)}
@@ -348,6 +385,16 @@ function CertidoesPage() {
           </table>
         </div>
       </div>
+
+      {/* Modal Comunicado */}
+      {comunicandoItem && (
+        <ComunicadoModal
+          item={comunicandoItem}
+          orgName={orgName}
+          onClose={() => setComunicandoItem(null)}
+          onRegistrar={handleRegistrarComunicado}
+        />
+      )}
 
       {/* Modal Novo / Editar / Renovar */}
       {modal && (
@@ -449,4 +496,148 @@ function CertidoesPage() {
 
 export default function CertidoesPageWrapper() {
   return <Suspense><CertidoesPage /></Suspense>
+}
+
+// ── Modal de Comunicado ───────────────────────────────────────────────────────
+function ComunicadoModal({ item, orgName, onClose, onRegistrar }: {
+  item: any; orgName: string; onClose: () => void
+  onRegistrar: (para: string, canal: string) => Promise<void>
+}) {
+  const [tab, setTab] = useState<'cliente' | 'interno'>('cliente')
+  const [para, setPara] = useState(item.comunicado_para || '')
+  const [canal, setCanal] = useState(item.comunicado_canal || 'whatsapp')
+  const [registrando, setRegistrando] = useState(false)
+  const [copiado, setCopiado] = useState(false)
+
+  const empresa  = item.empresas?.razao_social || ''
+  const dataVenc = item.data_vencimento ? new Date(item.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR') : '—'
+  const obsLine  = item.observacoes ? `\n• Motivo informado: ${item.observacoes}` : ''
+
+  const textoCliente = `Prezado(a) cliente,
+
+Informamos que a Certidão Negativa ${item.tipo} da empresa ${empresa} encontra-se com a renovação IMPOSSIBILITADA em função de débitos ou pendências junto ao(à) ${item.orgao_emissor}.
+
+Detalhes:
+• Empresa: ${empresa}
+• Tipo: ${item.tipo}
+• Órgão: ${item.orgao_emissor}
+• Vencimento: ${dataVenc}${obsLine}
+
+Para regularização, será necessário verificar e quitar as pendências junto ao(à) ${item.orgao_emissor} para então solicitar a emissão de nova certidão.
+
+Ficamos à disposição para orientações.
+
+Atenciosamente,
+${orgName}`
+
+  const textoInterno = `📌 CERTIDÃO NÃO RENOVÁVEL — AÇÃO NECESSÁRIA
+
+Empresa: ${empresa}
+Certidão: ${item.tipo} | Órgão: ${item.orgao_emissor}
+Vencimento: ${dataVenc}
+Status: Impossível renovar${item.observacoes ? ` — ${item.observacoes}` : ''}
+
+⚠️ Cliente precisa ser informado e regularizar pendências junto ao(à) ${item.orgao_emissor}.
+Departamento contábil: verificar débitos em aberto.
+
+Data: ${new Date().toLocaleDateString('pt-BR')}
+— ${orgName} / Departamento Paralegal`
+
+  const texto = tab === 'cliente' ? textoCliente : textoInterno
+
+  async function copiar() {
+    await navigator.clipboard.writeText(texto)
+    setCopiado(true)
+    setTimeout(() => setCopiado(false), 2000)
+  }
+
+  async function registrar() {
+    if (!para.trim()) { alert('Informe para quem foi comunicado.'); return }
+    setRegistrando(true)
+    await onRegistrar(para.trim(), canal)
+    setRegistrando(false)
+  }
+
+  const jaComunicado = !!item.comunicado_em
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white w-full max-w-xl rounded-3xl border border-slate-200 shadow-2xl max-h-[92vh] overflow-y-auto">
+        {/* Header */}
+        <div className="flex items-start justify-between p-6 pb-4 border-b border-slate-100">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-[9px] font-black uppercase tracking-widest text-violet-600 bg-violet-50 border border-violet-200 px-2 py-0.5 rounded">Comunicado</span>
+              {jaComunicado && <span className="text-[9px] font-black uppercase tracking-widest text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded">✓ Já registrado</span>}
+            </div>
+            <h2 className="text-lg font-bold text-slate-900">{empresa}</h2>
+            <p className="text-xs text-slate-500 mt-0.5">{item.tipo} · {item.orgao_emissor} · vence {dataVenc}</p>
+            {jaComunicado && (
+              <p className="text-xs text-green-600 mt-1">
+                Comunicado para <strong>{item.comunicado_para}</strong> via {item.comunicado_canal} em {new Date(item.comunicado_em).toLocaleDateString('pt-BR')}
+              </p>
+            )}
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 font-black text-lg leading-none flex-shrink-0 ml-4">✕</button>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-1 p-4 pb-0">
+          <button onClick={() => setTab('cliente')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${tab === 'cliente' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
+            Para o cliente
+          </button>
+          <button onClick={() => setTab('interno')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${tab === 'interno' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
+            Para departamento interno
+          </button>
+        </div>
+
+        {/* Texto gerado */}
+        <div className="p-4">
+          <div className="relative">
+            <pre className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs text-slate-700 whitespace-pre-wrap font-sans leading-relaxed max-h-56 overflow-y-auto">{texto}</pre>
+            <button onClick={copiar}
+              className={`absolute top-2 right-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${copiado ? 'bg-green-500 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+              {copiado ? '✓ Copiado!' : 'Copiar'}
+            </button>
+          </div>
+          <p className="text-[10px] text-slate-400 mt-2 text-center">Copie e envie via WhatsApp, e-mail ou outro canal</p>
+        </div>
+
+        {/* Registro */}
+        <div className="px-4 pb-6 border-t border-slate-100 pt-4">
+          <p className="text-xs font-black text-slate-500 uppercase tracking-wide mb-3">Registrar comunicação</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+            <div>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-wide block mb-1">Para quem *</label>
+              <input value={para} onChange={e => setPara(e.target.value)}
+                placeholder="Nome ou e-mail do destinatário"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-sm outline-none focus:border-slate-400" />
+            </div>
+            <div>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-wide block mb-1">Canal</label>
+              <select value={canal} onChange={e => setCanal(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-sm outline-none focus:border-slate-400">
+                <option value="whatsapp">WhatsApp</option>
+                <option value="email">E-mail</option>
+                <option value="telefone">Telefone</option>
+                <option value="outro">Outro</option>
+              </select>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <button type="button" onClick={onClose}
+              className="flex-1 bg-slate-100 text-slate-600 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-200 transition-all">
+              {jaComunicado ? 'Fechar' : 'Cancelar'}
+            </button>
+            <button type="button" onClick={registrar} disabled={registrando}
+              className="flex-1 bg-violet-600 text-white py-2.5 rounded-xl font-bold text-sm hover:bg-violet-700 transition-all disabled:opacity-50">
+              {registrando ? 'Registrando...' : jaComunicado ? '↻ Atualizar registro' : '✓ Registrar comunicação'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }

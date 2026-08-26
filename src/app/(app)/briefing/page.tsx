@@ -422,6 +422,8 @@ export default function BriefingPage() {
   const [searchQ,      setSearchQ]      = useState('')
   const [filterTier,   setFilterTier]   = useState<Tier | 'todos'>('todos')
   const [snoozed,      setSnoozed]      = useState<Set<string>>(new Set())
+  const [naoComunicados, setNaoComunicados] = useState<any[]>([])
+  const [naoComunicadosOpen, setNaoComunicadosOpen] = useState(true)
   const [supabase]                      = useState(createClient)
 
   const hoje     = new Date()
@@ -662,6 +664,22 @@ export default function BriefingPage() {
         setPriorityDocs([])
       }
 
+      // ── Certidões impossíveis não comunicadas ─────────────────────────────
+      try {
+        if (orgEmpresaIds.length > 0) {
+          const { data: naoComData } = await supabase
+            .from('certidoes')
+            .select('id, tipo, orgao_emissor, data_vencimento, observacoes, empresa_id, empresa:empresas(razao_social)')
+            .in('empresa_id', orgEmpresaIds)
+            .eq('pendencia_status', 'impossivel_renovar')
+            .is('comunicado_em', null)
+          setNaoComunicados(naoComData || [])
+        }
+      } catch {
+        // coluna pode não existir ainda (migration_v10 pendente)
+        setNaoComunicados([])
+      }
+
       setUpdatedAt(new Date())
     } catch (e) {
       console.error('Briefing error:', e)
@@ -709,6 +727,7 @@ export default function BriefingPage() {
               {totalUrgente > 0  && <span className="flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg bg-orange-50  text-orange-700  border border-orange-200"><span className="w-1.5 h-1.5 rounded-full bg-orange-500"  />{totalUrgente} urgentes</span>}
               {totalAtencao > 0  && <span className="flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg bg-amber-50   text-amber-700   border border-amber-200 "><span className="w-1.5 h-1.5 rounded-full bg-amber-400"   />{totalAtencao} atenção</span>}
               {priorityDocs.length > 0 && <span className="flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg bg-violet-50  text-violet-700  border border-violet-200"><span className="w-1.5 h-1.5 rounded-full bg-violet-500"  />{priorityDocs.length} revisão</span>}
+              {naoComunicados.length > 0 && <span className="flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg bg-fuchsia-50 text-fuchsia-700 border border-fuchsia-200"><span className="w-1.5 h-1.5 rounded-full bg-fuchsia-500" />{naoComunicados.length} não comunicado{naoComunicados.length > 1 ? 's' : ''}</span>}
             </>
           )}
           <button onClick={load} title="Atualizar"
@@ -762,6 +781,48 @@ export default function BriefingPage() {
                     </Link>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* Não comunicados */}
+            {naoComunicados.length > 0 && (
+              <div className="bg-fuchsia-50 border border-fuchsia-200 rounded-xl overflow-hidden">
+                <button onClick={() => setNaoComunicadosOpen(o => !o)}
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-fuchsia-100 transition-colors text-left">
+                  <div className="w-8 h-8 rounded-xl bg-fuchsia-100 border border-fuchsia-200 flex items-center justify-center flex-shrink-0">
+                    <svg className="w-4 h-4 text-fuchsia-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-fuchsia-800 leading-tight">Clientes não comunicados</p>
+                    <p className="text-xs text-fuchsia-600 mt-0.5">Certidões "impossível renovar" pendentes de comunicação</p>
+                  </div>
+                  <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-fuchsia-100 text-fuchsia-700 border border-fuchsia-200 flex-shrink-0">
+                    {naoComunicados.length} {naoComunicados.length === 1 ? 'pendente' : 'pendentes'}
+                  </span>
+                  <svg className={`w-4 h-4 text-fuchsia-400 flex-shrink-0 transition-transform duration-200 ${naoComunicadosOpen ? 'rotate-180' : ''}`}
+                    fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {naoComunicadosOpen && (
+                  <div className="border-t border-fuchsia-200">
+                    {naoComunicados.map((c: any) => (
+                      <Link key={c.id} href={`/certidoes?empresa=${c.empresa_id}`}
+                        className="flex items-center gap-2.5 px-4 py-2.5 border-b border-fuchsia-100 last:border-0 hover:bg-fuchsia-100 transition-colors group">
+                        <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border bg-fuchsia-100 border-fuchsia-200 text-fuchsia-700 flex-shrink-0 whitespace-nowrap">
+                          {c.tipo}
+                        </span>
+                        <span className="text-xs font-semibold text-gray-900 flex-1 min-w-0 truncate">
+                          {(c as any).empresa?.razao_social || '—'}
+                        </span>
+                        <span className="text-xs text-gray-500 hidden sm:block flex-shrink-0">{c.orgao_emissor}</span>
+                        <span className="text-[11px] font-bold text-fuchsia-600 flex-shrink-0 whitespace-nowrap group-hover:underline">Comunicar →</span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
