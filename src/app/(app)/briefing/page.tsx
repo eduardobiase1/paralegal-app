@@ -446,34 +446,53 @@ export default function BriefingPage() {
   async function load() {
     setLoading(true)
     try {
+      // Passo 1: buscar SOMENTE as empresas desta organização
+      const { data: orgEmpresas } = await supabase
+        .from('empresas')
+        .select('id, razao_social, situacao, status')
+        .eq('org_id', orgId)
+
+      const orgEmpresaIds = (orgEmpresas || []).map(e => e.id)
+
+      // Passo 2: buscar documentos filtrando pelos IDs das empresas do org
       const [
         { data: processos },
         { data: certidoes },
         { data: alvaras },
         { data: licencas },
         { data: certificados },
-        { data: empresasAtivas },
         { data: empComCert },
         { data: empComAlvara },
       ] = await Promise.all([
+        orgEmpresaIds.length === 0 ? Promise.resolve({ data: [] }) :
         supabase.from('processos_societarios')
           .select('id, titulo, tipo, updated_at, empresa_id, empresa:empresas(razao_social), etapas:processo_etapas(id, updated_at)')
+          .in('empresa_id', orgEmpresaIds)
           .eq('status', 'em_andamento'),
+        orgEmpresaIds.length === 0 ? Promise.resolve({ data: [] }) :
         supabase.from('certidoes')
           .select('id, tipo, data_vencimento, updated_at, empresa_id, empresa:empresas(razao_social)')
+          .in('empresa_id', orgEmpresaIds)
           .not('data_vencimento', 'is', null),
+        orgEmpresaIds.length === 0 ? Promise.resolve({ data: [] }) :
         supabase.from('alvaras')
           .select('id, tipo, data_vencimento, empresa_id, empresa:empresas(razao_social)')
+          .in('empresa_id', orgEmpresaIds)
           .not('data_vencimento', 'is', null),
+        orgEmpresaIds.length === 0 ? Promise.resolve({ data: [] }) :
         supabase.from('licencas_sanitarias')
           .select('id, data_vencimento, empresa_id, empresa:empresas(razao_social)')
+          .in('empresa_id', orgEmpresaIds)
           .not('data_vencimento', 'is', null),
+        orgEmpresaIds.length === 0 ? Promise.resolve({ data: [] }) :
         supabase.from('certificados_digitais')
           .select('id, tipo, uso, data_vencimento, empresa_id, empresa:empresas(razao_social)')
+          .in('empresa_id', orgEmpresaIds)
           .not('data_vencimento', 'is', null),
-        supabase.from('empresas').select('id, razao_social').eq('situacao', 'ATIVA'),
-        supabase.from('certidoes').select('empresa_id').not('empresa_id', 'is', null),
-        supabase.from('alvaras').select('empresa_id').not('empresa_id', 'is', null),
+        orgEmpresaIds.length === 0 ? Promise.resolve({ data: [] }) :
+        supabase.from('certidoes').select('empresa_id').in('empresa_id', orgEmpresaIds),
+        orgEmpresaIds.length === 0 ? Promise.resolve({ data: [] }) :
+        supabase.from('alvaras').select('empresa_id').in('empresa_id', orgEmpresaIds),
       ])
 
       const result: Record<Tier, WorkItem[]> = { critico: [], urgente: [], atencao: [], controle: [] }
@@ -561,7 +580,13 @@ export default function BriefingPage() {
       const comAlvaraIds = new Set((empComAlvara || []).map((r: any) => r.empresa_id))
       const semCertNomes:   string[] = []
       const semAlvaraNomes: string[] = []
-      for (const e of empresasAtivas || []) {
+      // Apenas empresas ativas desta organização sem documentos cadastrados
+      const ativas = (orgEmpresas || []).filter(e => {
+        const sit = (e.situacao || '').toUpperCase()
+        const sta = (e.status || '').toLowerCase()
+        return sit === 'ativa' || sit === 'ATIVA' || sit === '' || sta === 'ativa'
+      })
+      for (const e of ativas) {
         if (!comCertIds.has(e.id))   semCertNomes.push(e.razao_social)
         if (!comAlvaraIds.has(e.id)) semAlvaraNomes.push(e.razao_social)
       }
@@ -592,7 +617,11 @@ export default function BriefingPage() {
 
       // ── Revisão Mensal ────────────────────────────────────────────────────
       const trintaDiasAtras = new Date(Date.now() - 30 * 86_400_000).toISOString()
-      const { data: empPriori } = await supabase.from('empresas').select('id, razao_social').eq('prioritaria', true)
+      const { data: empPriori } = await supabase
+        .from('empresas')
+        .select('id, razao_social')
+        .eq('org_id', orgId)
+        .eq('prioritaria', true)
 
       if (empPriori && empPriori.length > 0) {
         const ids = empPriori.map((e: any) => e.id)
