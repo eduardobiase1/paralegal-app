@@ -58,6 +58,7 @@ function CertidoesPage() {
   const [saving, setSaving] = useState(false)
   const [search, setSearch] = useState('')
   const [filterPendencia, setFilterPendencia] = useState('todas')
+  const [filterPrazo, setFilterPrazo] = useState<'todas' | 'vencidas' | 'alerta' | 'ok'>('todas')
 
   const [form, setForm] = useState<typeof EMPTY_FORM>({ ...EMPTY_FORM })
 
@@ -159,6 +160,11 @@ function CertidoesPage() {
     toast.success('Certidão excluída.')
   }
 
+  // Métricas
+  const totalVencidas = data.filter(i => { const d = diasParaVencer(i.data_vencimento); return d !== null && d < 0 }).length
+  const totalAlerta   = data.filter(i => { const d = diasParaVencer(i.data_vencimento); return d !== null && d >= 0 && d <= 30 }).length
+  const totalOk       = data.filter(i => { const d = diasParaVencer(i.data_vencimento); return d === null || d > 30 }).length
+
   // Filtro/busca
   const empresaNome = empresaFiltro ? (empresas.find(e => e.id === empresaFiltro)?.razao_social || '') : ''
   const filtered = data.filter(i => {
@@ -168,7 +174,13 @@ function CertidoesPage() {
       (i.tipo || '').toLowerCase().includes(search.toLowerCase()) ||
       (i.orgao_emissor || '').toLowerCase().includes(search.toLowerCase())
     const matchPend = filterPendencia === 'todas' || (i.pendencia_status || 'nenhuma') === filterPendencia
-    return matchEmpresa && matchSearch && matchPend
+    const d = diasParaVencer(i.data_vencimento)
+    const matchPrazo =
+      filterPrazo === 'todas'   ? true :
+      filterPrazo === 'vencidas'? (d !== null && d < 0) :
+      filterPrazo === 'alerta'  ? (d !== null && d >= 0 && d <= 30) :
+      /* ok */                    (d === null || d > 30)
+    return matchEmpresa && matchSearch && matchPend && matchPrazo
   })
 
   const modalTitle = { novo: 'Nova Certidão Negativa', editar: 'Editar Certidão', renovar: 'Renovar Certidão' }
@@ -200,6 +212,36 @@ function CertidoesPage() {
           + Nova Certidão
         </button>
       </header>
+
+      {/* Métricas */}
+      {!empresaFiltro && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <button onClick={() => setFilterPrazo('todas')}
+            className={`text-left p-4 rounded-xl border transition-all ${filterPrazo === 'todas' ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-200 hover:border-slate-300'}`}>
+            <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${filterPrazo === 'todas' ? 'text-slate-400' : 'text-slate-400'}`}>Total</p>
+            <p className={`text-2xl font-bold ${filterPrazo === 'todas' ? 'text-white' : 'text-slate-800'}`}>{data.length}</p>
+            <p className={`text-xs mt-0.5 ${filterPrazo === 'todas' ? 'text-slate-400' : 'text-slate-400'}`}>certidões cadastradas</p>
+          </button>
+          <button onClick={() => setFilterPrazo(filterPrazo === 'vencidas' ? 'todas' : 'vencidas')}
+            className={`text-left p-4 rounded-xl border transition-all ${filterPrazo === 'vencidas' ? 'bg-red-600 border-red-600 text-white' : 'bg-white border-slate-200 hover:border-red-200'}`}>
+            <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${filterPrazo === 'vencidas' ? 'text-red-200' : 'text-slate-400'}`}>Vencidas</p>
+            <p className={`text-2xl font-bold ${filterPrazo === 'vencidas' ? 'text-white' : totalVencidas > 0 ? 'text-red-600' : 'text-slate-800'}`}>{totalVencidas}</p>
+            <p className={`text-xs mt-0.5 ${filterPrazo === 'vencidas' ? 'text-red-200' : 'text-slate-400'}`}>exigem ação imediata</p>
+          </button>
+          <button onClick={() => setFilterPrazo(filterPrazo === 'alerta' ? 'todas' : 'alerta')}
+            className={`text-left p-4 rounded-xl border transition-all ${filterPrazo === 'alerta' ? 'bg-orange-500 border-orange-500 text-white' : 'bg-white border-slate-200 hover:border-orange-200'}`}>
+            <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${filterPrazo === 'alerta' ? 'text-orange-100' : 'text-slate-400'}`}>Vencendo em 30d</p>
+            <p className={`text-2xl font-bold ${filterPrazo === 'alerta' ? 'text-white' : totalAlerta > 0 ? 'text-orange-500' : 'text-slate-800'}`}>{totalAlerta}</p>
+            <p className={`text-xs mt-0.5 ${filterPrazo === 'alerta' ? 'text-orange-100' : 'text-slate-400'}`}>requerem atenção</p>
+          </button>
+          <button onClick={() => setFilterPrazo(filterPrazo === 'ok' ? 'todas' : 'ok')}
+            className={`text-left p-4 rounded-xl border transition-all ${filterPrazo === 'ok' ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-white border-slate-200 hover:border-emerald-200'}`}>
+            <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${filterPrazo === 'ok' ? 'text-emerald-100' : 'text-slate-400'}`}>Regulares</p>
+            <p className={`text-2xl font-bold ${filterPrazo === 'ok' ? 'text-white' : 'text-emerald-600'}`}>{totalOk}</p>
+            <p className={`text-xs mt-0.5 ${filterPrazo === 'ok' ? 'text-emerald-100' : 'text-slate-400'}`}>dentro do prazo</p>
+          </button>
+        </div>
+      )}
 
       {/* Filtros */}
       <div className="flex flex-wrap gap-3">
@@ -244,7 +286,10 @@ function CertidoesPage() {
                 const { cls: vCls, label: vLabel } = vencBadge(dias)
                 const pend = PENDENCIA_OPTIONS.find(p => p.value === (i.pendencia_status || 'nenhuma')) || PENDENCIA_OPTIONS[0]
                 return (
-                  <tr key={i.id} className={`hover:bg-slate-50 transition-colors ${dias !== null && dias < 0 ? 'bg-red-50/40' : dias !== null && dias <= 15 ? 'bg-orange-50/40' : ''}`}>
+                  <tr key={i.id}
+                    className={`hover:bg-slate-50 transition-colors ${dias !== null && dias < 0 ? 'bg-red-50/40' : dias !== null && dias <= 15 ? 'bg-orange-50/40' : ''}`}
+                    style={{ borderLeft: dias !== null && dias < 0 ? '3px solid #ef4444' : dias !== null && dias <= 30 ? '3px solid #f97316' : dias !== null && dias <= 60 ? '3px solid #eab308' : '3px solid transparent' }}
+                  >
                     <td className="px-5 py-3.5 text-sm font-bold text-slate-800 max-w-[180px] truncate">{i.empresas?.razao_social}</td>
                     <td className="px-5 py-3.5 text-xs font-bold uppercase text-slate-600">{i.tipo}</td>
                     <td className="px-5 py-3.5 text-xs text-slate-500">{i.orgao_emissor}</td>

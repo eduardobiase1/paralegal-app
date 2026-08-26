@@ -194,8 +194,9 @@ function AlvarasPage() {
     return true
   })
 
-  const totalVencido = dados.filter(d => d.data_vencimento && Math.ceil((new Date(d.data_vencimento + 'T00:00:00').getTime() - Date.now()) / 86_400_000) < 0).length
-  const totalAlerta  = dados.filter(d => d.data_vencimento && (() => { const diff = Math.ceil((new Date(d.data_vencimento + 'T00:00:00').getTime() - Date.now()) / 86_400_000); return diff >= 0 && diff <= 90 })()).length
+  const totalVencido = dados.filter(d => { if (!d.data_vencimento) return false; return Math.ceil((new Date(d.data_vencimento + 'T00:00:00').getTime() - Date.now()) / 86_400_000) < 0 }).length
+  const totalAlerta  = dados.filter(d => { if (!d.data_vencimento) return false; const diff = Math.ceil((new Date(d.data_vencimento + 'T00:00:00').getTime() - Date.now()) / 86_400_000); return diff >= 0 && diff <= 90 }).length
+  const totalOk      = dados.filter(d => { if (!d.data_vencimento) return true; return Math.ceil((new Date(d.data_vencimento + 'T00:00:00').getTime() - Date.now()) / 86_400_000) > 90 }).length
   const empresaNome  = empresaFiltro ? (empresas.find(e => e.id === empresaFiltro)?.razao_social || '') : ''
 
   if (loading) return <div className="p-10 font-sans text-slate-400">Carregando...</div>
@@ -224,30 +225,42 @@ function AlvarasPage() {
               <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Alvarás de Funcionamento</h1>
               <p className="text-sm text-slate-400 mt-1">{empresaNome || orgName}</p>
             </div>
+            <button
+              onClick={() => { setForm(f => ({ ...f, empresa_id: empresaFiltro || '' })); setModalNovo(true) }}
+              className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-700 transition-all flex-shrink-0">
+              + Novo Alvará
+            </button>
+          </div>
 
-            <div className="flex items-center gap-3 flex-shrink-0">
-              {/* Chips de resumo */}
-              {totalVencido > 0 && (
-                <button onClick={() => setFiltroStatus(filtroStatus === 'vencido' ? 'todos' : 'vencido')}
-                  className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border transition-all ${filtroStatus === 'vencido' ? 'bg-red-600 text-white border-red-600' : 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100'}`}>
-                  <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                  {totalVencido} vencido{totalVencido > 1 ? 's' : ''}
-                </button>
-              )}
-              {totalAlerta > 0 && (
-                <button onClick={() => setFiltroStatus(filtroStatus === 'alerta' ? 'todos' : 'alerta')}
-                  className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border transition-all ${filtroStatus === 'alerta' ? 'bg-amber-500 text-white border-amber-500' : 'bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100'}`}>
-                  <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                  {totalAlerta} alerta{totalAlerta > 1 ? 's' : ''}
-                </button>
-              )}
-              <button
-                onClick={() => { setForm(f => ({ ...f, empresa_id: empresaFiltro || '' })); setModalNovo(true) }}
-                className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-700 transition-all">
-                + Novo Alvará
+          {/* Métricas */}
+          {!empresaFiltro && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5">
+              <button onClick={() => setFiltroStatus('todos')}
+                className={`text-left p-4 rounded-xl border transition-all ${filtroStatus === 'todos' ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-200 hover:border-slate-300'}`}>
+                <p className="text-[10px] font-black uppercase tracking-widest mb-1 text-slate-400">Total</p>
+                <p className={`text-2xl font-bold ${filtroStatus === 'todos' ? 'text-white' : 'text-slate-800'}`}>{dados.length}</p>
+                <p className="text-xs mt-0.5 text-slate-400">alvarás cadastrados</p>
+              </button>
+              <button onClick={() => setFiltroStatus(filtroStatus === 'vencido' ? 'todos' : 'vencido')}
+                className={`text-left p-4 rounded-xl border transition-all ${filtroStatus === 'vencido' ? 'bg-red-600 border-red-600' : 'bg-white border-slate-200 hover:border-red-200'}`}>
+                <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${filtroStatus === 'vencido' ? 'text-red-200' : 'text-slate-400'}`}>Vencidos</p>
+                <p className={`text-2xl font-bold ${filtroStatus === 'vencido' ? 'text-white' : totalVencido > 0 ? 'text-red-600' : 'text-slate-800'}`}>{totalVencido}</p>
+                <p className={`text-xs mt-0.5 ${filtroStatus === 'vencido' ? 'text-red-200' : 'text-slate-400'}`}>exigem ação imediata</p>
+              </button>
+              <button onClick={() => setFiltroStatus(filtroStatus === 'alerta' ? 'todos' : 'alerta')}
+                className={`text-left p-4 rounded-xl border transition-all ${filtroStatus === 'alerta' ? 'bg-orange-500 border-orange-500' : 'bg-white border-slate-200 hover:border-orange-200'}`}>
+                <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${filtroStatus === 'alerta' ? 'text-orange-100' : 'text-slate-400'}`}>Alertas (90d)</p>
+                <p className={`text-2xl font-bold ${filtroStatus === 'alerta' ? 'text-white' : totalAlerta > 0 ? 'text-orange-500' : 'text-slate-800'}`}>{totalAlerta}</p>
+                <p className={`text-xs mt-0.5 ${filtroStatus === 'alerta' ? 'text-orange-100' : 'text-slate-400'}`}>vencem em até 90 dias</p>
+              </button>
+              <button onClick={() => setFiltroStatus(filtroStatus === 'ok' ? 'todos' : 'ok')}
+                className={`text-left p-4 rounded-xl border transition-all ${filtroStatus === 'ok' ? 'bg-emerald-600 border-emerald-600' : 'bg-white border-slate-200 hover:border-emerald-200'}`}>
+                <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${filtroStatus === 'ok' ? 'text-emerald-100' : 'text-slate-400'}`}>Em dia</p>
+                <p className={`text-2xl font-bold ${filtroStatus === 'ok' ? 'text-white' : 'text-emerald-600'}`}>{totalOk}</p>
+                <p className={`text-xs mt-0.5 ${filtroStatus === 'ok' ? 'text-emerald-100' : 'text-slate-400'}`}>dentro do prazo</p>
               </button>
             </div>
-          </div>
+          )}
 
           {/* Filtros */}
           <div className="flex flex-wrap gap-3 mt-5">
@@ -296,7 +309,16 @@ function AlvarasPage() {
                 {dadosFiltrados.map(item => {
                   const urg = urgencia(item.data_vencimento)
                   return (
-                    <tr key={item.id} className="hover:bg-slate-50/70 transition-colors group">
+                    <tr key={item.id} className="hover:bg-slate-50/70 transition-colors group"
+                      style={{ borderLeft: (() => {
+                        if (!item.data_vencimento) return '3px solid transparent'
+                        const d = Math.ceil((new Date(item.data_vencimento + 'T00:00:00').getTime() - Date.now()) / 86_400_000)
+                        if (d < 0)    return '3px solid #ef4444'
+                        if (d <= 30)  return '3px solid #f97316'
+                        if (d <= 90)  return '3px solid #eab308'
+                        return '3px solid #10b981'
+                      })() }}
+                    >
 
                       {/* Empresa */}
                       <td className="px-5 py-3.5">
