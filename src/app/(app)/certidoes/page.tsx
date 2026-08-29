@@ -596,13 +596,7 @@ Ficamos à disposição para orientações.`
 
 Segue abaixo o relatório de Pendências em aberto da empresa *${empresaMaius}* que está impossibilitando de renovar a certidão negativa de débitos ${esfera}.
 
-• Tipo: ${item.tipo}
-• Órgão: ${item.orgao_emissor}
-• Vencimento: ${dataVenc}${obsLine}
-
-Solicitamos verificação e providências junto ao cliente para regularização.
-
-${orgName} — Departamento Paralegal`
+Solicitamos verificação e providências junto ao cliente para regularização.`
 
   const texto = tab === 'cliente' ? textoCliente : textoInterno
 
