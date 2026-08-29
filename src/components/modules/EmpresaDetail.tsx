@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { Empresa } from '@/types'
+import HistoricoEmpresa from '@/components/modules/HistoricoEmpresa'
 import { formatCNPJ, formatCEP, endereco } from '@/lib/utils'
 import { capitalExtenso, formatarReais, calcularCapitalSocial } from '@/lib/formatters'
 import { SEFAZ_URLS } from '@/types'
@@ -281,6 +282,9 @@ export default function EmpresaDetail({ empresa: emp }: Props) {
           </Link>
         ))}
       </div>
+
+      {/* ── Histórico & Caixa Postal ── */}
+      <HistoricoEmpresa empresaId={emp.id} />
     </div>
   )
 }

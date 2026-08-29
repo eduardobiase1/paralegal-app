@@ -46,7 +46,7 @@ function vencBadge(dias: number | null) {
 }
 
 function CertidoesPage() {
-  const { orgName } = useOrg()
+  const { orgId, orgName } = useOrg()
   const searchParams = useSearchParams()
   const empresaFiltro = searchParams.get('empresa')
   const [supabase] = useState(createClient())
@@ -145,6 +145,28 @@ function CertidoesPage() {
     if (!error) {
       const msgs = { novo: 'Certidão cadastrada!', editar: 'Certidão atualizada!', renovar: 'Renovação registrada!' }
       toast.success(msgs[modalMode])
+
+      // Ao renovar: limpa campos de comunicado e registra no histórico
+      if (modalMode === 'renovar' && form.id) {
+        await supabase.from('certidoes').update({
+          comunicado_em: null,
+          comunicado_para: null,
+          comunicado_canal: null,
+        }).eq('id', form.id)
+
+        try {
+          const item = data.find(d => d.id === form.id)
+          await supabase.from('historico_empresa').insert([{
+            org_id: orgId,
+            empresa_id: form.empresa_id,
+            tipo: 'certidao_renovada',
+            descricao: `Certidão ${form.tipo} (${form.orgao_emissor}) renovada — nova validade: ${form.data_vencimento ? new Date(form.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR') : 'não informada'}${item?.comunicado_para ? ` — comunicado anterior para ${item.comunicado_para} foi removido` : ''}`,
+          }])
+        } catch {
+          // histórico não crítico
+        }
+      }
+
       setModal(false)
       setForm({ ...EMPTY_FORM })
       load()
@@ -161,10 +183,11 @@ function CertidoesPage() {
     toast.success('Certidão excluída.')
   }
 
-  async function handleRegistrarComunicado(para: string, canal: string) {
+  async function handleRegistrarComunicado(para: string, canal: string, descricaoComunicado: string) {
     if (!comunicandoItem) return
+    const agora = new Date().toISOString()
     const { error } = await supabase.from('certidoes').update({
-      comunicado_em: new Date().toISOString(),
+      comunicado_em: agora,
       comunicado_para: para,
       comunicado_canal: canal,
     }).eq('id', comunicandoItem.id)
@@ -174,11 +197,23 @@ function CertidoesPage() {
       } else {
         toast.error('Erro ao registrar: ' + error.message)
       }
-    } else {
-      toast.success('Comunicação registrada!')
-      setComunicandoItem(null)
-      load()
+      return
     }
+    // Registra no histórico da empresa
+    try {
+      await supabase.from('historico_empresa').insert([{
+        org_id: orgId,
+        empresa_id: comunicandoItem.empresa_id,
+        tipo: 'comunicado_enviado',
+        descricao: descricaoComunicado,
+        canal,
+      }])
+    } catch {
+      // historico não crítico — não interrompe o fluxo
+    }
+    toast.success('Comunicação registrada!')
+    setComunicandoItem(null)
+    load()
   }
 
   // Métricas
@@ -498,52 +533,83 @@ export default function CertidoesPageWrapper() {
   return <Suspense><CertidoesPage /></Suspense>
 }
 
+// ── Helpers do ComunicadoModal ────────────────────────────────────────────────
+function saudacao() {
+  const h = new Date().getHours()
+  if (h >= 6 && h < 12) return 'Bom dia'
+  if (h >= 12 && h < 18) return 'Boa tarde'
+  return 'Boa noite'
+}
+
+function detectEsfera(tipo: string, orgao: string): string {
+  const t = (tipo || '').toLowerCase()
+  const o = (orgao || '').toLowerCase()
+  if (t === 'fgts' || o.includes('fgts') || o.includes('crf') || o.includes('caixa econômica')) return 'do FGTS'
+  if (t === 'federal' || o.includes('receita federal') || o.includes('pgfn')) return 'Federal'
+  if (t === 'estadual' || o.includes('sefaz') || o.includes('estado')) return 'Estadual'
+  if (t === 'municipal' || o.includes('prefeitura') || o.includes('municipal') || o.includes('iss')) return 'Municipal'
+  if (t === 'trabalhista' || o.includes('trt') || o.includes('tst') || o.includes('trabalhista')) return 'Trabalhista'
+  if (t === 'previdenciária' || o.includes('previdenciária') || o.includes('inss')) return 'Previdenciária'
+  return 'de Débitos'
+}
+
+const DPTOS = [
+  { value: 'fiscal',   label: 'Departamento Fiscal' },
+  { value: 'contabil', label: 'Departamento Contábil' },
+  { value: 'dp',       label: 'Departamento Pessoal' },
+]
+const DP_TIMES = ['DP1', 'DP2', 'DP3', 'DP4', 'DP5']
+
 // ── Modal de Comunicado ───────────────────────────────────────────────────────
 function ComunicadoModal({ item, orgName, onClose, onRegistrar }: {
   item: any; orgName: string; onClose: () => void
-  onRegistrar: (para: string, canal: string) => Promise<void>
+  onRegistrar: (para: string, canal: string, descricao: string) => Promise<void>
 }) {
   const [tab, setTab] = useState<'cliente' | 'interno'>('cliente')
+  const [dpto, setDpto] = useState('fiscal')
+  const [dpTime, setDpTime] = useState('DP1')
   const [para, setPara] = useState(item.comunicado_para || '')
   const [canal, setCanal] = useState(item.comunicado_canal || 'whatsapp')
   const [registrando, setRegistrando] = useState(false)
   const [copiado, setCopiado] = useState(false)
 
-  const empresa  = item.empresas?.razao_social || ''
-  const dataVenc = item.data_vencimento ? new Date(item.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR') : '—'
-  const obsLine  = item.observacoes ? `\n• Motivo informado: ${item.observacoes}` : ''
+  const empresa   = item.empresas?.razao_social || ''
+  const empresaMaius = empresa.toUpperCase()
+  const dataVenc  = item.data_vencimento ? new Date(item.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR') : '—'
+  const esfera    = detectEsfera(item.tipo || '', item.orgao_emissor || '')
+  const sauda     = saudacao()
+  const obsLine   = item.observacoes ? `\n\nMotivo informado: ${item.observacoes}` : ''
 
-  const textoCliente = `Prezado(a) cliente,
+  const dptoLabel = dpto === 'dp'
+    ? `Departamento Pessoal — ${dpTime}`
+    : DPTOS.find(d => d.value === dpto)?.label || ''
 
-Informamos que a Certidão Negativa ${item.tipo} da empresa ${empresa} encontra-se com a renovação IMPOSSIBILITADA em função de débitos ou pendências junto ao(à) ${item.orgao_emissor}.
+  const textoCliente = `Prezado(a) cliente, ${sauda}! Tudo bem?
 
-Detalhes:
-• Empresa: ${empresa}
+Segue em anexo o relatório de Pendências em aberto da empresa *${empresaMaius}* que está impossibilitando de renovar a certidão negativa de débitos ${esfera}.${obsLine}
+
+Para regularização, será necessário verificar e quitar as pendências junto ao(à) ${item.orgao_emissor} para que possamos solicitar a emissão de nova certidão.
+
+Ficamos à disposição para orientações.`
+
+  const textoInterno = `${sauda}! Tudo bem?
+
+Segue abaixo o relatório de Pendências em aberto da empresa *${empresaMaius}* que está impossibilitando de renovar a certidão negativa de débitos ${esfera}.
+
 • Tipo: ${item.tipo}
 • Órgão: ${item.orgao_emissor}
 • Vencimento: ${dataVenc}${obsLine}
 
-Para regularização, será necessário verificar e quitar as pendências junto ao(à) ${item.orgao_emissor} para então solicitar a emissão de nova certidão.
+Solicitamos verificação e providências junto ao cliente para regularização.
 
-Ficamos à disposição para orientações.
-
-Atenciosamente,
-${orgName}`
-
-  const textoInterno = `📌 CERTIDÃO NÃO RENOVÁVEL — AÇÃO NECESSÁRIA
-
-Empresa: ${empresa}
-Certidão: ${item.tipo} | Órgão: ${item.orgao_emissor}
-Vencimento: ${dataVenc}
-Status: Impossível renovar${item.observacoes ? ` — ${item.observacoes}` : ''}
-
-⚠️ Cliente precisa ser informado e regularizar pendências junto ao(à) ${item.orgao_emissor}.
-Departamento contábil: verificar débitos em aberto.
-
-Data: ${new Date().toLocaleDateString('pt-BR')}
-— ${orgName} / Departamento Paralegal`
+${orgName} — Departamento Paralegal`
 
   const texto = tab === 'cliente' ? textoCliente : textoInterno
+
+  // Descrição para o histórico
+  const descricaoHistorico = tab === 'cliente'
+    ? `Comunicado enviado ao cliente sobre certidão ${item.tipo} (${item.orgao_emissor}) — ${esfera} — vencimento ${dataVenc}`
+    : `Comunicado enviado ao ${dptoLabel} sobre certidão ${item.tipo} (${item.orgao_emissor}) — ${esfera} — vencimento ${dataVenc}`
 
   async function copiar() {
     await navigator.clipboard.writeText(texto)
@@ -554,7 +620,7 @@ Data: ${new Date().toLocaleDateString('pt-BR')}
   async function registrar() {
     if (!para.trim()) { alert('Informe para quem foi comunicado.'); return }
     setRegistrando(true)
-    await onRegistrar(para.trim(), canal)
+    await onRegistrar(para.trim(), canal, descricaoHistorico)
     setRegistrando(false)
   }
 
@@ -568,6 +634,7 @@ Data: ${new Date().toLocaleDateString('pt-BR')}
           <div>
             <div className="flex items-center gap-2 mb-1">
               <span className="text-[9px] font-black uppercase tracking-widest text-violet-600 bg-violet-50 border border-violet-200 px-2 py-0.5 rounded">Comunicado</span>
+              <span className="text-[9px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded">{esfera}</span>
               {jaComunicado && <span className="text-[9px] font-black uppercase tracking-widest text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded">✓ Já registrado</span>}
             </div>
             <h2 className="text-lg font-bold text-slate-900">{empresa}</h2>
@@ -593,16 +660,36 @@ Data: ${new Date().toLocaleDateString('pt-BR')}
           </button>
         </div>
 
+        {/* Seletor de departamento (só aba interna) */}
+        {tab === 'interno' && (
+          <div className="px-4 pt-3 flex flex-wrap gap-2 items-center">
+            {DPTOS.map(d => (
+              <button key={d.value} onClick={() => setDpto(d.value)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${dpto === d.value ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'}`}>
+                {d.label}
+              </button>
+            ))}
+            {dpto === 'dp' && (
+              <select value={dpTime} onChange={e => setDpTime(e.target.value)}
+                className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-1.5 text-xs font-bold text-blue-700 outline-none">
+                {DP_TIMES.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            )}
+          </div>
+        )}
+
         {/* Texto gerado */}
         <div className="p-4">
           <div className="relative">
-            <pre className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs text-slate-700 whitespace-pre-wrap font-sans leading-relaxed max-h-56 overflow-y-auto">{texto}</pre>
+            <pre className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs text-slate-700 whitespace-pre-wrap font-sans leading-relaxed max-h-64 overflow-y-auto">{texto}</pre>
             <button onClick={copiar}
               className={`absolute top-2 right-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${copiado ? 'bg-green-500 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
               {copiado ? '✓ Copiado!' : 'Copiar'}
             </button>
           </div>
-          <p className="text-[10px] text-slate-400 mt-2 text-center">Copie e envie via WhatsApp, e-mail ou outro canal</p>
+          <p className="text-[10px] text-slate-400 mt-2 text-center">
+            * = negrito no WhatsApp · saudação automática conforme horário · esfera detectada automaticamente
+          </p>
         </div>
 
         {/* Registro */}
@@ -610,9 +697,11 @@ Data: ${new Date().toLocaleDateString('pt-BR')}
           <p className="text-xs font-black text-slate-500 uppercase tracking-wide mb-3">Registrar comunicação</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
             <div>
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-wide block mb-1">Para quem *</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-wide block mb-1">
+                {tab === 'interno' ? `${dptoLabel} *` : 'Para quem (cliente) *'}
+              </label>
               <input value={para} onChange={e => setPara(e.target.value)}
-                placeholder="Nome ou e-mail do destinatário"
+                placeholder={tab === 'interno' ? `Nome do responsável no ${dpto === 'dp' ? dpTime : dptoLabel}` : 'Nome ou e-mail do cliente'}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-sm outline-none focus:border-slate-400" />
             </div>
             <div>
