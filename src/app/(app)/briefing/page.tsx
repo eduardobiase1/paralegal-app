@@ -418,12 +418,10 @@ export default function BriefingPage() {
   const [updatedAt,    setUpdatedAt]    = useState<Date | null>(null)
   const [subExpanded,  setSubExpanded]  = useState<Record<string, boolean>>({})
   const [coExpanded,   setCoExpanded]   = useState<Record<string, boolean>>({})
-  const [mensalOpen,   setMensalOpen]   = useState(false)
   const [searchQ,      setSearchQ]      = useState('')
-  const [filterTier,   setFilterTier]   = useState<Tier | 'todos'>('todos')
+  const [activeTab,    setActiveTab]    = useState<'critico' | 'urgente' | 'atencao' | 'nao_comunicados' | 'revisao' | 'controle'>('critico')
   const [snoozed,      setSnoozed]      = useState<Set<string>>(new Set())
   const [naoComunicados, setNaoComunicados] = useState<any[]>([])
-  const [naoComunicadosOpen, setNaoComunicadosOpen] = useState(true)
   const [supabase]                      = useState(createClient)
 
   const hoje     = new Date()
@@ -694,15 +692,28 @@ export default function BriefingPage() {
   const totalGeral    = totalCritico + totalUrgente + totalAtencao + totalControle
   const tudoEmDia     = !loading && totalGeral === 0
 
-  const filteredGroups = compGroups.filter(g => {
-    if (snoozed.has(g.empresaNome)) return false
-    if (filterTier !== 'todos' && g.worstTier !== filterTier) return false
-    if (searchQ && !g.empresaNome.toLowerCase().includes(searchQ.toLowerCase())) return false
-    return true
-  })
+  // Empresas filtradas por aba ativa
+  const groupsForTab = (tier: Tier) =>
+    compGroups.filter(g =>
+      !snoozed.has(g.empresaNome) &&
+      g.worstTier === tier &&
+      (!searchQ || g.empresaNome.toLowerCase().includes(searchQ.toLowerCase()))
+    )
 
   function expandAll()  { const m: Record<string, boolean> = {}; compGroups.forEach(g => { m[g.empresaNome] = true  }); setCoExpanded(m) }
   function collapseAll(){ const m: Record<string, boolean> = {}; compGroups.forEach(g => { m[g.empresaNome] = false }); setCoExpanded(m) }
+
+  // Definição das abas
+  const TABS = [
+    { id: 'critico'        as const, label: 'Críticos',         count: totalCritico,         activeColor: 'text-red-700     bg-red-50     border-red-500',     dotColor: 'bg-red-500',     inactiveHover: 'hover:bg-red-50'     },
+    { id: 'urgente'        as const, label: 'Urgentes',         count: totalUrgente,         activeColor: 'text-orange-700  bg-orange-50  border-orange-400',  dotColor: 'bg-orange-500',  inactiveHover: 'hover:bg-orange-50'  },
+    { id: 'atencao'        as const, label: 'Atenção',          count: totalAtencao,         activeColor: 'text-amber-700   bg-amber-50   border-amber-400',   dotColor: 'bg-amber-400',   inactiveHover: 'hover:bg-amber-50'   },
+    { id: 'nao_comunicados'as const, label: 'Não comunicados',  count: naoComunicados.length, activeColor: 'text-fuchsia-700 bg-fuchsia-50 border-fuchsia-400', dotColor: 'bg-fuchsia-500', inactiveHover: 'hover:bg-fuchsia-50' },
+    { id: 'revisao'        as const, label: 'Revisão Mensal',   count: priorityDocs.length,  activeColor: 'text-violet-700  bg-violet-50  border-violet-400',  dotColor: 'bg-violet-500',  inactiveHover: 'hover:bg-violet-50'  },
+    { id: 'controle'       as const, label: 'Controle',         count: totalControle,        activeColor: 'text-blue-700    bg-blue-50    border-blue-400',    dotColor: 'bg-blue-400',    inactiveHover: 'hover:bg-blue-50'    },
+  ]
+
+  const activeTabDef = TABS.find(t => t.id === activeTab)!
 
   return (
     <div className="p-4 md:p-6 space-y-4">
@@ -721,17 +732,18 @@ export default function BriefingPage() {
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {!loading && (
-            <>
-              {totalCritico > 0  && <span className="flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg bg-red-50    text-red-700    border border-red-200   "><span className="w-1.5 h-1.5 rounded-full bg-red-500"    />{totalCritico} críticos</span>}
-              {totalUrgente > 0  && <span className="flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg bg-orange-50  text-orange-700  border border-orange-200"><span className="w-1.5 h-1.5 rounded-full bg-orange-500"  />{totalUrgente} urgentes</span>}
-              {totalAtencao > 0  && <span className="flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg bg-amber-50   text-amber-700   border border-amber-200 "><span className="w-1.5 h-1.5 rounded-full bg-amber-400"   />{totalAtencao} atenção</span>}
-              {priorityDocs.length > 0 && <span className="flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg bg-violet-50  text-violet-700  border border-violet-200"><span className="w-1.5 h-1.5 rounded-full bg-violet-500"  />{priorityDocs.length} revisão</span>}
-              {naoComunicados.length > 0 && <span className="flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg bg-fuchsia-50 text-fuchsia-700 border border-fuchsia-200"><span className="w-1.5 h-1.5 rounded-full bg-fuchsia-500" />{naoComunicados.length} não comunicado{naoComunicados.length > 1 ? 's' : ''}</span>}
-            </>
+          {!loading && totalCritico > 0 && (
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
+            </span>
           )}
-          <button onClick={load} title="Atualizar"
-            className="btn-secondary px-3">
+          {!loading && (
+            <span className="text-xs text-slate-500">
+              {totalGeral === 0 ? '✓ Tudo em dia' : `${totalGeral} ${totalGeral === 1 ? 'pendência' : 'pendências'}`}
+            </span>
+          )}
+          <button onClick={load} title="Atualizar" className="btn-secondary px-3">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
@@ -739,11 +751,45 @@ export default function BriefingPage() {
         </div>
       </header>
 
+      {/* ── Abas de navegação ────────────────────────────────────────────── */}
+      {!loading && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-2 shadow-sm overflow-x-auto">
+          <div className="flex gap-1.5 min-w-max">
+            {TABS.map(tab => {
+              const isActive = activeTab === tab.id
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all whitespace-nowrap ${
+                    isActive
+                      ? `${tab.activeColor} border-current`
+                      : `text-slate-500 bg-transparent border-transparent ${tab.inactiveHover}`
+                  }`}
+                >
+                  {tab.count > 0 && (
+                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${tab.dotColor}`} />
+                  )}
+                  {tab.label}
+                  {tab.count > 0 && (
+                    <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ml-0.5 ${
+                      isActive ? 'bg-white/60' : 'bg-slate-100 text-slate-500'
+                    }`}>
+                      {tab.count}
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* ── Conteúdo ─────────────────────────────────────────────────────── */}
       <div>
         {loading ? (
           <div className="space-y-2">
-            {[...Array(5)].map((_, i) => (
+            {[...Array(4)].map((_, i) => (
               <div key={i} className="h-16 bg-white rounded-xl animate-pulse border border-gray-200" />
             ))}
           </div>
@@ -755,162 +801,127 @@ export default function BriefingPage() {
           </div>
         ) : (
           <>
-            {/* Ação imediata */}
-            {groups.critico.length > 0 && (
-              <div className="bg-red-50 border border-red-200 rounded-xl overflow-hidden">
-                <div className="flex items-center gap-2.5 px-4 py-3">
-                  <span className="relative flex h-2.5 w-2.5 flex-shrink-0">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
-                  </span>
-                  <span className="text-sm font-bold text-red-700 flex-1">Ação imediata necessária</span>
-                  <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-red-100 text-red-700 border border-red-200">
-                    {groups.critico.length} {groups.critico.length === 1 ? 'documento' : 'documentos'}
-                  </span>
+            {/* ── Aba: Críticos / Urgentes / Atenção ── */}
+            {(activeTab === 'critico' || activeTab === 'urgente' || activeTab === 'atencao') && (
+              <>
+                {/* Barra de busca + expandir/recolher */}
+                <div className="flex flex-wrap gap-2 items-center bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
+                  <div className="relative flex-1 min-w-[160px]">
+                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+                      fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <input type="text" value={searchQ} onChange={e => setSearchQ(e.target.value)}
+                      placeholder="Buscar empresa…"
+                      className="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-primary-400 transition-all placeholder:text-gray-400" />
+                  </div>
+                  <div className="flex gap-1.5 ml-auto">
+                    <button onClick={expandAll}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 8h16M4 16h16"/></svg>
+                      Expandir tudo
+                    </button>
+                    <button onClick={collapseAll}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7"/></svg>
+                      Recolher tudo
+                    </button>
+                  </div>
                 </div>
-                <div className="border-t border-red-200">
-                  {groups.critico.map(item => (
-                    <Link key={item.key} href={item.href}
-                      className="flex items-center gap-2.5 px-4 py-2.5 border-b border-red-100 last:border-0 hover:bg-red-100 transition-colors group">
-                      <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border bg-red-100 border-red-200 text-red-700 flex-shrink-0 whitespace-nowrap">
-                        {item.badge}
+
+                {/* Cards de empresa */}
+                {(() => {
+                  const tier = activeTab as Tier
+                  const list = groupsForTab(tier)
+                  if (list.length === 0) return (
+                    <div className="text-center py-16 bg-white rounded-2xl border border-slate-200">
+                      <p className="text-3xl mb-2">✓</p>
+                      <p className="text-sm font-medium text-gray-500">
+                        {searchQ ? 'Nenhuma empresa encontrada.' : `Nenhuma pendência ${activeTab === 'critico' ? 'crítica' : activeTab === 'urgente' ? 'urgente' : 'de atenção'}.`}
+                      </p>
+                    </div>
+                  )
+                  return (
+                    <div className="space-y-2">
+                      {list.map(g => (
+                        <CompanyCard
+                          key={g.empresaNome}
+                          group={g}
+                          expanded={coExpanded[g.empresaNome] ?? false}
+                          onToggle={() => setCoExpanded(p => ({ ...p, [g.empresaNome]: !(p[g.empresaNome] ?? false) }))}
+                          onSnooze={() => setSnoozed(p => new Set([...p, g.empresaNome]))}
+                          subListExpanded={subExpanded}
+                          onToggleSubList={key => setSubExpanded(p => ({ ...p, [key]: !p[key] }))}
+                        />
+                      ))}
+                    </div>
+                  )
+                })()}
+              </>
+            )}
+
+            {/* ── Aba: Não comunicados ── */}
+            {activeTab === 'nao_comunicados' && (
+              naoComunicados.length === 0 ? (
+                <div className="text-center py-16 bg-white rounded-2xl border border-slate-200">
+                  <p className="text-3xl mb-2">✓</p>
+                  <p className="text-sm font-medium text-gray-500">Todos os clientes já foram comunicados.</p>
+                </div>
+              ) : (
+                <div className="bg-white border border-fuchsia-200 rounded-2xl overflow-hidden shadow-sm">
+                  <div className="px-4 py-3 border-b border-fuchsia-100 bg-fuchsia-50">
+                    <p className="text-sm font-bold text-fuchsia-800">Certidões "impossível renovar" sem comunicação registrada</p>
+                    <p className="text-xs text-fuchsia-600 mt-0.5">Clique em uma linha para ir até a certidão e comunicar</p>
+                  </div>
+                  {naoComunicados.map((c: any) => (
+                    <Link key={c.id} href={`/certidoes?empresa=${c.empresa_id}`}
+                      className="flex items-center gap-2.5 px-4 py-3 border-b border-fuchsia-50 last:border-0 hover:bg-fuchsia-50 transition-colors group">
+                      <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border bg-fuchsia-100 border-fuchsia-200 text-fuchsia-700 flex-shrink-0 whitespace-nowrap">
+                        {c.tipo}
                       </span>
-                      <span className="text-xs font-semibold text-gray-900 flex-1 min-w-0 truncate">{item.descricao}</span>
-                      <span className="text-xs text-gray-500 flex-1 min-w-0 truncate hidden sm:block">{item.empresaNome}</span>
-                      <span className="text-[11px] font-bold text-red-700 flex-shrink-0 whitespace-nowrap">{item.detalhe}</span>
+                      <span className="text-sm font-semibold text-gray-900 flex-1 min-w-0 truncate">
+                        {(c as any).empresa?.razao_social || '—'}
+                      </span>
+                      <span className="text-xs text-gray-500 hidden sm:block flex-shrink-0">{c.orgao_emissor}</span>
+                      <span className="text-xs font-bold text-fuchsia-600 flex-shrink-0 whitespace-nowrap group-hover:underline">Comunicar →</span>
                     </Link>
                   ))}
                 </div>
-              </div>
+              )
             )}
 
-            {/* Não comunicados */}
-            {naoComunicados.length > 0 && (
-              <div className="bg-fuchsia-50 border border-fuchsia-200 rounded-xl overflow-hidden">
-                <button onClick={() => setNaoComunicadosOpen(o => !o)}
-                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-fuchsia-100 transition-colors text-left">
-                  <div className="w-8 h-8 rounded-xl bg-fuchsia-100 border border-fuchsia-200 flex items-center justify-center flex-shrink-0">
-                    <svg className="w-4 h-4 text-fuchsia-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                    </svg>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-fuchsia-800 leading-tight">Clientes não comunicados</p>
-                    <p className="text-xs text-fuchsia-600 mt-0.5">Certidões "impossível renovar" pendentes de comunicação</p>
-                  </div>
-                  <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-fuchsia-100 text-fuchsia-700 border border-fuchsia-200 flex-shrink-0">
-                    {naoComunicados.length} {naoComunicados.length === 1 ? 'pendente' : 'pendentes'}
-                  </span>
-                  <svg className={`w-4 h-4 text-fuchsia-400 flex-shrink-0 transition-transform duration-200 ${naoComunicadosOpen ? 'rotate-180' : ''}`}
-                    fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-                {naoComunicadosOpen && (
-                  <div className="border-t border-fuchsia-200">
-                    {naoComunicados.map((c: any) => (
-                      <Link key={c.id} href={`/certidoes?empresa=${c.empresa_id}`}
-                        className="flex items-center gap-2.5 px-4 py-2.5 border-b border-fuchsia-100 last:border-0 hover:bg-fuchsia-100 transition-colors group">
-                        <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border bg-fuchsia-100 border-fuchsia-200 text-fuchsia-700 flex-shrink-0 whitespace-nowrap">
-                          {c.tipo}
-                        </span>
-                        <span className="text-xs font-semibold text-gray-900 flex-1 min-w-0 truncate">
-                          {(c as any).empresa?.razao_social || '—'}
-                        </span>
-                        <span className="text-xs text-gray-500 hidden sm:block flex-shrink-0">{c.orgao_emissor}</span>
-                        <span className="text-[11px] font-bold text-fuchsia-600 flex-shrink-0 whitespace-nowrap group-hover:underline">Comunicar →</span>
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </div>
+            {/* ── Aba: Revisão Mensal ── */}
+            {activeTab === 'revisao' && (
+              priorityDocs.length === 0 ? (
+                <div className="text-center py-16 bg-white rounded-2xl border border-slate-200">
+                  <p className="text-3xl mb-2">✓</p>
+                  <p className="text-sm font-medium text-gray-500">Nenhuma revisão pendente para empresas prioritárias.</p>
+                </div>
+              ) : (
+                <MensalCard docs={priorityDocs} expanded={true} onToggle={() => {}} />
+              )
             )}
 
-            {/* Toolbar */}
-            <div className="flex flex-wrap gap-2 items-center bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
-              <div className="relative flex-1 min-w-[160px]">
-                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
-                  fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                <input type="text" value={searchQ} onChange={e => setSearchQ(e.target.value)}
-                  placeholder="Buscar empresa…"
-                  className="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-50 transition-all placeholder:text-gray-400" />
-              </div>
-              <div className="flex gap-1.5 flex-wrap">
-                {(['todos','critico','urgente','atencao'] as const).map(f => (
-                  <button key={f} onClick={() => setFilterTier(f)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all whitespace-nowrap
-                      ${filterTier === f ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>
-                    {f === 'todos' ? 'Todos' : f === 'critico' ? 'Crítico' : f === 'urgente' ? 'Urgente' : 'Atenção'}
-                  </button>
-                ))}
-              </div>
-              <div className="flex gap-1.5 ml-auto">
-                <button onClick={expandAll}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors whitespace-nowrap">
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 8h16M4 16h16"/></svg>
-                  Expandir
-                </button>
-                <button onClick={collapseAll}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors whitespace-nowrap">
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7"/></svg>
-                  Recolher
-                </button>
-              </div>
-            </div>
-
-            {/* Revisão Mensal */}
-            <MensalCard docs={priorityDocs} expanded={mensalOpen} onToggle={() => setMensalOpen(p => !p)} />
-
-            {/* Label */}
-            {filteredGroups.length > 0 && (
-              <div className="flex items-center justify-between py-2 mb-2">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Pendências por empresa</span>
-                <span className="text-[11px] text-gray-400">Ordenado por urgência</span>
-              </div>
-            )}
-
-            {/* Company cards */}
-            <div className="space-y-2">
-              {filteredGroups.map(g => (
-                <CompanyCard
-                  key={g.empresaNome}
-                  group={g}
-                  expanded={coExpanded[g.empresaNome] ?? true}
-                  onToggle={() => setCoExpanded(p => ({ ...p, [g.empresaNome]: !(p[g.empresaNome] ?? true) }))}
-                  onSnooze={() => setSnoozed(p => new Set([...p, g.empresaNome]))}
-                  subListExpanded={subExpanded}
-                  onToggleSubList={key => setSubExpanded(p => ({ ...p, [key]: !p[key] }))}
-                />
-              ))}
-
-              {/* Controle */}
-              {filterTier === 'todos' && !searchQ && groups.controle.length > 0 && (
-                <>
-                  {filteredGroups.length > 0 && (
-                    <div className="py-2">
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Controle de Cadastro</span>
-                    </div>
-                  )}
+            {/* ── Aba: Controle ── */}
+            {activeTab === 'controle' && (
+              groups.controle.length === 0 ? (
+                <div className="text-center py-16 bg-white rounded-2xl border border-slate-200">
+                  <p className="text-3xl mb-2">✓</p>
+                  <p className="text-sm font-medium text-gray-500">Nenhum item de controle de cadastro.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
                   {groups.controle.map(item => (
                     <ControleCard key={item.key} item={item} subListExpanded={subExpanded}
                       onToggleSubList={key => setSubExpanded(p => ({ ...p, [key]: !p[key] }))} />
                   ))}
-                </>
-              )}
-
-              {filteredGroups.length === 0 && (filterTier !== 'todos' || searchQ) && (
-                <div className="text-center py-10 bg-white rounded-xl border border-gray-200">
-                  <p className="text-2xl mb-2">🔍</p>
-                  <p className="text-sm font-medium text-gray-500">Nenhuma empresa encontrada</p>
                 </div>
-              )}
-            </div>
+              )
+            )}
 
             {updatedAt && (
-              <p className="text-[11px] text-gray-400 text-center mt-6">
-                Atualizado às {updatedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} · {totalGeral} {totalGeral === 1 ? 'pendência' : 'pendências'} em {compGroups.length} {compGroups.length === 1 ? 'empresa' : 'empresas'}
+              <p className="text-[11px] text-gray-400 text-center mt-4">
+                Atualizado às {updatedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
               </p>
             )}
           </>
