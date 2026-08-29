@@ -575,6 +575,7 @@ function ComunicadoModal({ item, orgName, onClose, onRegistrar }: {
 
   const empresa   = item.empresas?.razao_social || ''
   const empresaMaius = empresa.toUpperCase()
+
   const dataVenc  = item.data_vencimento ? new Date(item.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR') : '—'
   const esfera    = detectEsfera(item.tipo || '', item.orgao_emissor || '')
   const sauda     = saudacao()
@@ -586,7 +587,7 @@ function ComunicadoModal({ item, orgName, onClose, onRegistrar }: {
 
   const textoCliente = `Prezado(a) cliente, ${sauda}! Tudo bem?
 
-Segue em anexo o relatório de Pendências em aberto da empresa *${empresaMaius}* que está impossibilitando de renovar a certidão negativa de débitos ${esfera}.${obsLine}
+Segue em anexo o relatório de Pendências em aberto da empresa ${empresaMaius} que está impossibilitando de renovar a certidão negativa de débitos ${esfera}.${obsLine}
 
 Para regularização, será necessário verificar e quitar as pendências junto ao(à) ${item.orgao_emissor} para que possamos solicitar a emissão de nova certidão.
 
@@ -594,7 +595,7 @@ Ficamos à disposição para orientações.`
 
   const textoInterno = `${sauda}! Tudo bem?
 
-Segue abaixo o relatório de Pendências em aberto da empresa *${empresaMaius}* que está impossibilitando de renovar a certidão negativa de débitos ${esfera}.
+Segue abaixo o relatório de Pendências em aberto da empresa ${empresaMaius} que está impossibilitando de renovar a certidão negativa de débitos ${esfera}.
 
 Solicitamos verificação e providências junto ao cliente para regularização.`
 
