@@ -703,17 +703,15 @@ export default function BriefingPage() {
   function expandAll()  { const m: Record<string, boolean> = {}; compGroups.forEach(g => { m[g.empresaNome] = true  }); setCoExpanded(m) }
   function collapseAll(){ const m: Record<string, boolean> = {}; compGroups.forEach(g => { m[g.empresaNome] = false }); setCoExpanded(m) }
 
-  // Definição das abas
+  // Definição das abas — Pill Tabs
   const TABS = [
-    { id: 'critico'        as const, label: 'Críticos',         count: totalCritico,         activeColor: 'text-red-700     bg-red-50     border-red-500',     dotColor: 'bg-red-500',     inactiveHover: 'hover:bg-red-50'     },
-    { id: 'urgente'        as const, label: 'Urgentes',         count: totalUrgente,         activeColor: 'text-orange-700  bg-orange-50  border-orange-400',  dotColor: 'bg-orange-500',  inactiveHover: 'hover:bg-orange-50'  },
-    { id: 'atencao'        as const, label: 'Atenção',          count: totalAtencao,         activeColor: 'text-amber-700   bg-amber-50   border-amber-400',   dotColor: 'bg-amber-400',   inactiveHover: 'hover:bg-amber-50'   },
-    { id: 'nao_comunicados'as const, label: 'Não comunicados',  count: naoComunicados.length, activeColor: 'text-fuchsia-700 bg-fuchsia-50 border-fuchsia-400', dotColor: 'bg-fuchsia-500', inactiveHover: 'hover:bg-fuchsia-50' },
-    { id: 'revisao'        as const, label: 'Revisão Mensal',   count: priorityDocs.length,  activeColor: 'text-violet-700  bg-violet-50  border-violet-400',  dotColor: 'bg-violet-500',  inactiveHover: 'hover:bg-violet-50'  },
-    { id: 'controle'       as const, label: 'Controle',         count: totalControle,        activeColor: 'text-blue-700    bg-blue-50    border-blue-400',    dotColor: 'bg-blue-400',    inactiveHover: 'hover:bg-blue-50'    },
+    { id: 'critico'         as const, label: 'Críticos',        count: totalCritico,          hex: '#EF4444', glow: 'rgba(239,68,68,0.25)',   dot: 'bg-red-500',     hover: 'hover:bg-red-50'      },
+    { id: 'urgente'         as const, label: 'Urgentes',        count: totalUrgente,          hex: '#F97316', glow: 'rgba(249,115,22,0.25)',  dot: 'bg-orange-500',  hover: 'hover:bg-orange-50'   },
+    { id: 'atencao'         as const, label: 'Atenção',         count: totalAtencao,          hex: '#EAB308', glow: 'rgba(234,179,8,0.25)',   dot: 'bg-yellow-500',  hover: 'hover:bg-yellow-50'   },
+    { id: 'nao_comunicados' as const, label: 'Não comunicados', count: naoComunicados.length, hex: '#D946EF', glow: 'rgba(217,70,239,0.25)',  dot: 'bg-fuchsia-500', hover: 'hover:bg-fuchsia-50'  },
+    { id: 'revisao'         as const, label: 'Revisão Mensal',  count: priorityDocs.length,   hex: '#8B5CF6', glow: 'rgba(139,92,246,0.25)',  dot: 'bg-violet-500',  hover: 'hover:bg-violet-50'   },
+    { id: 'controle'        as const, label: 'Controle',        count: totalControle,         hex: '#3B82F6', glow: 'rgba(59,130,246,0.25)',  dot: 'bg-blue-500',    hover: 'hover:bg-blue-50'     },
   ]
-
-  const activeTabDef = TABS.find(t => t.id === activeTab)!
 
   return (
     <div className="p-4 md:p-6 space-y-4">
@@ -751,30 +749,46 @@ export default function BriefingPage() {
         </div>
       </header>
 
-      {/* ── Abas de navegação ────────────────────────────────────────────── */}
+      {/* ── Pill Tabs ─────────────────────────────────────────────────────── */}
       {!loading && (
-        <div className="bg-white border border-slate-200 rounded-2xl p-2 shadow-sm overflow-x-auto">
-          <div className="flex gap-1.5 min-w-max">
+        <div className="bg-white/80 backdrop-blur-sm border border-slate-200/80 rounded-2xl p-2 shadow-sm overflow-x-auto">
+          <div className="flex gap-1 min-w-max">
             {TABS.map(tab => {
               const isActive = activeTab === tab.id
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all whitespace-nowrap ${
+                  style={isActive
+                    ? { background: tab.hex, boxShadow: `0 4px 16px ${tab.glow}, 0 1px 3px rgba(0,0,0,0.1)` }
+                    : {}
+                  }
+                  className={[
+                    'flex items-center gap-2 px-4 py-2 rounded-full text-[13px] font-semibold',
+                    'whitespace-nowrap select-none outline-none',
+                    'transition-all duration-200 ease-in-out',
                     isActive
-                      ? `${tab.activeColor} border-current`
-                      : `text-slate-500 bg-transparent border-transparent ${tab.inactiveHover}`
-                  }`}
+                      ? 'text-white -translate-y-px'
+                      : `text-slate-500 ${tab.hover} hover:-translate-y-px hover:shadow-sm`,
+                  ].join(' ')}
                 >
-                  {tab.count > 0 && (
-                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${tab.dotColor}`} />
-                  )}
+                  {/* Dot indicador */}
+                  <span
+                    className={`w-2 h-2 rounded-full flex-shrink-0 transition-colors duration-200 ${!isActive ? (tab.count > 0 ? tab.dot : 'bg-slate-300') : ''}`}
+                    style={isActive ? { background: 'rgba(255,255,255,0.65)' } : {}}
+                  />
+
                   {tab.label}
+
+                  {/* Badge contador */}
                   {tab.count > 0 && (
-                    <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ml-0.5 ${
-                      isActive ? 'bg-white/60' : 'bg-slate-100 text-slate-500'
-                    }`}>
+                    <span
+                      className="text-[10px] font-black px-2 py-0.5 rounded-full leading-none transition-all duration-200"
+                      style={isActive
+                        ? { background: 'rgba(255,255,255,0.25)', color: 'white' }
+                        : { background: '#F1F5F9', color: '#64748B' }
+                      }
+                    >
                       {tab.count}
                     </span>
                   )}
