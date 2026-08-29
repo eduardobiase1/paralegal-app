@@ -53,6 +53,7 @@ function CertificadosPageInner() {
   const [saving, setSaving] = useState<string | null>(null)
   const [aba, setAba] = useState<Aba>('processo')
   const [busca, setBusca] = useState('')
+  const [filtroEmissao, setFiltroEmissao] = useState<number | null>(null)
 
   async function saveControl(id: string, fields: Record<string, any>) {
     setSaving(id)
@@ -107,7 +108,19 @@ function CertificadosPageInner() {
   }
 
   const emProcesso  = byBusca(byEmpresa(certs.filter(c => !(c as any).certificado_finalizado)))
-  const finalizados = byBusca(byEmpresa(certs.filter(c => !!(c as any).certificado_finalizado)))
+
+  const byEmissao = (list: CertificadoDigital[]) => {
+    if (!filtroEmissao) return list
+    const corte = new Date()
+    corte.setDate(corte.getDate() - filtroEmissao)
+    corte.setHours(0, 0, 0, 0)
+    return list.filter(c => {
+      if (!c.data_emissao) return false
+      return new Date(c.data_emissao + 'T12:00:00') >= corte
+    })
+  }
+
+  const finalizados = byEmissao(byBusca(byEmpresa(certs.filter(c => !!(c as any).certificado_finalizado))))
 
   async function handleDelete() {
     if (!deleteItem) return
@@ -388,6 +401,28 @@ function CertificadosPageInner() {
               ABA: CERTIFICADOS EMITIDOS
           ══════════════════════════════════════════════════════ */}
           {aba === 'certificados' && (
+            <>
+              {/* Filtro por data de emissão */}
+              <div className="flex items-center gap-2 mb-3 flex-wrap">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">Emitidos nos últimos:</span>
+                {[15, 30, 45, 60, 90].map(d => (
+                  <button key={d} onClick={() => setFiltroEmissao(filtroEmissao === d ? null : d)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
+                      filtroEmissao === d
+                        ? 'bg-slate-900 text-white border-slate-900'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
+                    }`}>
+                    {d} dias
+                  </button>
+                ))}
+                {filtroEmissao && (
+                  <button onClick={() => setFiltroEmissao(null)}
+                    className="text-xs text-slate-400 hover:text-slate-600 underline">
+                    Limpar filtro
+                  </button>
+                )}
+              </div>
+
             <div className="card overflow-hidden">
               {finalizados.length === 0 ? (
                 <div className="p-12 text-center">
@@ -480,6 +515,7 @@ function CertificadosPageInner() {
                 </div>
               )}
             </div>
+            </>
           )}
         </>
       )}
