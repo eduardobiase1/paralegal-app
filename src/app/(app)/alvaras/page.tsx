@@ -337,9 +337,11 @@ function AlvarasPage() {
 
                       {/* Empresa */}
                       <td className="px-5 py-3.5">
-                        <p className="text-sm font-semibold text-slate-800 leading-tight">
+                        <Link href={`/empresas/${item.empresa_id}`}
+                          className="text-sm font-semibold text-slate-800 hover:text-blue-600 hover:underline underline-offset-2 transition-colors leading-tight block"
+                          title="Ver cadastro da empresa">
                           {item.empresas?.razao_social || '—'}
-                        </p>
+                        </Link>
                         {item.empresas?.municipio && (
                           <p className="text-xs text-slate-400 mt-0.5">{item.empresas.municipio}</p>
                         )}

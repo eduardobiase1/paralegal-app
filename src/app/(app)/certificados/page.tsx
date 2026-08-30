@@ -359,7 +359,10 @@ function CertificadosPageInner() {
                         <tr key={c.id} className="hover:bg-amber-50/40 transition-colors">
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-1.5">
-                              <span className="font-semibold text-gray-900 truncate max-w-[160px]">{c.razao_social}</span>
+                              {c.empresa_id
+                                ? <Link href={`/empresas/${c.empresa_id}`} className="font-semibold text-gray-900 hover:text-blue-600 hover:underline underline-offset-2 transition-colors truncate max-w-[160px]" title="Ver cadastro da empresa">{c.razao_social}</Link>
+                                : <span className="font-semibold text-gray-900 truncate max-w-[160px]">{c.razao_social}</span>
+                              }
                               {!c.empresa_id && <span className="text-[9px] font-black uppercase tracking-widest bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full">avulsa</span>}
                             </div>
                             <div className="text-xs text-gray-400 mt-0.5">{c.titular}</div>
@@ -462,7 +465,10 @@ function CertificadosPageInner() {
                         <tr key={c.id} className="hover:bg-gray-50 transition-colors">
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-1.5">
-                              <span className="font-medium text-gray-900 truncate max-w-[140px]">{c.razao_social}</span>
+                              {c.empresa_id
+                                ? <Link href={`/empresas/${c.empresa_id}`} className="font-medium text-gray-900 hover:text-blue-600 hover:underline underline-offset-2 transition-colors truncate max-w-[140px]" title="Ver cadastro da empresa">{c.razao_social}</Link>
+                                : <span className="font-medium text-gray-900 truncate max-w-[140px]">{c.razao_social}</span>
+                              }
                               {!c.empresa_id && <span className="text-[9px] font-black uppercase bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full">avulsa</span>}
                             </div>
                             <div className="text-xs text-gray-400 font-mono">{c.cnpj && formatCNPJ(c.cnpj)}</div>

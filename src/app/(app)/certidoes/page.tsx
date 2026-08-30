@@ -345,7 +345,13 @@ function CertidoesPage() {
                     className={`hover:bg-slate-50 transition-colors ${dias !== null && dias < 0 ? 'bg-red-50/40' : dias !== null && dias <= 15 ? 'bg-orange-50/40' : ''}`}
                     style={{ borderLeft: dias !== null && dias < 0 ? '3px solid #ef4444' : dias !== null && dias <= 30 ? '3px solid #f97316' : dias !== null && dias <= 60 ? '3px solid #eab308' : '3px solid transparent' }}
                   >
-                    <td className="px-5 py-3.5 text-sm font-bold text-slate-800 max-w-[180px] truncate">{i.empresas?.razao_social}</td>
+                    <td className="px-5 py-3.5 max-w-[180px]">
+                      <Link href={`/empresas/${i.empresa_id}`}
+                        className="text-sm font-bold text-slate-800 hover:text-blue-600 hover:underline underline-offset-2 transition-colors truncate block"
+                        title="Ver cadastro da empresa">
+                        {i.empresas?.razao_social}
+                      </Link>
+                    </td>
                     <td className="px-5 py-3.5 text-xs font-bold uppercase text-slate-600">{i.tipo}</td>
                     <td className="px-5 py-3.5 text-xs text-slate-500">{i.orgao_emissor}</td>
                     <td className="px-5 py-3.5">
