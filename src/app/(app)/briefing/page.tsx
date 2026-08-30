@@ -423,6 +423,8 @@ export default function BriefingPage() {
   const [snoozed,      setSnoozed]      = useState<Set<string>>(new Set())
   const [naoComunicados, setNaoComunicados] = useState<any[]>([])
   const [supabase]                      = useState(createClient)
+  const [modoFoco,     setModoFoco]     = useState(false)
+  const [focoIdx,      setFocoIdx]      = useState(0)
 
   const hoje     = new Date()
   const diaLabel = DIAS_PT[hoje.getDay()]
@@ -703,6 +705,19 @@ export default function BriefingPage() {
   function expandAll()  { const m: Record<string, boolean> = {}; compGroups.forEach(g => { m[g.empresaNome] = true  }); setCoExpanded(m) }
   function collapseAll(){ const m: Record<string, boolean> = {}; compGroups.forEach(g => { m[g.empresaNome] = false }); setCoExpanded(m) }
 
+  // Modo Foco — itens ordenados: críticos → urgentes → atenção, excluindo snoozed
+  const focoItems: WorkItem[] = [
+    ...groups.critico.filter(i => !snoozed.has(i.empresaNome)),
+    ...groups.urgente.filter(i => !snoozed.has(i.empresaNome)),
+    ...groups.atencao.filter(i => !snoozed.has(i.empresaNome)),
+  ]
+  function abrirFoco() { setFocoIdx(0); setModoFoco(true) }
+  function nextFoco()  { setFocoIdx(i => i + 1) }
+  function focoSnooze(item: WorkItem) {
+    setSnoozed(p => new Set([...p, item.empresaNome]))
+    nextFoco()
+  }
+
   // Definição das abas — Pill Tabs
   const TABS = [
     { id: 'critico'         as const, label: 'Críticos',        count: totalCritico,          hex: '#EF4444', glow: 'rgba(239,68,68,0.25)',   dot: 'bg-red-500',     hover: 'hover:bg-red-50'      },
@@ -740,6 +755,15 @@ export default function BriefingPage() {
             <span className="text-xs text-slate-500">
               {totalGeral === 0 ? '✓ Tudo em dia' : `${totalGeral} ${totalGeral === 1 ? 'pendência' : 'pendências'}`}
             </span>
+          )}
+          {!loading && focoItems.length > 0 && (
+            <button onClick={abrirFoco}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-700 transition-all shadow-sm">
+              ⚡ Modo Foco
+              <span className="bg-white/20 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full leading-none">
+                {focoItems.length}
+              </span>
+            </button>
           )}
           <button onClick={load} title="Atualizar" className="btn-secondary px-3">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -941,6 +965,99 @@ export default function BriefingPage() {
           </>
         )}
       </div>
+
+      {/* ── Modo Foco — overlay ───────────────────────────────────────────── */}
+      {modoFoco && (
+        <div className="fixed inset-0 bg-slate-900/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden">
+
+            {focoIdx >= focoItems.length ? (
+              /* Concluído */
+              <div className="p-10 text-center">
+                <p className="text-5xl mb-4">🎉</p>
+                <p className="text-lg font-black text-slate-900">Triagem concluída!</p>
+                <p className="text-sm text-slate-500 mt-1">Você revisou todos os {focoItems.length} itens.</p>
+                <button onClick={() => setModoFoco(false)}
+                  className="mt-6 px-6 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-bold hover:bg-slate-700 transition-all">
+                  Fechar
+                </button>
+              </div>
+            ) : (() => {
+              const item = focoItems[focoIdx]
+              const ts   = TS[item.tier]
+              const pct  = Math.round((focoIdx / focoItems.length) * 100)
+              const tierLabel = item.tier === 'critico' ? '🔴 Crítico' : item.tier === 'urgente' ? '🟠 Urgente' : '🟡 Atenção'
+              const comunicarHref = item.badge === 'Alvará'
+                ? `/alvaras?empresa=${item.empresaId}`
+                : item.badge === 'Licença Sanitária'
+                ? `/licencas?empresa=${item.empresaId}`
+                : `/certidoes?empresa=${item.empresaId}`
+              return (
+                <>
+                  {/* Header */}
+                  <div className="flex items-center justify-between px-5 pt-5 pb-3">
+                    <div className="flex-1 mr-4">
+                      <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-2">
+                        ⚡ Modo Foco · {focoIdx + 1} / {focoItems.length}
+                      </p>
+                      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-slate-800 rounded-full transition-all duration-300"
+                          style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                    <button onClick={() => setModoFoco(false)}
+                      className="text-slate-300 hover:text-slate-700 text-xl font-black leading-none transition-colors flex-shrink-0">
+                      ✕
+                    </button>
+                  </div>
+
+                  {/* Card do item */}
+                  <div className="px-5 pb-5">
+                    {/* Tier + tipo */}
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border ${ts.chip}`}>
+                        {tierLabel}
+                      </span>
+                      <DocTypeBadge badge={item.badge} />
+                    </div>
+
+                    {/* Empresa */}
+                    <h2 className="text-[18px] font-black text-slate-900 leading-snug">{item.empresaNome}</h2>
+
+                    {/* Documento */}
+                    <p className="text-sm text-slate-600 mt-1">{item.descricao}</p>
+
+                    {/* Prazo */}
+                    <span className={`inline-block mt-3 px-3 py-1.5 rounded-lg text-sm font-bold ${ts.days}`}>
+                      {item.detalhe}
+                    </span>
+
+                    {/* Ações */}
+                    <div className="grid grid-cols-2 gap-2 mt-5">
+                      <Link href={item.href} onClick={() => setModoFoco(false)}
+                        className="flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl bg-slate-900 text-white text-sm font-bold hover:bg-slate-700 transition-all">
+                        Renovar →
+                      </Link>
+                      <Link href={comunicarHref} onClick={() => setModoFoco(false)}
+                        className="flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl bg-blue-50 text-blue-700 border border-blue-200 text-sm font-bold hover:bg-blue-100 transition-all">
+                        Comunicar
+                      </Link>
+                      <button onClick={() => focoSnooze(item)}
+                        className="flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-500 text-sm font-bold hover:bg-slate-100 transition-all">
+                        ⏰ Adiar hoje
+                      </button>
+                      <button onClick={nextFoco}
+                        className="flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 text-sm font-bold hover:bg-slate-100 transition-all">
+                        Próximo →
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )
+            })()}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
