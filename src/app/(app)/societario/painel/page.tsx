@@ -507,7 +507,8 @@ export default function PainelProcessosPage() {
   const [notasCache,  setNotasCache]  = useState<Record<string, any[] | null>>({})
   const [notaInput,   setNotaInput]   = useState<Record<string, string>>({})
   const [savingNota,  setSavingNota]  = useState<Record<string, boolean>>({})
-  const [notaCount,   setNotaCount]   = useState<Record<string, number>>({})
+  const [notaCount,     setNotaCount]     = useState<Record<string, number>>({})
+  const [ultimaNota,    setUltimaNota]    = useState<Record<string, string>>({})
 
   const hoje     = new Date()
   const diaLabel = DIAS_PT[hoje.getDay()]
@@ -532,11 +533,17 @@ export default function PainelProcessosPage() {
 
     if (lista.length > 0) {
       const { data: noteRows } = await supabase
-        .from('processo_notas').select('processo_id')
+        .from('processo_notas').select('processo_id, created_at')
         .in('processo_id', lista.map(p => p.id))
-      const counts: Record<string, number> = {}
-      for (const row of noteRows || []) counts[row.processo_id] = (counts[row.processo_id] || 0) + 1
+        .order('created_at', { ascending: false })
+      const counts: Record<string, number>  = {}
+      const ultimas: Record<string, string> = {}
+      for (const row of noteRows || []) {
+        counts[row.processo_id] = (counts[row.processo_id] || 0) + 1
+        if (!ultimas[row.processo_id]) ultimas[row.processo_id] = row.created_at
+      }
       setNotaCount(counts)
+      setUltimaNota(ultimas)
     }
   }, [supabase, orgId])
 
@@ -592,9 +599,10 @@ export default function PainelProcessosPage() {
       .from('processo_notas').insert([{ processo_id: id, org_id: orgId, texto }])
       .select().single()
     if (!error && data) {
-      // Atualiza updated_at do processo para resetar o contador "dias parado"
-      await supabase.from('processos_societarios').update({ updated_at: new Date().toISOString() }).eq('id', id)
-      setProcessos(prev => prev.map(p => p.id === id ? { ...p, updated_at: new Date().toISOString() } : p))
+      const agora = new Date().toISOString()
+      await supabase.from('processos_societarios').update({ updated_at: agora }).eq('id', id)
+      setProcessos(prev => prev.map(p => p.id === id ? { ...p, updated_at: agora } : p))
+      setUltimaNota(prev => ({ ...prev, [id]: agora }))
       setNotasCache(prev => ({ ...prev, [id]: [data, ...(prev[id] || [])] }))
       setNotaInput(prev => ({ ...prev, [id]: '' }))
       setNotaCount(prev => ({ ...prev, [id]: (prev[id] || 0) + 1 }))
@@ -612,7 +620,9 @@ export default function PainelProcessosPage() {
     const done  = checklist.filter(i => i.status === 'Concluido').length
     const total = checklist.length
     const pct   = total > 0 ? Math.round((done / total) * 100) : 0
-    const dias  = diasDesde(p.updated_at || p.created_at)
+    const ultimaAtividade = [p.updated_at, ultimaNota[p.id], p.created_at]
+      .filter(Boolean).sort().reverse()[0] as string
+    const dias  = diasDesde(ultimaAtividade)
     const ultimaMov = new Date(p.updated_at || p.created_at)
       .toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
     const nome     = (p.empresas as any)?.razao_social || p.cliente_nome || '—'
