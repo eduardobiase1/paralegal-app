@@ -586,6 +586,25 @@ function ComunicadoModal({ item, orgName, onClose, onRegistrar }: {
   const [registrando, setRegistrando] = useState(false)
   const [copiado, setCopiado] = useState(false)
 
+  const DEPTOS_CLIENTE = [
+    { id: 'fiscal',    label: 'Fiscal' },
+    { id: 'pessoal',   label: 'Pessoal' },
+    { id: 'contabil',  label: 'Contábil' },
+  ]
+
+  function preSelectDepts(tipo: string): string[] {
+    const t = tipo.toLowerCase()
+    if (['fgts', 'trabalhista'].some(k => t.includes(k))) return ['pessoal']
+    return ['fiscal']
+  }
+  const [deptsSelecionados, setDeptsSelecionados] = useState<string[]>(() => preSelectDepts(item.tipo || ''))
+
+  function toggleDept(id: string) {
+    setDeptsSelecionados(prev =>
+      prev.includes(id) ? prev.filter(d => d !== id) : [...prev, id]
+    )
+  }
+
   const empresa   = item.empresas?.razao_social || ''
   const empresaMaius = empresa.toUpperCase()
 
@@ -598,20 +617,24 @@ function ComunicadoModal({ item, orgName, onClose, onRegistrar }: {
     ? `Departamento Pessoal — ${dpTime}`
     : DPTOS.find(d => d.value === dpto)?.label || ''
 
-  function deptoPorTipo(tipo: string): string {
-    const t = tipo.toLowerCase()
-    if (['federal', 'estadual', 'municipal', 'previdenciária', 'previdenciaria'].some(k => t.includes(k))) return 'Departamento Fiscal'
-    if (['fgts', 'trabalhista'].some(k => t.includes(k))) return 'Departamento Pessoal'
-    return 'nossa equipe'
+  function formatarDeptos(ids: string[]): string {
+    const nomes = ids.map(id => {
+      const d = DEPTOS_CLIENTE.find(x => x.id === id)
+      return d ? `Departamento ${d.label}` : ''
+    }).filter(Boolean)
+    if (nomes.length === 0) return 'nossa equipe'
+    if (nomes.length === 1) return nomes[0]
+    return nomes.slice(0, -1).join(', ') + ' e ' + nomes[nomes.length - 1]
   }
-  const deptoCliente = deptoPorTipo(item.tipo || '')
-  const verboDepts = deptoCliente === 'nossa equipe' ? 'verificará' : 'verificará'
+  const deptoTexto = formatarDeptos(deptsSelecionados)
+  const verbo = deptsSelecionados.length > 1 ? 'verificarão as pendências' : 'verificará a pendência'
+  const artigoDepto = deptsSelecionados.length === 0 ? 'com a' : 'com o nosso'
 
   const textoCliente = `Prezado(a) cliente, ${sauda}! Tudo bem?
 
 Segue em anexo o relatório de Pendências em aberto da empresa ${empresaMaius} que está impossibilitando de renovar a certidão negativa de débitos ${esfera}.${obsLine}
 
-Para regularizar, entre em contato com o nosso ${deptoCliente}, que ${verboDepts} a pendência junto ao(à) ${item.orgao_emissor} e encaminhará o boleto ou guia atualizada para quitação.
+Para regularizar, entre em contato ${artigoDepto} ${deptoTexto}, que ${verbo} junto ao(à) ${item.orgao_emissor} e encaminhará o boleto ou guia atualizada para quitação.
 
 Ficamos à disposição para orientações.`
 
@@ -687,6 +710,30 @@ Solicitamos verificação e providências junto ao cliente para regularização.
             )
           })}
         </div>
+
+        {/* Seletor de departamento — aba cliente (multi-select) */}
+        {tab === 'cliente' && (
+          <div className="px-4 pt-3">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Departamento(s) responsável(eis)</p>
+            <div className="flex gap-1.5 flex-wrap">
+              {DEPTOS_CLIENTE.map(d => {
+                const isActive = deptsSelecionados.includes(d.id)
+                return (
+                  <button key={d.id} onClick={() => toggleDept(d.id)}
+                    style={isActive ? { background: '#1E293B', boxShadow: '0 4px 16px rgba(30,41,59,0.25)' } : {}}
+                    className={[
+                      'px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap select-none outline-none',
+                      'transition-all duration-200 ease-in-out',
+                      isActive ? 'text-white -translate-y-px' : 'text-slate-500 bg-[#F3F4F6] hover:-translate-y-px hover:shadow-md',
+                    ].join(' ')}>
+                    {isActive ? '✓ ' : ''}{d.label}
+                  </button>
+                )
+              })}
+            </div>
+            <p className="text-[10px] text-slate-400 mt-1.5">Selecione um ou mais · a mensagem atualiza automaticamente</p>
+          </div>
+        )}
 
         {/* Seletor de departamento (só aba interna) */}
         {tab === 'interno' && (
