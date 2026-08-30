@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useOrg } from '@/lib/org-context'
+import Link from 'next/link'
 
 type CellInfo = { date: string | null; pendente: boolean }
 type CellKey = 'federal' | 'estadual' | 'municipal' | 'fgts' | 'trabalhista' | 'previdenciaria' | 'alvara' | 'certificado'
@@ -227,8 +228,11 @@ export default function VisaoGeralPage() {
             <tbody>
               {filtered.map(row => (
                 <tr key={row.id} className="border-b border-slate-100 hover:bg-blue-50/20 transition-colors group">
-                  <td className="sticky left-0 z-10 bg-white group-hover:bg-blue-50/20 px-4 py-2.5 font-semibold text-slate-800 whitespace-nowrap border-r border-slate-100 transition-colors">
-                    {row.nome}
+                  <td className="sticky left-0 z-10 bg-white group-hover:bg-blue-50/20 px-4 py-2.5 border-r border-slate-100 transition-colors">
+                    <Link href={`/empresas/${row.id}`}
+                      className="font-semibold text-slate-800 hover:text-blue-600 whitespace-nowrap transition-colors hover:underline underline-offset-2">
+                      {row.nome}
+                    </Link>
                   </td>
                   {COLS.map(col => {
                     const info = row[col.key]
