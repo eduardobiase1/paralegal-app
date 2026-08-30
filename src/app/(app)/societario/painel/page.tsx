@@ -66,7 +66,9 @@ function proximaEtapa(checklist: any[]): string | null {
 }
 
 function diasDesde(dateStr: string): number {
-  return Math.max(0, Math.round((Date.now() - new Date(dateStr).getTime()) / 86_400_000))
+  const d = new Date(dateStr); d.setHours(0, 0, 0, 0)
+  const h = new Date();        h.setHours(0, 0, 0, 0)
+  return Math.max(0, Math.round((h.getTime() - d.getTime()) / 86_400_000))
 }
 
 // ── LocalStorage ───────────────────────────────────────────────────────────────
@@ -590,6 +592,9 @@ export default function PainelProcessosPage() {
       .from('processo_notas').insert([{ processo_id: id, org_id: orgId, texto }])
       .select().single()
     if (!error && data) {
+      // Atualiza updated_at do processo para resetar o contador "dias parado"
+      await supabase.from('processos_societarios').update({ updated_at: new Date().toISOString() }).eq('id', id)
+      setProcessos(prev => prev.map(p => p.id === id ? { ...p, updated_at: new Date().toISOString() } : p))
       setNotasCache(prev => ({ ...prev, [id]: [data, ...(prev[id] || [])] }))
       setNotaInput(prev => ({ ...prev, [id]: '' }))
       setNotaCount(prev => ({ ...prev, [id]: (prev[id] || 0) + 1 }))
