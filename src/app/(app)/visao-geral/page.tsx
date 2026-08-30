@@ -87,11 +87,21 @@ export default function VisaoGeralPage() {
   const load = useCallback(async () => {
     if (!orgId) return
     setLoading(true)
-    const [{ data: empresas }, { data: certidoes }, { data: alvaras }, { data: certificados }] = await Promise.all([
-      supabase.from('empresas').select('id, razao_social').order('razao_social'),
-      supabase.from('certidoes').select('empresa_id, tipo, data_vencimento, pendencia_status'),
-      supabase.from('alvaras').select('empresa_id, data_vencimento'),
-      supabase.from('certificados_digitais').select('empresa_id, data_vencimento'),
+    const { data: empresas } = await supabase
+      .from('empresas').select('id, razao_social').eq('org_id', orgId).order('razao_social')
+
+    const empresaIds = (empresas || []).map(e => e.id)
+
+    if (!empresaIds.length) {
+      setRows([])
+      setLoading(false)
+      return
+    }
+
+    const [{ data: certidoes }, { data: alvaras }, { data: certificados }] = await Promise.all([
+      supabase.from('certidoes').select('empresa_id, tipo, data_vencimento, pendencia_status').in('empresa_id', empresaIds),
+      supabase.from('alvaras').select('empresa_id, data_vencimento').in('empresa_id', empresaIds),
+      supabase.from('certificados_digitais').select('empresa_id, data_vencimento').in('empresa_id', empresaIds),
     ])
 
     const built: Row[] = (empresas || []).map(emp => {
