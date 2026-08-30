@@ -599,22 +599,32 @@ function SocietarioPageInner() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 mb-4 bg-white border border-slate-200 rounded-xl p-1 w-fit">
+        <div className="flex gap-1.5 mb-4">
           {([
-            ['etapas', '📋 Etapas do Processo', checklist.length],
-            ['documentos', '📁 Documentos do Cliente', docs.length],
-            ['anotacoes', '📝 Anotações', (notas[p.id] || []).length],
-          ] as const).map(([tab, label, count]) => (
-            <button key={tab} onClick={() => setActiveDetailTab(tab)}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wide transition-all whitespace-nowrap ${
-                activeDetailTab === tab ? 'bg-black text-yellow-400' : 'text-slate-500 hover:text-slate-700'
-              }`}>
-              {label}
-              <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${activeDetailTab === tab ? 'bg-yellow-400/20 text-yellow-300' : 'bg-slate-100 text-slate-400'}`}>
-                {count}
-              </span>
-            </button>
-          ))}
+            { id: 'etapas',    label: '📋 Etapas',     count: checklist.length,           hex: '#8B5CF6', glow: 'rgba(139,92,246,0.25)' },
+            { id: 'documentos',label: '📁 Documentos',  count: docs.length,                hex: '#3B82F6', glow: 'rgba(59,130,246,0.25)' },
+            { id: 'anotacoes', label: '📝 Anotações',   count: (notas[p.id] || []).length, hex: '#F59E0B', glow: 'rgba(245,158,11,0.25)' },
+          ] as const).map(t => {
+            const isActive = activeDetailTab === t.id
+            return (
+              <button key={t.id} onClick={() => setActiveDetailTab(t.id)}
+                style={isActive ? { background: t.hex, boxShadow: `0 4px 16px ${t.glow}, 0 1px 3px rgba(0,0,0,0.1)` } : {}}
+                className={[
+                  'flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap select-none outline-none',
+                  'transition-all duration-200 ease-in-out',
+                  isActive
+                    ? 'text-white -translate-y-px'
+                    : 'text-slate-500 bg-[#F3F4F6] hover:-translate-y-px hover:shadow-sm',
+                ].join(' ')}>
+                {t.label}
+                <span
+                  className="text-[10px] font-black px-1.5 py-0.5 rounded-full leading-none"
+                  style={isActive ? { background: 'rgba(255,255,255,0.25)', color: 'white' } : { background: '#F1F5F9', color: '#64748B' }}>
+                  {t.count}
+                </span>
+              </button>
+            )
+          })}
         </div>
 
         {/* ── Tab: Etapas ───────────────────────────────────────────────────── */}
@@ -915,20 +925,33 @@ function SocietarioPageInner() {
       </div>
 
       {/* Filtros */}
-      <div className="flex gap-1 mb-5 bg-white border border-slate-200 rounded-xl p-1 w-fit shadow-sm">
-        {([['Andamento', 'Em Andamento'], ['Finalizado', 'Finalizados'], ['todos', 'Todos']] as const).map(([val, label]) => (
-          <button key={val} onClick={() => setFiltroStatus(val)}
-            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              filtroStatus === val
-                ? 'bg-slate-900 text-yellow-400 shadow-sm'
-                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
-            }`}>
-            {label}
-            <span className={`ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full ${filtroStatus === val ? 'bg-white/10 text-yellow-300' : 'bg-slate-100 text-slate-400'}`}>
-              {val === 'todos' ? processos.length : processos.filter(p => p.status === val).length}
-            </span>
-          </button>
-        ))}
+      <div className="flex gap-1.5 mb-5">
+        {([
+          { val: 'Andamento', label: 'Em Andamento', hex: '#F59E0B', glow: 'rgba(245,158,11,0.25)' },
+          { val: 'Finalizado', label: 'Finalizados',  hex: '#10B981', glow: 'rgba(16,185,129,0.25)' },
+          { val: 'todos',      label: 'Todos',         hex: '#1E293B', glow: 'rgba(30,41,59,0.25)'  },
+        ] as const).map(({ val, label, hex, glow }) => {
+          const isActive = filtroStatus === val
+          const count = val === 'todos' ? processos.length : processos.filter(p => p.status === val).length
+          return (
+            <button key={val} onClick={() => setFiltroStatus(val)}
+              style={isActive ? { background: hex, boxShadow: `0 4px 16px ${glow}, 0 1px 3px rgba(0,0,0,0.1)` } : {}}
+              className={[
+                'flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap select-none outline-none',
+                'transition-all duration-200 ease-in-out',
+                isActive
+                  ? 'text-white -translate-y-px'
+                  : 'text-slate-500 bg-[#F3F4F6] hover:-translate-y-px hover:shadow-sm',
+              ].join(' ')}>
+              {label}
+              <span
+                className="text-[10px] font-black px-1.5 py-0.5 rounded-full leading-none"
+                style={isActive ? { background: 'rgba(255,255,255,0.25)', color: 'white' } : { background: '#F1F5F9', color: '#64748B' }}>
+                {count}
+              </span>
+            </button>
+          )
+        })}
       </div>
 
       {loading && <p className="text-slate-400 text-sm italic text-center py-12">Carregando processos...</p>}

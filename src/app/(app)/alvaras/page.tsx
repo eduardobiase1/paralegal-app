@@ -277,13 +277,28 @@ function AlvarasPage() {
               {orgaos.map(o => <option key={o} value={o}>{o}</option>)}
             </select>
 
-            <div className="flex rounded-lg border border-slate-200 overflow-hidden text-xs font-bold">
-              {(['todos', 'vencido', 'alerta', 'ok'] as const).map(f => (
-                <button key={f} onClick={() => setFiltroStatus(f)}
-                  className={`px-3 py-2 transition-all ${filtroStatus === f ? 'bg-slate-900 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
-                  {f === 'todos' ? 'Todos' : f === 'vencido' ? 'Vencidos' : f === 'alerta' ? 'Alertas' : 'Em dia'}
-                </button>
-              ))}
+            <div className="flex gap-1.5">
+              {([
+                { id: 'todos',   label: 'Todos',   hex: '#1E293B', glow: 'rgba(30,41,59,0.25)' },
+                { id: 'vencido', label: 'Vencidos', hex: '#EF4444', glow: 'rgba(239,68,68,0.25)' },
+                { id: 'alerta',  label: 'Alertas',  hex: '#F97316', glow: 'rgba(249,115,22,0.25)' },
+                { id: 'ok',      label: 'Em dia',   hex: '#10B981', glow: 'rgba(16,185,129,0.25)' },
+              ] as const).map(f => {
+                const isActive = filtroStatus === f.id
+                return (
+                  <button key={f.id} onClick={() => setFiltroStatus(f.id)}
+                    style={isActive ? { background: f.hex, boxShadow: `0 4px 16px ${f.glow}, 0 1px 3px rgba(0,0,0,0.1)` } : {}}
+                    className={[
+                      'px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap select-none outline-none',
+                      'transition-all duration-200 ease-in-out',
+                      isActive
+                        ? 'text-white -translate-y-px'
+                        : 'text-slate-500 bg-[#F3F4F6] hover:-translate-y-px hover:shadow-sm',
+                    ].join(' ')}>
+                    {f.label}
+                  </button>
+                )
+              })}
             </div>
           </div>
         </div>

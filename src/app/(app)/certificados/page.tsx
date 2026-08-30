@@ -292,31 +292,37 @@ function CertificadosPageInner() {
         </div>
 
         {/* Abas */}
-        <div className="flex rounded-xl overflow-hidden border border-slate-200 bg-white">
-          <button onClick={() => setAba('processo')}
-            className={`flex items-center gap-2 px-5 py-2.5 text-sm font-bold transition-all ${
-              aba === 'processo' ? 'bg-black text-yellow-400' : 'text-slate-500 hover:bg-slate-50'
-            }`}>
-            <span className={`w-2 h-2 rounded-full ${aba === 'processo' ? 'bg-yellow-400' : 'bg-amber-400'}`} />
-            Em Processo
-            {emProcesso.length > 0 && (
-              <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${
-                aba === 'processo' ? 'bg-yellow-500 text-black' : 'bg-amber-100 text-amber-700'
-              }`}>{emProcesso.length}</span>
-            )}
-          </button>
-          <button onClick={() => setAba('certificados')}
-            className={`flex items-center gap-2 px-5 py-2.5 text-sm font-bold transition-all border-l border-slate-200 ${
-              aba === 'certificados' ? 'bg-black text-yellow-400' : 'text-slate-500 hover:bg-slate-50'
-            }`}>
-            <span className={`w-2 h-2 rounded-full ${aba === 'certificados' ? 'bg-yellow-400' : 'bg-emerald-500'}`} />
-            Certificados
-            {finalizados.length > 0 && (
-              <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${
-                aba === 'certificados' ? 'bg-yellow-500 text-black' : 'bg-emerald-100 text-emerald-700'
-              }`}>{finalizados.length}</span>
-            )}
-          </button>
+        <div className="flex gap-1.5">
+          {([
+            { id: 'processo',     label: 'Em Processo',  count: emProcesso.length,  hex: '#F59E0B', glow: 'rgba(245,158,11,0.25)', dot: 'bg-amber-400' },
+            { id: 'certificados', label: 'Certificados', count: finalizados.length, hex: '#10B981', glow: 'rgba(16,185,129,0.25)', dot: 'bg-emerald-500' },
+          ] as const).map(t => {
+            const isActive = aba === t.id
+            return (
+              <button key={t.id} onClick={() => setAba(t.id)}
+                style={isActive ? { background: t.hex, boxShadow: `0 4px 16px ${t.glow}, 0 1px 3px rgba(0,0,0,0.1)` } : {}}
+                className={[
+                  'flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold whitespace-nowrap select-none outline-none',
+                  'transition-all duration-200 ease-in-out',
+                  isActive
+                    ? 'text-white -translate-y-px'
+                    : 'text-slate-500 bg-[#F3F4F6] hover:-translate-y-px hover:shadow-sm',
+                ].join(' ')}>
+                <span
+                  className={`w-2 h-2 rounded-full flex-shrink-0 ${!isActive ? t.dot : ''}`}
+                  style={isActive ? { background: 'rgba(255,255,255,0.65)' } : {}}
+                />
+                {t.label}
+                {t.count > 0 && (
+                  <span
+                    className="text-[10px] font-black px-2 py-0.5 rounded-full leading-none"
+                    style={isActive ? { background: 'rgba(255,255,255,0.25)', color: 'white' } : { background: '#F1F5F9', color: '#64748B' }}>
+                    {t.count}
+                  </span>
+                )}
+              </button>
+            )
+          })}
         </div>
       </div>
 
@@ -403,22 +409,28 @@ function CertificadosPageInner() {
           {aba === 'certificados' && (
             <>
               {/* Filtro por data de emissão */}
-              <div className="flex items-center gap-2 mb-3 flex-wrap">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">Emitidos nos últimos:</span>
-                {[15, 30, 45, 60, 90].map(d => (
-                  <button key={d} onClick={() => setFiltroEmissao(filtroEmissao === d ? null : d)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
-                      filtroEmissao === d
-                        ? 'bg-slate-900 text-white border-slate-900'
-                        : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
-                    }`}>
-                    {d} dias
-                  </button>
-                ))}
+              <div className="flex items-center gap-1.5 mb-3 flex-wrap">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wide mr-1">Emitidos nos últimos:</span>
+                {[15, 30, 45, 60, 90].map(d => {
+                  const isActive = filtroEmissao === d
+                  return (
+                    <button key={d} onClick={() => setFiltroEmissao(isActive ? null : d)}
+                      style={isActive ? { background: '#3B82F6', boxShadow: '0 4px 16px rgba(59,130,246,0.25), 0 1px 3px rgba(0,0,0,0.1)' } : {}}
+                      className={[
+                        'px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap select-none outline-none',
+                        'transition-all duration-200 ease-in-out',
+                        isActive
+                          ? 'text-white -translate-y-px'
+                          : 'text-slate-500 bg-[#F3F4F6] hover:-translate-y-px hover:shadow-sm',
+                      ].join(' ')}>
+                      {d} dias
+                    </button>
+                  )
+                })}
                 {filtroEmissao && (
                   <button onClick={() => setFiltroEmissao(null)}
-                    className="text-xs text-slate-400 hover:text-slate-600 underline">
-                    Limpar filtro
+                    className="text-xs text-slate-400 hover:text-slate-600 underline ml-1">
+                    Limpar
                   </button>
                 )}
               </div>

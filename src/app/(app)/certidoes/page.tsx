@@ -644,26 +644,47 @@ Solicitamos verificação e providências junto ao cliente para regularização.
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 p-4 pb-0">
-          <button onClick={() => setTab('cliente')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${tab === 'cliente' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
-            Para o cliente
-          </button>
-          <button onClick={() => setTab('interno')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${tab === 'interno' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
-            Para departamento interno
-          </button>
+        <div className="flex gap-1.5 p-4 pb-0">
+          {([
+            { id: 'cliente', label: 'Para o cliente', hex: '#3B82F6', glow: 'rgba(59,130,246,0.25)' },
+            { id: 'interno', label: 'Para departamento interno', hex: '#8B5CF6', glow: 'rgba(139,92,246,0.25)' },
+          ] as const).map(t => {
+            const isActive = tab === t.id
+            return (
+              <button key={t.id} onClick={() => setTab(t.id)}
+                style={isActive ? { background: t.hex, boxShadow: `0 4px 16px ${t.glow}, 0 1px 3px rgba(0,0,0,0.1)` } : {}}
+                className={[
+                  'px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap select-none outline-none',
+                  'transition-all duration-200 ease-in-out',
+                  isActive
+                    ? 'text-white -translate-y-px'
+                    : 'text-slate-500 bg-[#F3F4F6] hover:-translate-y-px hover:shadow-sm',
+                ].join(' ')}>
+                {t.label}
+              </button>
+            )
+          })}
         </div>
 
         {/* Seletor de departamento (só aba interna) */}
         {tab === 'interno' && (
-          <div className="px-4 pt-3 flex flex-wrap gap-2 items-center">
-            {DPTOS.map(d => (
+          <div className="px-4 pt-3 flex flex-wrap gap-1.5 items-center">
+            {DPTOS.map(d => {
+              const isActive = dpto === d.value
+              return (
               <button key={d.value} onClick={() => setDpto(d.value)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${dpto === d.value ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'}`}>
+                style={isActive ? { background: '#1E293B', boxShadow: '0 4px 16px rgba(30,41,59,0.25), 0 1px 3px rgba(0,0,0,0.1)' } : {}}
+                className={[
+                  'px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap select-none outline-none',
+                  'transition-all duration-200 ease-in-out',
+                  isActive
+                    ? 'text-white -translate-y-px'
+                    : 'text-slate-500 bg-[#F3F4F6] hover:-translate-y-px hover:shadow-sm',
+                ].join(' ')}>
                 {d.label}
               </button>
-            ))}
+              )
+            })}
             {dpto === 'dp' && (
               <select value={dpTime} onChange={e => setDpTime(e.target.value)}
                 className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-1.5 text-xs font-bold text-blue-700 outline-none">
