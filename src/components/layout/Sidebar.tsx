@@ -12,10 +12,11 @@ const navigation = [
   {
     label: 'Principal',
     items: [
-      { href: '/briefing',  label: 'Briefing Diário', icon: BriefingIcon },
-      { href: '/dashboard', label: 'Dashboard', icon: HomeIcon },
-      { href: '/empresas', label: 'Empresas', icon: BuildingIcon },
-      { href: '/financeiro', label: 'Financeiro PRO', icon: CurrencyDollarIcon },
+      { href: '/briefing',     label: 'Briefing Diário', icon: BriefingIcon },
+      { href: '/visao-geral',  label: 'Visão Geral',    icon: VisaoGeralIcon },
+      { href: '/dashboard',    label: 'Dashboard',       icon: HomeIcon },
+      { href: '/empresas',     label: 'Empresas',        icon: BuildingIcon },
+      { href: '/financeiro',   label: 'Financeiro PRO',  icon: CurrencyDollarIcon },
     ],
   },
   {
@@ -377,6 +378,14 @@ function LogoutIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+    </svg>
+  )
+}
+
+function VisaoGeralIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18M10 3v18M6 3h12a1 1 0 011 1v16a1 1 0 01-1 1H6a1 1 0 01-1-1V4a1 1 0 011-1z" />
     </svg>
   )
 }
