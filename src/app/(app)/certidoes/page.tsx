@@ -658,7 +658,7 @@ Solicitamos verificação e providências junto ao cliente para regularização.
                   'transition-all duration-200 ease-in-out',
                   isActive
                     ? 'text-white -translate-y-px'
-                    : 'text-slate-500 bg-[#F3F4F6] hover:-translate-y-px hover:shadow-sm',
+                    : 'text-slate-500 bg-[#F3F4F6] hover:-translate-y-px hover:shadow-md',
                 ].join(' ')}>
                 {t.label}
               </button>
@@ -679,7 +679,7 @@ Solicitamos verificação e providências junto ao cliente para regularização.
                   'transition-all duration-200 ease-in-out',
                   isActive
                     ? 'text-white -translate-y-px'
-                    : 'text-slate-500 bg-[#F3F4F6] hover:-translate-y-px hover:shadow-sm',
+                    : 'text-slate-500 bg-[#F3F4F6] hover:-translate-y-px hover:shadow-md',
                 ].join(' ')}>
                 {d.label}
               </button>

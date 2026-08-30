@@ -614,7 +614,7 @@ function SocietarioPageInner() {
                   'transition-all duration-200 ease-in-out',
                   isActive
                     ? 'text-white -translate-y-px'
-                    : 'text-slate-500 bg-[#F3F4F6] hover:-translate-y-px hover:shadow-sm',
+                    : 'text-slate-500 bg-[#F3F4F6] hover:-translate-y-px hover:shadow-md',
                 ].join(' ')}>
                 {t.label}
                 <span
@@ -941,7 +941,7 @@ function SocietarioPageInner() {
                 'transition-all duration-200 ease-in-out',
                 isActive
                   ? 'text-white -translate-y-px'
-                  : 'text-slate-500 bg-[#F3F4F6] hover:-translate-y-px hover:shadow-sm',
+                  : 'text-slate-500 bg-[#F3F4F6] hover:-translate-y-px hover:shadow-md',
               ].join(' ')}>
               {label}
               <span

@@ -306,7 +306,7 @@ function CertificadosPageInner() {
                   'transition-all duration-200 ease-in-out',
                   isActive
                     ? 'text-white -translate-y-px'
-                    : 'text-slate-500 bg-[#F3F4F6] hover:-translate-y-px hover:shadow-sm',
+                    : 'text-slate-500 bg-[#F3F4F6] hover:-translate-y-px hover:shadow-md',
                 ].join(' ')}>
                 <span
                   className={`w-2 h-2 rounded-full flex-shrink-0 ${!isActive ? t.dot : ''}`}
@@ -421,7 +421,7 @@ function CertificadosPageInner() {
                         'transition-all duration-200 ease-in-out',
                         isActive
                           ? 'text-white -translate-y-px'
-                          : 'text-slate-500 bg-[#F3F4F6] hover:-translate-y-px hover:shadow-sm',
+                          : 'text-slate-500 bg-[#F3F4F6] hover:-translate-y-px hover:shadow-md',
                       ].join(' ')}>
                       {d} dias
                     </button>
