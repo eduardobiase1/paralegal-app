@@ -592,17 +592,26 @@ function ComunicadoModal({ item, orgName, onClose, onRegistrar }: {
   const dataVenc  = item.data_vencimento ? new Date(item.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR') : '—'
   const esfera    = detectEsfera(item.tipo || '', item.orgao_emissor || '')
   const sauda     = saudacao()
-  const obsLine   = item.observacoes ? `\n\nMotivo informado: ${item.observacoes}` : ''
+  const obsLine   = item.observacoes ? `\n\nSituação atual: ${item.observacoes}` : ''
 
   const dptoLabel = dpto === 'dp'
     ? `Departamento Pessoal — ${dpTime}`
     : DPTOS.find(d => d.value === dpto)?.label || ''
 
+  function deptoPorTipo(tipo: string): string {
+    const t = tipo.toLowerCase()
+    if (['federal', 'estadual', 'municipal', 'previdenciária', 'previdenciaria'].some(k => t.includes(k))) return 'Departamento Fiscal'
+    if (['fgts', 'trabalhista'].some(k => t.includes(k))) return 'Departamento Pessoal'
+    return 'nossa equipe'
+  }
+  const deptoCliente = deptoPorTipo(item.tipo || '')
+  const verboDepts = deptoCliente === 'nossa equipe' ? 'verificará' : 'verificará'
+
   const textoCliente = `Prezado(a) cliente, ${sauda}! Tudo bem?
 
 Segue em anexo o relatório de Pendências em aberto da empresa ${empresaMaius} que está impossibilitando de renovar a certidão negativa de débitos ${esfera}.${obsLine}
 
-Para regularização, será necessário verificar e quitar as pendências junto ao(à) ${item.orgao_emissor} para que possamos solicitar a emissão de nova certidão.
+Para regularizar, entre em contato com o nosso ${deptoCliente}, que ${verboDepts} a pendência junto ao(à) ${item.orgao_emissor} e encaminhará o boleto ou guia atualizada para quitação.
 
 Ficamos à disposição para orientações.`
 
