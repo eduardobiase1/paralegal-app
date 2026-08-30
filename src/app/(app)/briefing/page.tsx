@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useOrg } from '@/lib/org-context'
 import Link from 'next/link'
@@ -420,7 +420,16 @@ export default function BriefingPage() {
   const [coExpanded,   setCoExpanded]   = useState<Record<string, boolean>>({})
   const [searchQ,      setSearchQ]      = useState('')
   const [activeTab,    setActiveTab]    = useState<'critico' | 'urgente' | 'atencao' | 'nao_comunicados' | 'revisao' | 'controle'>('critico')
-  const [snoozed,      setSnoozed]      = useState<Set<string>>(new Set())
+  const [snoozed, setSnoozed] = useState<Set<string>>(() => {
+    try {
+      const stored = localStorage.getItem('briefing_snoozed')
+      if (!stored) return new Set()
+      const { date, items } = JSON.parse(stored)
+      const today = new Date().toISOString().slice(0, 10)
+      if (date !== today) return new Set()
+      return new Set<string>(items)
+    } catch { return new Set() }
+  })
   const [naoComunicados, setNaoComunicados] = useState<any[]>([])
   const [supabase]                      = useState(createClient)
   const [modoFoco,     setModoFoco]     = useState(false)
@@ -431,6 +440,15 @@ export default function BriefingPage() {
   const dateLbl  = `${hoje.getDate()} de ${MESES_PT[hoje.getMonth()]} de ${hoje.getFullYear()}`
 
   useEffect(() => { load() }, [])
+
+  const isFirstSnoozeRender = useRef(true)
+  useEffect(() => {
+    if (isFirstSnoozeRender.current) { isFirstSnoozeRender.current = false; return }
+    try {
+      const today = new Date().toISOString().slice(0, 10)
+      localStorage.setItem('briefing_snoozed', JSON.stringify({ date: today, items: [...snoozed] }))
+    } catch {}
+  }, [snoozed])
 
   function tierForDias(dias: number): Tier | null {
     if (dias < 0 || dias <= 5) return 'critico'
