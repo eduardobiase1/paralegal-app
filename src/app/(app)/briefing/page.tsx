@@ -769,7 +769,7 @@ export default function BriefingPage() {
                     'transition-all duration-200 ease-in-out',
                     isActive
                       ? 'text-white -translate-y-px'
-                      : `text-slate-500 ${tab.hover} hover:-translate-y-px hover:shadow-sm`,
+                      : `text-slate-500 bg-[#F3F4F6] ${tab.hover} hover:-translate-y-px hover:shadow-sm`,
                   ].join(' ')}
                 >
                   {/* Dot indicador */}
