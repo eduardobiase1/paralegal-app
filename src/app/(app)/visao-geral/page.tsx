@@ -84,6 +84,7 @@ export default function VisaoGeralPage() {
   const [busca, setBusca] = useState('')
   const [sortBy, setSortBy] = useState<'nome' | 'urgencia'>('nome')
   const [copiado, setCopiado] = useState<string | null>(null)
+  const [soProblemas, setSoProblemas] = useState(false)
 
   const load = useCallback(async () => {
     if (!orgId) return
@@ -134,8 +135,19 @@ export default function VisaoGeralPage() {
     setTimeout(() => setCopiado(null), 1500)
   }
 
+  function rowHasIssue(row: Row): boolean {
+    return COLS.some(c => {
+      const info = row[c.key]
+      if (info.pendente) return true
+      if (!info.date) return false
+      const d = diasParaVencer(info.date)
+      return d !== null && d <= 60
+    })
+  }
+
   const filtered = rows
     .filter(r => r.nome.toLowerCase().includes(busca.toLowerCase()))
+    .filter(r => !soProblemas || rowHasIssue(r))
     .sort((a, b) =>
       sortBy === 'urgencia'
         ? rowWorstScore(a) - rowWorstScore(b)
@@ -151,6 +163,17 @@ export default function VisaoGeralPage() {
           <p className="text-sm text-slate-500 mt-0.5">Todas as empresas · vencimentos consolidados</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => setSoProblemas(v => !v)}
+            style={soProblemas ? { background: '#EF4444', boxShadow: '0 4px 16px rgba(239,68,68,0.25), 0 1px 3px rgba(0,0,0,0.1)' } : {}}
+            className={[
+              'px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap select-none outline-none',
+              'transition-all duration-200 ease-in-out',
+              soProblemas ? 'text-white -translate-y-px' : 'text-slate-500 bg-[#F3F4F6] hover:-translate-y-px hover:shadow-md',
+            ].join(' ')}>
+            {soProblemas ? '🔴 Só problemas' : 'Só problemas'}
+          </button>
+
           <div className="flex gap-1.5">
             {([
               { id: 'nome',     label: 'A → Z' },

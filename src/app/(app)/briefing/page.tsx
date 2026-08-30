@@ -229,22 +229,22 @@ function CompanyCard({ group, expanded, onToggle, onSnooze, subListExpanded, onT
   const tot  = group.items.length
 
   return (
-    <div className={`bg-white rounded-xl border border-gray-200 border-l-4 ${ts.border} shadow-sm hover:shadow-md transition-shadow`}>
+    <div className={`bg-white rounded-2xl border border-slate-200 border-l-[3px] ${ts.border} shadow-sm hover:shadow-lg hover:-translate-y-px transition-all duration-200`}>
       {/* Header */}
       <button onClick={onToggle}
-        className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-gray-50 transition-colors text-left">
+        className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50/60 transition-colors text-left rounded-t-2xl">
         <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-black flex-shrink-0 tracking-tight ${ts.av}`}>
           {group.initials}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[14px] font-bold text-gray-900 leading-tight truncate">{group.empresaNome}</p>
+          <p className="text-[13px] font-bold text-slate-900 leading-tight truncate tracking-tight">{group.empresaNome}</p>
           <div className="flex items-center gap-1.5 mt-0.5">
             {group.compType && (
-              <span className="text-[9px] font-bold uppercase tracking-wide text-gray-400 bg-gray-100 border border-gray-200 px-1.5 py-0.5 rounded">
+              <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
                 {group.compType}
               </span>
             )}
-            <span className="text-[11px] text-gray-400">
+            <span className="text-[11px] text-slate-400 font-medium">
               {tot} {tot === 1 ? 'pendência' : 'pendências'}
             </span>
           </div>
@@ -410,7 +410,7 @@ function ControleCard({ item, subListExpanded, onToggleSubList }: {
 
 // ── Componente principal ──────────────────────────────────────────────────────
 export default function BriefingPage() {
-  const { orgId } = useOrg()
+  const { orgId, orgName } = useOrg()
   const [groups,       setGroups]       = useState<Record<Tier, WorkItem[]>>({ critico: [], urgente: [], atencao: [], controle: [] })
   const [compGroups,   setCompGroups]   = useState<CompanyGroup[]>([])
   const [priorityDocs, setPriorityDocs] = useState<PriorityDoc[]>([])
@@ -758,7 +758,13 @@ export default function BriefingPage() {
             </svg>
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-900">Briefing Diário</h1>
+            <h1 className="text-xl font-bold text-slate-900">
+              {(() => {
+                const h = new Date().getHours()
+                const sauda = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite'
+                return `${sauda}${orgName ? `, ${orgName.split(' ')[0]}` : ''}!`
+              })()}
+            </h1>
             <p className="text-xs text-slate-500 mt-0.5">{diaLabel} · {dateLbl}</p>
           </div>
         </div>

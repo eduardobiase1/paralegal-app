@@ -222,7 +222,7 @@ function AlvarasPage() {
           <div className="flex flex-wrap justify-between items-start gap-4">
             <div>
               <p className="text-[9px] font-black uppercase tracking-widest text-blue-600 mb-1">CONTROLES</p>
-              <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Alvarás de Funcionamento</h1>
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight">Alvarás de Funcionamento</h1>
               <p className="text-sm text-slate-400 mt-1">{empresaNome || orgName}</p>
             </div>
             <button

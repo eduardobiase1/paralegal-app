@@ -248,7 +248,8 @@ function CertificadosPageInner() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Certificados Digitais</h1>
+          <p className="text-[9px] font-black uppercase tracking-widest text-blue-600 mb-1">CONTROLES</p>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Certificados Digitais</h1>
           <p className="text-sm text-gray-500 mt-0.5">
             {emProcesso.length} em processo · {finalizados.length} emitido(s)
           </p>

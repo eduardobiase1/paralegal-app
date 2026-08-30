@@ -46,6 +46,12 @@ const navigation = [
       { href: '/pdf-tools', label: 'PDF Expert', icon: PDFToolsIcon },
     ],
   },
+  {
+    label: 'Produtividade',
+    items: [
+      { href: '/produtividade', label: 'Registro de Atividades', icon: ProdutividadeIcon },
+    ],
+  },
 ]
 
 export default function Sidebar({ isOpen = true, onToggle, isDark = false, onToggleDark }: {
@@ -386,6 +392,14 @@ function VisaoGeralIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18M10 3v18M6 3h12a1 1 0 011 1v16a1 1 0 01-1 1H6a1 1 0 01-1-1V4a1 1 0 011-1z" />
+    </svg>
+  )
+}
+
+function ProdutividadeIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
     </svg>
   )
 }

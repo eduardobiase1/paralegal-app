@@ -259,10 +259,9 @@ function CertidoesPage() {
       {/* Header */}
       <header className="flex flex-wrap justify-between items-center gap-3 bg-white p-4 md:p-6 rounded-2xl border border-slate-200 shadow-sm">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-slate-900">Certidões Negativas</h1>
-          <p className="text-[10px] font-black uppercase text-blue-600 tracking-widest mt-1">
-            {empresaNome || orgName}
-          </p>
+          <p className="text-[9px] font-black uppercase tracking-widest text-blue-600 mb-1">CONTROLES</p>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Certidões Negativas</h1>
+          <p className="text-sm text-slate-400 mt-0.5">{empresaNome || orgName}</p>
         </div>
         <button onClick={openNovo} className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-800 transition-all whitespace-nowrap">
           + Nova Certidão
@@ -349,8 +348,16 @@ function CertidoesPage() {
                     <td className="px-5 py-3.5 text-sm font-bold text-slate-800 max-w-[180px] truncate">{i.empresas?.razao_social}</td>
                     <td className="px-5 py-3.5 text-xs font-bold uppercase text-slate-600">{i.tipo}</td>
                     <td className="px-5 py-3.5 text-xs text-slate-500">{i.orgao_emissor}</td>
-                    <td className="px-5 py-3.5 text-xs font-mono text-slate-600">
-                      {i.data_emissao ? new Date(i.data_emissao + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}
+                    <td className="px-5 py-3.5">
+                      <span className="text-xs font-mono text-slate-600 block">
+                        {i.data_emissao ? new Date(i.data_emissao + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}
+                      </span>
+                      {i.data_emissao && (() => {
+                        const d = new Date(); d.setHours(0,0,0,0)
+                        const e = new Date(i.data_emissao + 'T00:00:00')
+                        const diff = Math.round((d.getTime() - e.getTime()) / 86400000)
+                        return <span className="text-[10px] text-slate-400">{diff === 0 ? 'hoje' : `há ${diff}d`}</span>
+                      })()}
                     </td>
                     <td className="px-5 py-3.5 text-xs font-mono font-bold text-slate-700">
                       {i.data_vencimento ? new Date(i.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}

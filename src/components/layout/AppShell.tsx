@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Sidebar from '@/components/layout/Sidebar'
 import QuickActions from '@/components/layout/QuickActions'
 import CommandPalette from '@/components/layout/CommandPalette'
+import KeyboardHelpButton from '@/components/layout/KeyboardHelpButton'
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(true)
@@ -72,6 +73,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       <QuickActions />
       <CommandPalette />
+      <KeyboardHelpButton />
 
       {!open && (
         <button
