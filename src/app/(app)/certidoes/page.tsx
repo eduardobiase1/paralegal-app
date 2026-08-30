@@ -146,12 +146,14 @@ function CertidoesPage() {
       const msgs = { novo: 'Certidão cadastrada!', editar: 'Certidão atualizada!', renovar: 'Renovação registrada!' }
       toast.success(msgs[modalMode])
 
-      // Ao renovar: limpa campos de comunicado e registra no histórico
+      // Ao renovar: limpa campos de comunicado/followup e registra no histórico
       if (modalMode === 'renovar' && form.id) {
         await supabase.from('certidoes').update({
           comunicado_em: null,
           comunicado_para: null,
           comunicado_canal: null,
+          followup_em: null,
+          comunicado_count: 0,
         }).eq('id', form.id)
 
         try {
@@ -186,10 +188,17 @@ function CertidoesPage() {
   async function handleRegistrarComunicado(para: string, canal: string, descricaoComunicado: string) {
     if (!comunicandoItem) return
     const agora = new Date().toISOString()
+    const followupDate = new Date(); followupDate.setDate(followupDate.getDate() + 30)
+    const followup_em = followupDate.toISOString().slice(0, 10)
+    const novoCount = (comunicandoItem.comunicado_count || 0) + 1
+    const ordinal = novoCount === 1 ? '1ª' : novoCount === 2 ? '2ª' : novoCount === 3 ? '3ª' : `${novoCount}ª`
+
     const { error } = await supabase.from('certidoes').update({
       comunicado_em: agora,
       comunicado_para: para,
       comunicado_canal: canal,
+      followup_em,
+      comunicado_count: novoCount,
     }).eq('id', comunicandoItem.id)
     if (error) {
       if (error.message.includes('comunicado_em') || error.message.includes('comunicado_para')) {
@@ -205,13 +214,13 @@ function CertidoesPage() {
         org_id: orgId,
         empresa_id: comunicandoItem.empresa_id,
         tipo: 'comunicado_enviado',
-        descricao: descricaoComunicado,
+        descricao: `[${ordinal} comunicação] ${descricaoComunicado}`,
         canal,
       }])
     } catch {
       // historico não crítico — não interrompe o fluxo
     }
-    toast.success('Comunicação registrada!')
+    toast.success(`${ordinal} comunicação registrada! Follow-up agendado para 30 dias.`)
     setComunicandoItem(null)
     load()
   }
@@ -391,7 +400,7 @@ function CertidoesPage() {
                         {(i.pendencia_status || 'nenhuma') === 'impossivel_renovar' && i.comunicado_em && (
                           <button onClick={() => setComunicandoItem(i)} title={`Comunicado para ${i.comunicado_para || '?'} em ${new Date(i.comunicado_em).toLocaleDateString('pt-BR')}`}
                             className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-[9px] font-black transition-all hover:bg-green-200">
-                            ✓ Comunicado
+                            ✓ Comunicado{(i.comunicado_count || 0) > 1 ? ` (${i.comunicado_count}×)` : ''}
                           </button>
                         )}
                         {/* Renovar */}
@@ -672,16 +681,22 @@ Solicitamos verificação e providências junto ao cliente para regularização.
         {/* Header */}
         <div className="flex items-start justify-between p-6 pb-4 border-b border-slate-100">
           <div>
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
               <span className="text-[9px] font-black uppercase tracking-widest text-violet-600 bg-violet-50 border border-violet-200 px-2 py-0.5 rounded">Comunicado</span>
               <span className="text-[9px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded">{esfera}</span>
               {jaComunicado && <span className="text-[9px] font-black uppercase tracking-widest text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded">✓ Já registrado</span>}
+              {(item.comunicado_count || 0) > 0 && (
+                <span className="text-[9px] font-black uppercase tracking-widest text-orange-600 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded">
+                  {item.comunicado_count}× comunicado
+                </span>
+              )}
             </div>
             <h2 className="text-lg font-bold text-slate-900">{empresa}</h2>
             <p className="text-xs text-slate-500 mt-0.5">{item.tipo} · {item.orgao_emissor} · vence {dataVenc}</p>
             {jaComunicado && (
               <p className="text-xs text-green-600 mt-1">
-                Comunicado para <strong>{item.comunicado_para}</strong> via {item.comunicado_canal} em {new Date(item.comunicado_em).toLocaleDateString('pt-BR')}
+                Último comunicado para <strong>{item.comunicado_para}</strong> via {item.comunicado_canal} em {new Date(item.comunicado_em).toLocaleDateString('pt-BR')}
+                {item.followup_em && <span className="text-slate-400 ml-1">· follow-up em {new Date(item.followup_em + 'T00:00:00').toLocaleDateString('pt-BR')}</span>}
               </p>
             )}
           </div>

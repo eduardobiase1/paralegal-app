@@ -475,6 +475,7 @@ export default function BriefingPage() {
       const orgEmpresaIds = (orgEmpresas || []).map(e => e.id)
 
       // Passo 2: buscar documentos filtrando pelos IDs das empresas do org
+      const hoje = new Date().toISOString().slice(0, 10)
       const [
         { data: processos },
         { data: certidoes },
@@ -483,6 +484,7 @@ export default function BriefingPage() {
         { data: certificados },
         { data: empComCert },
         { data: empComAlvara },
+        { data: followups },
       ] = await Promise.all([
         orgEmpresaIds.length === 0 ? Promise.resolve({ data: [] }) :
         supabase.from('processos_societarios')
@@ -513,6 +515,12 @@ export default function BriefingPage() {
         supabase.from('certidoes').select('empresa_id').in('empresa_id', orgEmpresaIds),
         orgEmpresaIds.length === 0 ? Promise.resolve({ data: [] }) :
         supabase.from('alvaras').select('empresa_id').in('empresa_id', orgEmpresaIds),
+        orgEmpresaIds.length === 0 ? Promise.resolve({ data: [] }) :
+        supabase.from('certidoes')
+          .select('id, tipo, orgao_emissor, data_vencimento, comunicado_em, comunicado_para, comunicado_count, followup_em, empresa_id, empresa:empresas(razao_social)')
+          .in('empresa_id', orgEmpresaIds)
+          .not('followup_em', 'is', null)
+          .lte('followup_em', hoje),
       ])
 
       const result: Record<Tier, WorkItem[]> = { critico: [], urgente: [], atencao: [], controle: [] }
@@ -533,6 +541,23 @@ export default function BriefingPage() {
           detalhe: `${dias}d parado`,
           detalheColor: tier === 'critico' ? 'red' : tier === 'urgente' ? 'orange' : 'amber',
           score: tier === 'critico' ? dias * 6 : tier === 'urgente' ? dias * 4 : dias * 2,
+        })
+      }
+
+      for (const f of followups || []) {
+        const diasDesdeComun = f.comunicado_em
+          ? Math.round((Date.now() - new Date(f.comunicado_em).getTime()) / 86_400_000)
+          : 30
+        const ordinal = (f.comunicado_count || 1) === 1 ? '1ª' : (f.comunicado_count || 1) === 2 ? '2ª' : `${f.comunicado_count}ª`
+        result['critico'].push({
+          key: `followup-${f.id}`, tier: 'critico', icon: <IcoCertidao />,
+          badge: '⏰ Follow-up',
+          empresaNome: (f as any).empresa?.razao_social || '—', empresaId: f.empresa_id || '',
+          href: `/certidoes?empresa=${f.empresa_id}`,
+          descricao: `${f.tipo || 'Certidão'} · ${f.orgao_emissor || ''} · ${ordinal} comunicação`,
+          detalhe: `sem retorno há ${diasDesdeComun}d`,
+          detalheColor: 'red',
+          score: 500 + diasDesdeComun,
         })
       }
 
