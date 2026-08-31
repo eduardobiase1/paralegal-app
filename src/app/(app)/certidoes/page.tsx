@@ -641,7 +641,7 @@ function ComunicadoModal({ item, orgName, onClose, onRegistrar }: {
 
   const textoCliente = `Prezado(a) cliente, ${sauda}! Tudo bem?
 
-Segue em anexo o relatório de Pendências em aberto da empresa ${empresaMaius} que está impossibilitando de renovar a certidão negativa de débitos ${esfera}.${obsLine}
+Segue em anexo o relatório de Pendências em aberto da empresa ${empresaMaius} que está impossibilitando de renovar a certidão negativa de débitos ${esfera}.
 
 Para regularizar, entre em contato ${artigoDepto} ${deptoTexto}, que ${verbo} junto ao(à) ${item.orgao_emissor} e encaminhará o boleto ou guia atualizada para quitação.
 
