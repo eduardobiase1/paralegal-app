@@ -10,8 +10,8 @@ const DIAS_PT  = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quint
 const MESES_PT = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro']
 
 function daysRemaining(d: string) {
-  const a = new Date(d); a.setHours(0,0,0,0)
-  const b = new Date();  b.setHours(0,0,0,0)
+  const a = new Date(d + 'T00:00:00'); a.setHours(0,0,0,0)
+  const b = new Date();                b.setHours(0,0,0,0)
   return Math.round((a.getTime() - b.getTime()) / 86_400_000)
 }
 function daysSinceMs(ms: number) {
