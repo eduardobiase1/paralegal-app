@@ -77,7 +77,7 @@ function CertidoesPage() {
   useEffect(() => {
     if (!empresaFiltro) { setEmpresaDetalhe(null); return }
     supabase.from('empresas')
-      .select('id, razao_social, cnpj, situacao, status, natureza_juridica, data_abertura, municipio, uf, bairro, cep')
+      .select('id, razao_social, cnpj, situacao, status, natureza_juridica, data_abertura, municipio, uf, bairro, cep, logradouro, numero, complemento, inscricao_estadual, inscricao_municipal, email, telefone, telefone2, codigo')
       .eq('id', empresaFiltro)
       .single()
       .then(({ data }) => setEmpresaDetalhe(data || null))
@@ -279,24 +279,33 @@ function CertidoesPage() {
             <span className="text-xs text-slate-500 font-medium truncate">{empresaDetalhe.razao_social}</span>
           </div>
           {/* Dados */}
-          <div className="px-5 py-4 flex flex-wrap gap-6 items-start">
-            <div className="flex-1 min-w-[200px]">
-              <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                <h2 className="text-base font-black text-slate-900 tracking-tight">{empresaDetalhe.razao_social}</h2>
-                {(empresaDetalhe.situacao || empresaDetalhe.status) && (
-                  <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${
-                    (empresaDetalhe.situacao || empresaDetalhe.status) === 'Ativa' || (empresaDetalhe.situacao || empresaDetalhe.status) === 'ativa'
-                      ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
-                  }`}>
-                    {empresaDetalhe.situacao || empresaDetalhe.status}
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-slate-400 font-mono">{empresaDetalhe.cnpj ? '********' + empresaDetalhe.cnpj.slice(8) : '—'}</p>
+          <div className="px-5 py-4 space-y-4">
+            {/* Nome + status */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-base font-black text-slate-900 tracking-tight">{empresaDetalhe.razao_social}</h2>
+              {(empresaDetalhe.situacao || empresaDetalhe.status) && (
+                <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${
+                  ['ativa','Ativa'].includes(empresaDetalhe.situacao || empresaDetalhe.status)
+                    ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                }`}>
+                  {empresaDetalhe.situacao || empresaDetalhe.status}
+                </span>
+              )}
+              {empresaDetalhe.codigo && (
+                <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">#{empresaDetalhe.codigo}</span>
+              )}
             </div>
-            <div className="flex gap-8 flex-wrap text-xs">
-              {empresaDetalhe.natureza_juridica && (
+
+            {/* Grid de campos */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-x-6 gap-y-3 text-xs">
+              {empresaDetalhe.cnpj && (
                 <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">CNPJ</p>
+                  <p className="font-mono font-semibold text-slate-800">{empresaDetalhe.cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5')}</p>
+                </div>
+              )}
+              {empresaDetalhe.natureza_juridica && (
+                <div className="col-span-2">
                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Natureza Jurídica</p>
                   <p className="font-semibold text-slate-700">{empresaDetalhe.natureza_juridica}</p>
                 </div>
@@ -304,23 +313,40 @@ function CertidoesPage() {
               {empresaDetalhe.data_abertura && (
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Data de Abertura</p>
+                  <p className="font-semibold text-slate-700">{new Date(empresaDetalhe.data_abertura + 'T00:00:00').toLocaleDateString('pt-BR')}</p>
+                </div>
+              )}
+              {empresaDetalhe.inscricao_estadual && (
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Insc. Estadual</p>
+                  <p className="font-semibold text-slate-700">{empresaDetalhe.inscricao_estadual}</p>
+                </div>
+              )}
+              {empresaDetalhe.inscricao_municipal && (
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Insc. Municipal</p>
+                  <p className="font-semibold text-slate-700">{empresaDetalhe.inscricao_municipal}</p>
+                </div>
+              )}
+              {(empresaDetalhe.logradouro || empresaDetalhe.municipio) && (
+                <div className="col-span-2">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Endereço</p>
                   <p className="font-semibold text-slate-700">
-                    {new Date(empresaDetalhe.data_abertura + 'T00:00:00').toLocaleDateString('pt-BR')}
+                    {[empresaDetalhe.logradouro, empresaDetalhe.numero, empresaDetalhe.complemento, empresaDetalhe.bairro].filter(Boolean).join(', ')}
+                    {empresaDetalhe.municipio && <span className="text-slate-500"> · {[empresaDetalhe.municipio, empresaDetalhe.uf].filter(Boolean).join('/')} {empresaDetalhe.cep}</span>}
                   </p>
                 </div>
               )}
-              {(empresaDetalhe.municipio || empresaDetalhe.uf) && (
+              {empresaDetalhe.email && (
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Município</p>
-                  <p className="font-semibold text-slate-700">
-                    {[empresaDetalhe.municipio, empresaDetalhe.uf].filter(Boolean).join(' · ')}
-                  </p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">E-mail</p>
+                  <p className="font-semibold text-slate-700 truncate">{empresaDetalhe.email}</p>
                 </div>
               )}
-              {empresaDetalhe.cep && (
+              {empresaDetalhe.telefone && (
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">CEP</p>
-                  <p className="font-semibold text-slate-700">{empresaDetalhe.cep}</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Telefone</p>
+                  <p className="font-semibold text-slate-700">{empresaDetalhe.telefone}{empresaDetalhe.telefone2 ? ` · ${empresaDetalhe.telefone2}` : ''}</p>
                 </div>
               )}
             </div>
