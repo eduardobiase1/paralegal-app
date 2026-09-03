@@ -62,6 +62,7 @@ function CertidoesPage() {
   const [comunicandoItem, setComunicandoItem] = useState<any | null>(null)
 
   const [form, setForm] = useState<typeof EMPTY_FORM>({ ...EMPTY_FORM })
+  const [empresaDetalhe, setEmpresaDetalhe] = useState<any | null>(null)
 
   const load = useCallback(async () => {
     const [res, empRes] = await Promise.all([
@@ -72,6 +73,15 @@ function CertidoesPage() {
     setEmpresas(empRes.data || [])
     setLoading(false)
   }, [supabase])
+
+  useEffect(() => {
+    if (!empresaFiltro) { setEmpresaDetalhe(null); return }
+    supabase.from('empresas')
+      .select('id, razao_social, cnpj, situacao, status, natureza_juridica, data_abertura, municipio, uf, bairro, cep')
+      .eq('id', empresaFiltro)
+      .single()
+      .then(({ data }) => setEmpresaDetalhe(data || null))
+  }, [supabase, empresaFiltro])
 
   useEffect(() => { load() }, [load])
 
@@ -254,14 +264,67 @@ function CertidoesPage() {
     <div className="p-4 md:p-8 space-y-4 bg-slate-50 min-h-screen font-sans">
 
       {/* Banner empresa filtrada */}
-      {empresaFiltro && (
-        <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-2xl px-5 py-3">
-          <Link href={`/empresas/${empresaFiltro}`} className="flex items-center gap-1.5 text-blue-600 hover:text-blue-800 text-sm font-semibold transition-colors">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg>
-            Voltar para empresa
-          </Link>
-          <span className="text-blue-300">|</span>
-          <span className="text-sm text-blue-800 font-bold truncate">{empresaNome}</span>
+      {empresaFiltro && empresaDetalhe && (
+        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+          {/* Linha de volta */}
+          <div className="flex items-center gap-2 px-5 py-2.5 bg-slate-50 border-b border-slate-100">
+            <Link href={`/empresas/${empresaFiltro}`}
+              className="flex items-center gap-1.5 text-slate-500 hover:text-blue-600 text-xs font-semibold transition-colors">
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/>
+              </svg>
+              Voltar para empresa
+            </Link>
+            <span className="text-slate-300">|</span>
+            <span className="text-xs text-slate-500 font-medium truncate">{empresaDetalhe.razao_social}</span>
+          </div>
+          {/* Dados */}
+          <div className="px-5 py-4 flex flex-wrap gap-6 items-start">
+            <div className="flex-1 min-w-[200px]">
+              <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                <h2 className="text-base font-black text-slate-900 tracking-tight">{empresaDetalhe.razao_social}</h2>
+                {(empresaDetalhe.situacao || empresaDetalhe.status) && (
+                  <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${
+                    (empresaDetalhe.situacao || empresaDetalhe.status) === 'Ativa' || (empresaDetalhe.situacao || empresaDetalhe.status) === 'ativa'
+                      ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                  }`}>
+                    {empresaDetalhe.situacao || empresaDetalhe.status}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-400 font-mono">{empresaDetalhe.cnpj ? '********' + empresaDetalhe.cnpj.slice(8) : '—'}</p>
+            </div>
+            <div className="flex gap-8 flex-wrap text-xs">
+              {empresaDetalhe.natureza_juridica && (
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Natureza Jurídica</p>
+                  <p className="font-semibold text-slate-700">{empresaDetalhe.natureza_juridica}</p>
+                </div>
+              )}
+              {empresaDetalhe.data_abertura && (
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Data de Abertura</p>
+                  <p className="font-semibold text-slate-700">
+                    {new Date(empresaDetalhe.data_abertura + 'T00:00:00').toLocaleDateString('pt-BR')}
+                  </p>
+                </div>
+              )}
+              {(empresaDetalhe.municipio || empresaDetalhe.uf) && (
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Município</p>
+                  <p className="font-semibold text-slate-700">
+                    {[empresaDetalhe.municipio, empresaDetalhe.uf].filter(Boolean).join(' · ')}
+                  </p>
+                </div>
+              )}
+              {empresaDetalhe.cep && (
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">CEP</p>
+                  <p className="font-semibold text-slate-700">{empresaDetalhe.cep}</p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
