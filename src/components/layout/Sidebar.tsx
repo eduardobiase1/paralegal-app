@@ -71,6 +71,7 @@ export default function Sidebar({ isOpen = true, onToggle, isDark = false, onTog
   const [savingOrg, setSavingOrg] = useState(false)
   const { orgName, orgId, isAdmin, role, allOrgs } = useOrg()
   const isViewer = role === 'viewer'
+  const isFinanceiro = role === 'financeiro'
 
   async function handleLogout() {
     setLoggingOut(true)
@@ -124,10 +125,15 @@ export default function Sidebar({ isOpen = true, onToggle, isDark = false, onTog
         )}
       </div>
 
-      {/* Viewer badge */}
+      {/* Role badges */}
       {isViewer && (
         <div className="px-4 py-2 bg-amber-500/10 border-b border-amber-500/20 flex items-center gap-2">
           <span className="text-[9px] font-black uppercase tracking-widest text-amber-400">👁 Modo Visualização</span>
+        </div>
+      )}
+      {isFinanceiro && (
+        <div className="px-4 py-2 bg-emerald-500/10 border-b border-emerald-500/20 flex items-center gap-2">
+          <span className="text-[9px] font-black uppercase tracking-widest text-emerald-400">💰 Acesso Financeiro</span>
         </div>
       )}
 
@@ -199,6 +205,8 @@ export default function Sidebar({ isOpen = true, onToggle, isDark = false, onTog
             ...section,
             items: isViewer
               ? section.items.filter(item => item.href === '/societario')
+              : isFinanceiro
+              ? section.items.filter(item => item.href === '/financeiro')
               : section.items,
           }))
           .filter(section => section.items.length > 0)
@@ -234,7 +242,7 @@ export default function Sidebar({ isOpen = true, onToggle, isDark = false, onTog
 
       {/* Footer */}
       <div className="border-t border-white/[0.06] px-3 py-3 space-y-0.5">
-        {!isViewer && (
+        {!isViewer && !isFinanceiro && (
           <Link
             href="/usuarios"
             className={cn(

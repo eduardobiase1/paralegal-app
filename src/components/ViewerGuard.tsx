@@ -19,6 +19,9 @@ export default function ViewerGuard() {
     if (role === 'viewer' && !pathname.startsWith('/societario')) {
       router.replace('/societario')
     }
+    if (role === 'financeiro' && !pathname.startsWith('/financeiro')) {
+      router.replace('/financeiro')
+    }
   }, [role, pathname, router])
 
   return null

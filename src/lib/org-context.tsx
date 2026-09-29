@@ -2,7 +2,7 @@
 
 import { createContext, useContext, ReactNode } from 'react'
 
-export type OrgRole = 'admin' | 'operador' | 'viewer'
+export type OrgRole = 'admin' | 'operador' | 'viewer' | 'financeiro'
 
 export interface OrgInfo {
   id: string
