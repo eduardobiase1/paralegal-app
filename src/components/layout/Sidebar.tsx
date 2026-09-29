@@ -21,7 +21,7 @@ const navigation = [
       { href: '/visao-geral',  label: 'Visão Geral',    icon: VisaoGeralIcon },
       { href: '/dashboard',    label: 'Dashboard',       icon: HomeIcon },
       { href: '/empresas',     label: 'Empresas',        icon: BuildingIcon },
-      { href: '/financeiro',   label: 'Financeiro PRO',  icon: CurrencyDollarIcon },
+      { href: '/financeiro',   label: 'Financeiro',  icon: CurrencyDollarIcon },
     ],
   },
   {
@@ -55,12 +55,6 @@ const navigation = [
     label: 'Produtividade',
     items: [
       { href: '/produtividade', label: 'Registro de Atividades', icon: ProdutividadeIcon },
-    ],
-  },
-  {
-    label: 'B&M Soluções',
-    items: [
-      { href: '/financeiro-bm', label: 'Financeiro B&M', icon: FinanceiroBMIcon },
     ],
   },
 ]

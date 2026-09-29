@@ -5,7 +5,7 @@
 
 CREATE TABLE IF NOT EXISTS public.historico_empresa (
   id          uuid         DEFAULT gen_random_uuid() PRIMARY KEY,
-  org_id      uuid         NOT NULL REFERENCES public.orgs(id) ON DELETE CASCADE,
+  org_id      uuid         NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
   empresa_id  uuid         NOT NULL REFERENCES public.empresas(id) ON DELETE CASCADE,
   tipo        text         NOT NULL,
   descricao   text         NOT NULL,
@@ -21,12 +21,12 @@ ALTER TABLE public.historico_empresa ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "org members select historico"
   ON public.historico_empresa FOR SELECT
-  USING (org_id = (SELECT org_id FROM public.profiles WHERE id = auth.uid()));
+  USING (org_id IN (SELECT get_my_org_ids()));
 
 CREATE POLICY "org members insert historico"
   ON public.historico_empresa FOR INSERT
-  WITH CHECK (org_id = (SELECT org_id FROM public.profiles WHERE id = auth.uid()));
+  WITH CHECK (org_id IN (SELECT get_my_org_ids()));
 
 CREATE POLICY "org members delete historico"
   ON public.historico_empresa FOR DELETE
-  USING (org_id = (SELECT org_id FROM public.profiles WHERE id = auth.uid()));
+  USING (org_id IN (SELECT get_my_org_ids()));
