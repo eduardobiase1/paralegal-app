@@ -8,6 +8,11 @@ import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { useOrg } from '@/lib/org-context'
 
+async function switchOrg(orgId: string) {
+  await fetch('/api/switch-org', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orgId }) })
+  window.location.href = '/briefing'
+}
+
 const navigation = [
   {
     label: 'Principal',
@@ -52,6 +57,12 @@ const navigation = [
       { href: '/produtividade', label: 'Registro de Atividades', icon: ProdutividadeIcon },
     ],
   },
+  {
+    label: 'B&M Soluções',
+    items: [
+      { href: '/financeiro-bm', label: 'Financeiro B&M', icon: FinanceiroBMIcon },
+    ],
+  },
 ]
 
 export default function Sidebar({ isOpen = true, onToggle, isDark = false, onToggleDark }: {
@@ -64,7 +75,7 @@ export default function Sidebar({ isOpen = true, onToggle, isDark = false, onTog
   const [editingOrg, setEditingOrg] = useState(false)
   const [orgNameInput, setOrgNameInput] = useState('')
   const [savingOrg, setSavingOrg] = useState(false)
-  const { orgName, orgId, isAdmin, role } = useOrg()
+  const { orgName, orgId, isAdmin, role, allOrgs } = useOrg()
   const isViewer = role === 'viewer'
 
   async function handleLogout() {
@@ -126,7 +137,7 @@ export default function Sidebar({ isOpen = true, onToggle, isDark = false, onTog
         </div>
       )}
 
-      {/* Org Badge */}
+      {/* Org Badge + Switcher */}
       <div className="px-4 py-3 border-b border-white/[0.06]">
         {editingOrg ? (
           <div className="flex gap-1">
@@ -142,6 +153,36 @@ export default function Sidebar({ isOpen = true, onToggle, isDark = false, onTog
             </button>
             <button onClick={() => setEditingOrg(false)} className="text-gray-500 text-xs px-1 hover:text-gray-300">✕</button>
           </div>
+        ) : allOrgs.length > 1 ? (
+          <div className="space-y-1">
+            <p className="text-[9px] font-black uppercase tracking-widest text-gray-600">Organização ativa</p>
+            <div className="flex flex-col gap-0.5">
+              {allOrgs.map(o => (
+                <button
+                  key={o.id}
+                  onClick={() => o.id !== orgId && switchOrg(o.id)}
+                  className={cn(
+                    'flex items-center gap-2 px-2 py-1.5 rounded-lg text-left transition-all w-full',
+                    o.id === orgId
+                      ? 'bg-amber-500/10 border border-amber-500/20'
+                      : 'hover:bg-white/5 border border-transparent'
+                  )}
+                >
+                  <div className={cn('w-1.5 h-1.5 rounded-full flex-shrink-0', o.id === orgId ? 'bg-green-400' : 'bg-gray-600')} />
+                  <p className={cn('text-[11px] font-medium truncate flex-1 min-w-0', o.id === orgId ? 'text-amber-400' : 'text-gray-500')}>
+                    {o.name}
+                  </p>
+                  {o.id === orgId && isAdmin && (
+                    <button
+                      onClick={e => { e.stopPropagation(); setOrgNameInput(orgName); setEditingOrg(true) }}
+                      className="text-gray-600 hover:text-amber-400 transition-all text-[10px]"
+                      title="Editar nome"
+                    >✎</button>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
         ) : (
           <div className="flex items-center gap-2 group">
             <div className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0" />
@@ -151,9 +192,7 @@ export default function Sidebar({ isOpen = true, onToggle, isDark = false, onTog
                 onClick={() => { setOrgNameInput(orgName); setEditingOrg(true) }}
                 className="opacity-0 group-hover:opacity-100 text-gray-600 hover:text-amber-400 transition-all text-[10px]"
                 title="Editar nome da organização"
-              >
-                ✎
-              </button>
+              >✎</button>
             )}
           </div>
         )}
@@ -400,6 +439,14 @@ function ProdutividadeIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+    </svg>
+  )
+}
+
+function FinanceiroBMIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
     </svg>
   )
 }
