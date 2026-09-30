@@ -195,10 +195,21 @@ export default function FinanceiroPage() {
     if (contaSel) fetchExtrato(contaSel)
   }
 
+  async function estornarR(r: any) {
+    if (!confirm('Estornar recebimento? O lançamento no extrato será removido.')) return
+    await supabase.from('bm_contas_receber').update({ status: 'aguardando', data_pagamento: null, valor_pago: null }).eq('id', r.id)
+    await supabase.from('bm_extrato').delete().eq('origem', 'contas_receber').eq('origem_id', r.id)
+    toast.success('Recebimento estornado.')
+    fetchAll()
+    if (contaSel) fetchExtrato(contaSel)
+  }
+
   async function deleteR(id: string) {
-    if (!confirm('Excluir este lançamento?')) return
+    if (!confirm('Excluir este lançamento? O extrato também será atualizado.')) return
+    await supabase.from('bm_extrato').delete().eq('origem', 'contas_receber').eq('origem_id', id)
     await supabase.from('bm_contas_receber').delete().eq('id', id)
     setReceber(p => p.filter(x => x.id !== id))
+    if (contaSel) fetchExtrato(contaSel)
     toast.success('Excluído.')
   }
 
@@ -252,10 +263,21 @@ export default function FinanceiroPage() {
     if (contaSel) fetchExtrato(contaSel)
   }
 
+  async function estornarP(p: any) {
+    if (!confirm('Estornar pagamento? O lançamento no extrato será removido.')) return
+    await supabase.from('bm_contas_pagar').update({ status: 'a_pagar', data_pagamento: null, valor_pago: null }).eq('id', p.id)
+    await supabase.from('bm_extrato').delete().eq('origem', 'contas_pagar').eq('origem_id', p.id)
+    toast.success('Pagamento estornado.')
+    fetchAll()
+    if (contaSel) fetchExtrato(contaSel)
+  }
+
   async function deleteP(id: string) {
-    if (!confirm('Excluir este lançamento?')) return
+    if (!confirm('Excluir este lançamento? O extrato também será atualizado.')) return
+    await supabase.from('bm_extrato').delete().eq('origem', 'contas_pagar').eq('origem_id', id)
     await supabase.from('bm_contas_pagar').delete().eq('id', id)
     setPagar(p => p.filter(x => x.id !== id))
+    if (contaSel) fetchExtrato(contaSel)
     toast.success('Excluído.')
   }
 
@@ -592,6 +614,7 @@ export default function FinanceiroPage() {
                         <td className="px-5 py-3.5">
                           <div className="flex items-center gap-3">
                             {r.status === 'aguardando' && <button onClick={() => receberPago(r)} className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 whitespace-nowrap">Recebido ✓</button>}
+                            {r.status === 'pago' && <button onClick={() => estornarR(r)} className="text-xs font-semibold text-amber-600 hover:text-amber-700 whitespace-nowrap">Estornar</button>}
                             <button onClick={() => {
                               setEditId(r.id)
                               setFormR({ cliente_id: r.cliente_id || '', descricao: r.descricao || '', valor: String(r.valor || ''), data_vencimento: r.data_vencimento || '', forma_pagamento: r.forma_pagamento || 'pix', numero_nf: r.numero_nf || '', parcela_numero: String(r.parcela_numero || 1), parcela_total: String(r.parcela_total || 1), observacoes: r.observacoes || '', categoria_id: r.categoria_id || '' })
@@ -650,6 +673,7 @@ export default function FinanceiroPage() {
                         <td className="px-5 py-3.5">
                           <div className="flex items-center gap-3">
                             {p.status === 'a_pagar' && <button onClick={() => pagarPago(p)} className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 whitespace-nowrap">Pago ✓</button>}
+                            {p.status === 'pago' && <button onClick={() => estornarP(p)} className="text-xs font-semibold text-amber-600 hover:text-amber-700 whitespace-nowrap">Estornar</button>}
                             <button onClick={() => {
                               setEditId(p.id)
                               setFormP({ fornecedor_id: p.fornecedor_id || '', categoria_id: p.categoria_id || '', centro_custo_id: p.centro_custo_id || '', descricao: p.descricao || '', valor: String(p.valor || ''), data_vencimento: p.data_vencimento || '', forma_pagamento: p.forma_pagamento || 'transferencia', recorrente: p.recorrente || false, observacoes: p.observacoes || '' })
