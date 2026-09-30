@@ -728,6 +728,7 @@ export default function FinanceiroPage() {
                         <th className="px-5 py-3 text-right text-xs font-semibold text-slate-400">Débito</th>
                         <th className="px-5 py-3 text-right text-xs font-semibold text-slate-400">Crédito</th>
                         <th className="px-5 py-3 text-right text-xs font-semibold text-slate-400">Saldo</th>
+                        <th className="px-5 py-3" />
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
@@ -752,6 +753,14 @@ export default function FinanceiroPage() {
                           <td className="px-5 py-3.5 text-sm font-semibold text-red-600 text-right tabular-nums">{e.tipo === 'debito' ? fmt(e.valor) : ''}</td>
                           <td className="px-5 py-3.5 text-sm font-semibold text-emerald-600 text-right tabular-nums">{e.tipo === 'credito' ? fmt(e.valor) : ''}</td>
                           <td className={`px-5 py-3.5 text-sm font-bold text-right tabular-nums ${e.saldo >= 0 ? 'text-slate-800' : 'text-red-600'}`}>{fmt(e.saldo)}</td>
+                          <td className="px-5 py-3.5">
+                            <button onClick={async () => {
+                              if (!confirm('Excluir este lançamento do extrato?')) return
+                              await supabase.from('bm_extrato').delete().eq('id', e.id)
+                              fetchExtrato(contaSel)
+                              toast.success('Excluído.')
+                            }} className="text-xs font-semibold text-slate-300 hover:text-red-500 transition-colors">Excluir</button>
+                          </td>
                         </tr>
                       ))}
                       {extratoSaldo.length === 0 && (
