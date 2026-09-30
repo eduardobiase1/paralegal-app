@@ -1,12 +1,20 @@
 'use client'
 
 import { useEffect, useState, useCallback, useRef } from 'react'
+import * as XLSX from 'xlsx'
 import { createClient } from '@/lib/supabase/client'
 import { useOrg } from '@/lib/org-context'
 import toast from 'react-hot-toast'
 
-type MainTab = 'dashboard' | 'receber' | 'pagar' | 'extrato' | 'config'
+type MainTab = 'dashboard' | 'receber' | 'pagar' | 'extrato' | 'config' | 'relatorios'
 type ConfigTab = 'clientes' | 'fornecedores' | 'categorias' | 'centros' | 'contas'
+type RelTipo = 'dre' | 'inadimplencia' | 'receber' | 'pagar'
+const REL_TIPOS: { id: RelTipo; label: string }[] = [
+  { id: 'dre',           label: 'DRE' },
+  { id: 'inadimplencia', label: 'Inadimplência' },
+  { id: 'receber',       label: 'A Receber' },
+  { id: 'pagar',         label: 'A Pagar' },
+]
 
 const FORMA_LABELS: Record<string, string> = {
   boleto: 'Boleto', pix: 'PIX', nf: 'Nota Fiscal',
@@ -53,6 +61,21 @@ const emptyP = {
   fornecedor_id: '', categoria_id: '', centro_custo_id: '', descricao: '',
   valor: '', data_vencimento: '', forma_pagamento: 'transferencia',
   recorrente: false, observacoes: '',
+}
+
+// ── PDF / Excel helpers ───────────────────────────────────────────────────────
+function printPDF(title: string, bodyHtml: string) {
+  const w = window.open('', '_blank', 'width=900,height=700')
+  if (!w) { alert('Permita popups neste site para exportar PDF.'); return }
+  w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + title + '</title><style>*{box-sizing:border-box}body{font-family:Arial,sans-serif;font-size:11px;color:#1e293b;margin:30px}h1{font-size:17px;font-weight:bold;margin:0 0 4px}p.sub{color:#64748b;font-size:10px;margin:0 0 20px}table{width:100%;border-collapse:collapse;margin-top:8px}th{background:#f8fafc;border-bottom:2px solid #e2e8f0;padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.05em}td{border-bottom:1px solid #f1f5f9;padding:7px 10px}.right{text-align:right}.total td{font-weight:bold;border-top:2px solid #e2e8f0}@media print{@page{margin:15mm}}</style></head><body>' + bodyHtml + '<script>setTimeout(function(){window.print()},400)<\/script></body></html>')
+  w.document.close()
+}
+
+function exportExcel(rows: any[][], filename: string) {
+  const ws = XLSX.utils.aoa_to_sheet(rows)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Relatório')
+  XLSX.writeFile(wb, filename + '.xlsx')
 }
 
 // ── OFX / CSV parsers ────────────────────────────────────────────────────────
@@ -171,6 +194,8 @@ export default function FinanceiroPage() {
   const [ofxTxns, setOfxTxns] = useState<any[]>([])
   const [selOFX, setSelOFX] = useState<Set<string>>(new Set())
   const fileRef = useRef<HTMLInputElement>(null)
+  const [relPeriodo, setRelPeriodo] = useState(new Date().toISOString().slice(0, 7))
+  const [relTipo, setRelTipo] = useState<RelTipo>('dre')
   const [editId, setEditId] = useState<string | null>(null)
   const [formR, setFormR] = useState({ ...emptyR })
   const [formP, setFormP] = useState({ ...emptyP })
@@ -459,12 +484,112 @@ export default function FinanceiroPage() {
     return { dias, r, p, resultado: r - p }
   })
 
+  // ── Relatórios ───────────────────────────────────────────────────────────────
+  const dreRec = receber.filter(r => r.status === 'pago' && r.data_pagamento?.startsWith(relPeriodo))
+  const drePag = pagar.filter(p => p.status === 'pago' && p.data_pagamento?.startsWith(relPeriodo))
+  const groupCat = (arr: any[], vFn: (x: any) => number) =>
+    arr.reduce((acc: Record<string, number>, x) => { const k = x.categoria?.nome || 'Sem categoria'; acc[k] = (acc[k] || 0) + vFn(x); return acc }, {})
+  const recByCat = groupCat(dreRec, r => r.valor_pago || r.valor || 0)
+  const pagByCat = groupCat(drePag, p => p.valor_pago || p.valor || 0)
+  const totalRec = Object.values(recByCat).reduce((s, v) => s + v, 0)
+  const totalPag = Object.values(pagByCat).reduce((s, v) => s + v, 0)
+  const dreResultado = totalRec - totalPag
+  const inadimplentes = [...receber.filter(r => r.status === 'aguardando' && r.data_vencimento < hj)]
+    .sort((a, b) => a.data_vencimento.localeCompare(b.data_vencimento))
+
+  function handleExportPDF() {
+    const [ano, mes] = relPeriodo.split('-')
+    const label = MESES_PT[parseInt(mes) - 1] + '/' + ano
+    const hoje = new Date().toLocaleDateString('pt-BR')
+    if (relTipo === 'dre') {
+      const rR = Object.entries(recByCat).map(([c, v]) => '<tr><td style="padding-left:22px">' + c + '</td><td class="right">' + fmt(v) + '</td></tr>').join('')
+      const rP = Object.entries(pagByCat).map(([c, v]) => '<tr><td style="padding-left:22px">' + c + '</td><td class="right">' + fmt(v) + '</td></tr>').join('')
+      printPDF('DRE ' + label,
+        '<h1>DRE — Demonstração de Resultado</h1>' +
+        '<p class="sub">' + orgName + ' &middot; Período: ' + label + ' &middot; Gerado em ' + hoje + '</p>' +
+        '<table>' +
+          '<tr style="background:#f0fdf4"><td colspan="2" style="font-weight:bold;color:#15803d;padding:8px 10px">RECEITAS</td></tr>' +
+          (rR || '<tr><td colspan="2" style="color:#94a3b8;padding:6px 10px 6px 22px">Nenhuma receita no período</td></tr>') +
+          '<tr class="total"><td>Total Receitas</td><td class="right">' + fmt(totalRec) + '</td></tr>' +
+          '<tr><td colspan="2" style="height:10px"></td></tr>' +
+          '<tr style="background:#fff1f2"><td colspan="2" style="font-weight:bold;color:#be123c;padding:8px 10px">DESPESAS</td></tr>' +
+          (rP || '<tr><td colspan="2" style="color:#94a3b8;padding:6px 10px 6px 22px">Nenhuma despesa no período</td></tr>') +
+          '<tr class="total"><td>Total Despesas</td><td class="right">' + fmt(totalPag) + '</td></tr>' +
+          '<tr><td colspan="2" style="height:10px"></td></tr>' +
+          '<tr style="background:' + (dreResultado >= 0 ? '#f0fdf4' : '#fff1f2') + ';font-size:13px">' +
+            '<td style="font-weight:bold;padding:12px 10px">RESULTADO LÍQUIDO</td>' +
+            '<td class="right" style="font-weight:bold;color:' + (dreResultado >= 0 ? '#15803d' : '#be123c') + ';padding:12px 10px">' + (dreResultado > 0 ? '+' : '') + fmt(dreResultado) + '</td>' +
+          '</tr>' +
+        '</table>'
+      )
+    } else if (relTipo === 'inadimplencia') {
+      const rows = inadimplentes.map(r => { const d = Math.floor((Date.now() - new Date(r.data_vencimento + 'T00:00:00').getTime()) / 86400000); return '<tr><td>' + (r.cliente?.nome || '—') + '</td><td>' + r.descricao + '</td><td>' + fmtDate(r.data_vencimento) + '</td><td class="right">' + fmt(r.valor) + '</td><td class="right">' + d + 'd</td></tr>' }).join('')
+      printPDF('Inadimplência',
+        '<h1>Relatório de Inadimplência</h1>' +
+        '<p class="sub">' + orgName + ' &middot; Gerado em ' + hoje + '</p>' +
+        '<table><tr><th>Cliente</th><th>Descrição</th><th>Vencimento</th><th class="right">Valor</th><th class="right">Atraso</th></tr>' +
+        (rows || '<tr><td colspan="5" style="text-align:center;color:#94a3b8">Nenhum título em atraso.</td></tr>') +
+        '</table><p style="margin-top:16px;font-weight:bold">Total em atraso: ' + fmt(inadimplentes.reduce((s, r) => s + r.valor, 0)) + '</p>'
+      )
+    } else if (relTipo === 'receber') {
+      const rows = receber.map(r => '<tr><td>' + (r.cliente?.nome || '—') + '</td><td>' + r.descricao + '</td><td>' + fmtDate(r.data_vencimento) + '</td><td class="right">' + fmt(r.valor) + '</td><td>' + (STATUS_R[r.status]?.label || r.status) + '</td></tr>').join('')
+      printPDF('A Receber',
+        '<h1>Contas a Receber</h1><p class="sub">' + orgName + ' &middot; Gerado em ' + hoje + '</p>' +
+        '<table><tr><th>Cliente</th><th>Descrição</th><th>Vencimento</th><th class="right">Valor</th><th>Status</th></tr>' + rows + '</table>'
+      )
+    } else {
+      const rows = pagar.map(p => '<tr><td>' + (p.fornecedor?.nome || '—') + '</td><td>' + p.descricao + '</td><td>' + fmtDate(p.data_vencimento) + '</td><td class="right">' + fmt(p.valor) + '</td><td>' + (STATUS_P[p.status]?.label || p.status) + '</td></tr>').join('')
+      printPDF('A Pagar',
+        '<h1>Contas a Pagar</h1><p class="sub">' + orgName + ' &middot; Gerado em ' + hoje + '</p>' +
+        '<table><tr><th>Fornecedor</th><th>Descrição</th><th>Vencimento</th><th class="right">Valor</th><th>Status</th></tr>' + rows + '</table>'
+      )
+    }
+  }
+
+  function handleExportExcel() {
+    const [ano, mes] = relPeriodo.split('-')
+    const label = MESES_PT[parseInt(mes) - 1] + '/' + ano
+    const hoje = new Date().toLocaleDateString('pt-BR')
+    if (relTipo === 'dre') {
+      exportExcel([
+        ['DRE - ' + label + ' - ' + orgName], ['Gerado em ' + hoje], [],
+        ['RECEITAS', ''], ['Categoria', 'Valor (R$)'],
+        ...Object.entries(recByCat).map(([k, v]) => [k, v]),
+        ['Total Receitas', totalRec], [],
+        ['DESPESAS', ''], ['Categoria', 'Valor (R$)'],
+        ...Object.entries(pagByCat).map(([k, v]) => [k, v]),
+        ['Total Despesas', totalPag], [],
+        ['RESULTADO LÍQUIDO', dreResultado],
+      ], 'DRE-' + relPeriodo)
+    } else if (relTipo === 'inadimplencia') {
+      exportExcel([
+        ['Inadimplência - ' + orgName], ['Gerado em ' + hoje], [],
+        ['Cliente', 'Descrição', 'Vencimento', 'Valor (R$)', 'Dias em Atraso'],
+        ...inadimplentes.map(r => { const d = Math.floor((Date.now() - new Date(r.data_vencimento + 'T00:00:00').getTime()) / 86400000); return [r.cliente?.nome || '—', r.descricao, fmtDate(r.data_vencimento), r.valor, d] }),
+        [], ['Total em atraso', '', '', inadimplentes.reduce((s, r) => s + r.valor, 0), ''],
+      ], 'Inadimplencia-' + new Date().toISOString().slice(0, 10))
+    } else if (relTipo === 'receber') {
+      exportExcel([
+        ['A Receber - ' + orgName], ['Gerado em ' + hoje], [],
+        ['Cliente', 'Descrição', 'Vencimento', 'Valor (R$)', 'Status'],
+        ...receber.map(r => [r.cliente?.nome || '—', r.descricao, fmtDate(r.data_vencimento), r.valor, STATUS_R[r.status]?.label || r.status]),
+      ], 'AReceber-' + new Date().toISOString().slice(0, 10))
+    } else {
+      exportExcel([
+        ['A Pagar - ' + orgName], ['Gerado em ' + hoje], [],
+        ['Fornecedor', 'Descrição', 'Vencimento', 'Valor (R$)', 'Status'],
+        ...pagar.map(p => [p.fornecedor?.nome || '—', p.descricao, fmtDate(p.data_vencimento), p.valor, STATUS_P[p.status]?.label || p.status]),
+      ], 'APagar-' + new Date().toISOString().slice(0, 10))
+    }
+  }
+
   const MAIN_TABS: { id: MainTab; label: string }[] = [
-    { id: 'dashboard', label: 'Visão Geral' },
-    { id: 'receber',   label: 'A Receber' },
-    { id: 'pagar',     label: 'A Pagar' },
-    { id: 'extrato',   label: 'Extrato' },
-    { id: 'config',    label: 'Configurações' },
+    { id: 'dashboard',  label: 'Visão Geral' },
+    { id: 'receber',    label: 'A Receber' },
+    { id: 'pagar',      label: 'A Pagar' },
+    { id: 'extrato',    label: 'Extrato' },
+    { id: 'relatorios', label: 'Relatórios' },
+    { id: 'config',     label: 'Configurações' },
   ]
   const CFG_TABS: { id: ConfigTab; label: string }[] = [
     { id: 'clientes',     label: 'Clientes' },
@@ -521,6 +646,18 @@ export default function FinanceiroPage() {
               }} className="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors">
                 + Novo
               </button>
+            )}
+            {tab === 'relatorios' && (
+              <div className="flex gap-2">
+                <button onClick={handleExportPDF}
+                  className="inline-flex items-center gap-2 border border-slate-200 text-slate-700 hover:bg-slate-50 px-4 py-2 rounded-xl text-sm font-semibold transition-colors">
+                  ⬇ PDF
+                </button>
+                <button onClick={handleExportExcel}
+                  className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors shadow-sm">
+                  ⬇ Excel
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -921,6 +1058,203 @@ export default function FinanceiroPage() {
                 </tbody>
               </table>
             </div>
+          </div>
+        )}
+
+        {/* ── RELATÓRIOS ── */}
+        {tab === 'relatorios' && (
+          <div className="space-y-5">
+            {/* Controls */}
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex flex-wrap items-end gap-4">
+              {relTipo === 'dre' && (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1.5">Período</label>
+                  <input type="month" value={relPeriodo} onChange={e => setRelPeriodo(e.target.value)}
+                    className="border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 transition-all" />
+                </div>
+              )}
+              <div className="flex gap-1 bg-slate-100 rounded-xl p-1">
+                {REL_TIPOS.map(t => (
+                  <button key={t.id} onClick={() => setRelTipo(t.id)}
+                    className={'px-4 py-2 rounded-lg text-sm font-semibold transition-all ' + (relTipo === t.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700')}>
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-slate-400 ml-auto self-center">Use os botões PDF / Excel no topo para exportar</p>
+            </div>
+
+            {/* DRE */}
+            {relTipo === 'dre' && (
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-50">
+                  <h2 className="text-sm font-bold text-slate-900">Demonstração de Resultado — DRE</h2>
+                  <p className="text-xs text-slate-400 mt-0.5">{MESES_PT[parseInt(relPeriodo.split('-')[1]) - 1]}/{relPeriodo.split('-')[0]}</p>
+                </div>
+                <div>
+                  <div className="px-6 py-3 bg-emerald-50/40">
+                    <p className="text-xs font-black text-emerald-700 uppercase tracking-widest">Receitas</p>
+                  </div>
+                  {Object.entries(recByCat).map(([cat, val]) => (
+                    <div key={cat} className="px-6 py-3 flex items-center justify-between border-b border-slate-50 hover:bg-slate-50/50">
+                      <span className="text-sm text-slate-600 pl-4">{cat}</span>
+                      <span className="text-sm font-semibold text-slate-800 tabular-nums">{fmt(val)}</span>
+                    </div>
+                  ))}
+                  {Object.keys(recByCat).length === 0 && (
+                    <div className="px-6 py-3 pl-10 text-sm text-slate-400 border-b border-slate-50">Nenhuma receita no período</div>
+                  )}
+                  <div className="px-6 py-3.5 flex items-center justify-between bg-emerald-50/60 border-b border-slate-100">
+                    <span className="text-sm font-bold text-emerald-800">Total Receitas</span>
+                    <span className="text-sm font-bold text-emerald-700 tabular-nums">{fmt(totalRec)}</span>
+                  </div>
+
+                  <div className="h-2 bg-slate-50" />
+
+                  <div className="px-6 py-3 bg-rose-50/40">
+                    <p className="text-xs font-black text-rose-700 uppercase tracking-widest">Despesas</p>
+                  </div>
+                  {Object.entries(pagByCat).map(([cat, val]) => (
+                    <div key={cat} className="px-6 py-3 flex items-center justify-between border-b border-slate-50 hover:bg-slate-50/50">
+                      <span className="text-sm text-slate-600 pl-4">{cat}</span>
+                      <span className="text-sm font-semibold text-slate-800 tabular-nums">{fmt(val)}</span>
+                    </div>
+                  ))}
+                  {Object.keys(pagByCat).length === 0 && (
+                    <div className="px-6 py-3 pl-10 text-sm text-slate-400 border-b border-slate-50">Nenhuma despesa no período</div>
+                  )}
+                  <div className="px-6 py-3.5 flex items-center justify-between bg-rose-50/60 border-b border-slate-100">
+                    <span className="text-sm font-bold text-rose-800">Total Despesas</span>
+                    <span className="text-sm font-bold text-rose-700 tabular-nums">{fmt(totalPag)}</span>
+                  </div>
+
+                  <div className={'px-6 py-5 flex items-center justify-between ' + (dreResultado >= 0 ? 'bg-emerald-50' : 'bg-red-50')}>
+                    <span className="text-base font-black text-slate-900">Resultado Líquido</span>
+                    <span className={'text-xl font-black tabular-nums ' + (dreResultado >= 0 ? 'text-emerald-700' : 'text-red-700')}>
+                      {dreResultado > 0 ? '+' : ''}{fmt(dreResultado)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Inadimplência */}
+            {relTipo === 'inadimplencia' && (
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-50 flex items-center justify-between">
+                  <h2 className="text-sm font-bold text-slate-900">Relatório de Inadimplência</h2>
+                  <span className="text-xs font-bold text-red-600 bg-red-50 px-3 py-1.5 rounded-full">
+                    {inadimplentes.length} título{inadimplentes.length !== 1 ? 's' : ''} em atraso — {fmt(inadimplentes.reduce((s, r) => s + r.valor, 0))}
+                  </span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-slate-100 bg-slate-50/40">
+                        <th className="px-5 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wide">Cliente</th>
+                        <th className="px-5 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wide">Descrição</th>
+                        <th className="px-5 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wide">Vencimento</th>
+                        <th className="px-5 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wide">Valor</th>
+                        <th className="px-5 py-3 text-center text-xs font-semibold text-slate-400 uppercase tracking-wide">Atraso</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {inadimplentes.map(r => {
+                        const dias = Math.floor((Date.now() - new Date(r.data_vencimento + 'T00:00:00').getTime()) / 86400000)
+                        return (
+                          <tr key={r.id} className="hover:bg-red-50/20 transition-colors">
+                            <td className="px-5 py-3.5 text-sm font-semibold text-slate-800">{r.cliente?.nome || '—'}</td>
+                            <td className="px-5 py-3.5 text-sm text-slate-500">{r.descricao}</td>
+                            <td className="px-5 py-3.5 text-sm text-red-600 font-semibold tabular-nums">{fmtDate(r.data_vencimento)}</td>
+                            <td className="px-5 py-3.5 text-sm font-bold text-slate-900 text-right tabular-nums">{fmt(r.valor)}</td>
+                            <td className="px-5 py-3.5 text-center">
+                              <span className="text-xs font-bold text-red-600 bg-red-50 px-2.5 py-1 rounded-full">{dias}d</span>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                      {inadimplentes.length === 0 && (
+                        <tr><td colSpan={5} className="px-5 py-16 text-center text-sm text-slate-400">Nenhum título em atraso. Parabéns!</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* A Receber list */}
+            {relTipo === 'receber' && (
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-50 flex items-center justify-between">
+                  <h2 className="text-sm font-bold text-slate-900">Todos os Recebíveis</h2>
+                  <span className="text-xs text-slate-400">{receber.length} registros</span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-slate-100 bg-slate-50/40">
+                        <th className="px-5 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wide">Cliente</th>
+                        <th className="px-5 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wide">Descrição</th>
+                        <th className="px-5 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wide">Vencimento</th>
+                        <th className="px-5 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wide">Valor</th>
+                        <th className="px-5 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wide">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {receber.map(r => (
+                        <tr key={r.id} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="px-5 py-3.5 text-sm font-semibold text-slate-800">{r.cliente?.nome || '—'}</td>
+                          <td className="px-5 py-3.5 text-sm text-slate-500">{r.descricao}</td>
+                          <td className={'px-5 py-3.5 text-sm tabular-nums font-semibold ' + (r.status === 'aguardando' && r.data_vencimento < hj ? 'text-red-600' : 'text-slate-700')}>{fmtDate(r.data_vencimento)}</td>
+                          <td className="px-5 py-3.5 text-sm font-bold text-slate-900 text-right tabular-nums">{fmt(r.valor)}</td>
+                          <td className="px-5 py-3.5"><StatusBadge status={r.status} map={STATUS_R} /></td>
+                        </tr>
+                      ))}
+                      {receber.length === 0 && (
+                        <tr><td colSpan={5} className="px-5 py-16 text-center text-sm text-slate-400">Nenhum recebível cadastrado.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* A Pagar list */}
+            {relTipo === 'pagar' && (
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-50 flex items-center justify-between">
+                  <h2 className="text-sm font-bold text-slate-900">Todas as Contas a Pagar</h2>
+                  <span className="text-xs text-slate-400">{pagar.length} registros</span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-slate-100 bg-slate-50/40">
+                        <th className="px-5 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wide">Fornecedor</th>
+                        <th className="px-5 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wide">Descrição</th>
+                        <th className="px-5 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wide">Vencimento</th>
+                        <th className="px-5 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wide">Valor</th>
+                        <th className="px-5 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wide">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {pagar.map(p => (
+                        <tr key={p.id} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="px-5 py-3.5 text-sm font-semibold text-slate-800">{p.fornecedor?.nome || '—'}</td>
+                          <td className="px-5 py-3.5 text-sm text-slate-500">{p.descricao}</td>
+                          <td className={'px-5 py-3.5 text-sm tabular-nums font-semibold ' + (p.status === 'a_pagar' && p.data_vencimento < hj ? 'text-red-600' : 'text-slate-700')}>{fmtDate(p.data_vencimento)}</td>
+                          <td className="px-5 py-3.5 text-sm font-bold text-slate-900 text-right tabular-nums">{fmt(p.valor)}</td>
+                          <td className="px-5 py-3.5"><StatusBadge status={p.status} map={STATUS_P} /></td>
+                        </tr>
+                      ))}
+                      {pagar.length === 0 && (
+                        <tr><td colSpan={5} className="px-5 py-16 text-center text-sm text-slate-400">Nenhuma conta a pagar cadastrada.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
