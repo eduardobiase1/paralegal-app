@@ -69,6 +69,7 @@ export default function Sidebar({ isOpen = true, onToggle, isDark = false, onTog
   const [editingOrg, setEditingOrg] = useState(false)
   const [orgNameInput, setOrgNameInput] = useState('')
   const [savingOrg, setSavingOrg] = useState(false)
+  const [showOrgs, setShowOrgs] = useState(false)
   const { orgName, orgId, isAdmin, role, allOrgs } = useOrg()
   const isViewer = role === 'viewer'
   const isFinanceiro = role === 'financeiro'
@@ -157,28 +158,40 @@ export default function Sidebar({ isOpen = true, onToggle, isDark = false, onTog
           <div className="space-y-1">
             <p className="text-[9px] font-black uppercase tracking-widest text-gray-600">Organização ativa</p>
             <div className="flex flex-col gap-0.5">
-              {allOrgs.map(o => (
+              {/* Org ativa — sempre visível */}
+              <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                <div className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-green-400" />
+                <p className="text-[11px] font-medium truncate flex-1 min-w-0 text-amber-400">{orgName}</p>
+                {isAdmin && (
+                  <button
+                    onClick={() => { setOrgNameInput(orgName); setEditingOrg(true) }}
+                    className="text-gray-600 hover:text-amber-400 transition-all text-[10px]"
+                    title="Editar nome"
+                  >✎</button>
+                )}
+              </div>
+
+              {/* Toggle outras empresas */}
+              <button
+                onClick={() => setShowOrgs(v => !v)}
+                className="flex items-center gap-1.5 px-2 py-1 text-[10px] text-gray-600 hover:text-gray-400 transition-colors w-full"
+                title={showOrgs ? 'Ocultar empresas' : 'Mostrar outras empresas'}
+              >
+                <svg className={'w-3 h-3 transition-transform duration-200 ' + (showOrgs ? 'rotate-180' : '')} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+                {showOrgs ? 'Ocultar empresas' : (allOrgs.length - 1) + ' outra' + (allOrgs.length - 1 !== 1 ? 's' : '') + ' empresa' + (allOrgs.length - 1 !== 1 ? 's' : '')}
+              </button>
+
+              {/* Outras orgs — só aparecem quando showOrgs = true */}
+              {showOrgs && allOrgs.filter(o => o.id !== orgId).map(o => (
                 <button
                   key={o.id}
-                  onClick={() => o.id !== orgId && switchOrg(o.id)}
-                  className={cn(
-                    'flex items-center gap-2 px-2 py-1.5 rounded-lg text-left transition-all w-full',
-                    o.id === orgId
-                      ? 'bg-amber-500/10 border border-amber-500/20'
-                      : 'hover:bg-white/5 border border-transparent'
-                  )}
+                  onClick={() => switchOrg(o.id)}
+                  className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-left transition-all w-full hover:bg-white/5 border border-transparent"
                 >
-                  <div className={cn('w-1.5 h-1.5 rounded-full flex-shrink-0', o.id === orgId ? 'bg-green-400' : 'bg-gray-600')} />
-                  <p className={cn('text-[11px] font-medium truncate flex-1 min-w-0', o.id === orgId ? 'text-amber-400' : 'text-gray-500')}>
-                    {o.name}
-                  </p>
-                  {o.id === orgId && isAdmin && (
-                    <button
-                      onClick={e => { e.stopPropagation(); setOrgNameInput(orgName); setEditingOrg(true) }}
-                      className="text-gray-600 hover:text-amber-400 transition-all text-[10px]"
-                      title="Editar nome"
-                    >✎</button>
-                  )}
+                  <div className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-gray-600" />
+                  <p className="text-[11px] font-medium truncate flex-1 min-w-0 text-gray-500">{o.name}</p>
                 </button>
               ))}
             </div>
