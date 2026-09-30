@@ -40,6 +40,21 @@ const STATUS_P: Record<string, { label: string; dot: string; badge: string }> = 
 function fmt(n: number) {
   return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
+function formatCNPJCPF(raw: string) {
+  const d = raw.replace(/\D/g, '').slice(0, 14)
+  if (d.length <= 11) {
+    if (d.length <= 3) return d
+    if (d.length <= 6) return d.slice(0,3) + '.' + d.slice(3)
+    if (d.length <= 9) return d.slice(0,3) + '.' + d.slice(3,6) + '.' + d.slice(6)
+    return d.slice(0,3) + '.' + d.slice(3,6) + '.' + d.slice(6,9) + '-' + d.slice(9)
+  }
+  if (d.length <= 2) return d
+  if (d.length <= 5) return d.slice(0,2) + '.' + d.slice(2)
+  if (d.length <= 8) return d.slice(0,2) + '.' + d.slice(2,5) + '.' + d.slice(5)
+  if (d.length <= 12) return d.slice(0,2) + '.' + d.slice(2,5) + '.' + d.slice(5,8) + '/' + d.slice(8)
+  return d.slice(0,2) + '.' + d.slice(2,5) + '.' + d.slice(5,8) + '/' + d.slice(8,12) + '-' + d.slice(12)
+}
+const CFG_NO_UPPER = new Set(['email', 'cnpj', 'telefone'])
 function fmtDate(d: string | null) {
   if (!d) return '—'
   return new Date(d + 'T00:00:00').toLocaleDateString('pt-BR')
@@ -379,8 +394,8 @@ export default function FinanceiroPage() {
 
   // ── Config ───────────────────────────────────────────────────────────────────
   const cfgMeta: Record<ConfigTab, { table: string; cols: { key: string; label: string; type?: string; opts?: string[] }[] }> = {
-    clientes:     { table: 'bm_clientes',         cols: [{ key: 'nome', label: 'Nome' }, { key: 'cnpj', label: 'CNPJ' }, { key: 'email', label: 'E-mail' }, { key: 'telefone', label: 'Telefone' }] },
-    fornecedores: { table: 'bm_fornecedores',     cols: [{ key: 'nome', label: 'Nome' }, { key: 'cnpj', label: 'CNPJ' }, { key: 'email', label: 'E-mail' }, { key: 'telefone', label: 'Telefone' }] },
+    clientes:     { table: 'bm_clientes',         cols: [{ key: 'nome', label: 'Nome' }, { key: 'cnpj', label: 'CNPJ / CPF' }, { key: 'email', label: 'E-mail' }, { key: 'telefone', label: 'Telefone' }] },
+    fornecedores: { table: 'bm_fornecedores',     cols: [{ key: 'nome', label: 'Nome' }, { key: 'cnpj', label: 'CNPJ / CPF' }, { key: 'email', label: 'E-mail' }, { key: 'telefone', label: 'Telefone' }] },
     categorias:   { table: 'bm_categorias',       cols: [{ key: 'nome', label: 'Nome' }, { key: 'tipo', label: 'Tipo', opts: ['receita', 'despesa'] }] },
     centros:      { table: 'bm_centros_custo',    cols: [{ key: 'nome', label: 'Nome' }, { key: 'descricao', label: 'Descrição' }] },
     contas:       { table: 'bm_contas_bancarias', cols: [{ key: 'nome', label: 'Nome' }, { key: 'banco', label: 'Banco' }, { key: 'tipo', label: 'Tipo', opts: ['corrente', 'poupanca', 'caixa', 'outro'] }, { key: 'saldo_inicial', label: 'Saldo Inicial (R$)', type: 'number' }] },
@@ -1395,7 +1410,19 @@ export default function FinanceiroPage() {
                     {c.opts.map(o => <option key={o} value={o}>{o}</option>)}
                   </FieldSelect>
                 ) : (
-                  <FieldInput key={c.key} label={c.label} type={c.type || 'text'} value={cfgForm[c.key] || ''} onChange={e => setCfgForm({ ...cfgForm, [c.key]: e.target.value })} required={c.label === 'Nome'} />
+                  <FieldInput
+                    key={c.key}
+                    label={c.label}
+                    type={c.type || 'text'}
+                    value={cfgForm[c.key] || ''}
+                    onChange={e => {
+                      let v = e.target.value
+                      if (c.key === 'cnpj') v = formatCNPJCPF(v)
+                      else if (!CFG_NO_UPPER.has(c.key) && c.type !== 'number') v = v.toUpperCase()
+                      setCfgForm({ ...cfgForm, [c.key]: v })
+                    }}
+                    required={c.label === 'Nome'}
+                  />
                 )
               ))}
               <div className="flex gap-3 pt-2">
