@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useOrg } from '@/lib/org-context'
 import toast from 'react-hot-toast'
@@ -53,6 +53,55 @@ const emptyP = {
   fornecedor_id: '', categoria_id: '', centro_custo_id: '', descricao: '',
   valor: '', data_vencimento: '', forma_pagamento: 'transferencia',
   recorrente: false, observacoes: '',
+}
+
+// ── OFX / CSV parsers ────────────────────────────────────────────────────────
+function parseOFX(text: string) {
+  const txns: any[] = []
+  const regex = /<STMTTRN>([\s\S]*?)<\/STMTTRN>/gi
+  let m
+  while ((m = regex.exec(text)) !== null) {
+    const block = m[1]
+    const get = (tag: string) => { const r = new RegExp(`<${tag}>([^<\\n\\r]+)`, 'i'); const v = r.exec(block); return v ? v[1].trim() : '' }
+    const dtposted = get('DTPOSTED').slice(0, 8)
+    const trnamt = parseFloat(get('TRNAMT').replace(',', '.'))
+    const fitid = get('FITID') || String(txns.length)
+    const memo = get('MEMO') || get('NAME') || ''
+    if (!dtposted || isNaN(trnamt)) continue
+    const date = `${dtposted.slice(0, 4)}-${dtposted.slice(4, 6)}-${dtposted.slice(6, 8)}`
+    txns.push({ id: fitid, date, descricao: memo, valor: Math.abs(trnamt), tipo: trnamt >= 0 ? 'credito' : 'debito' })
+  }
+  return txns
+}
+
+function parseCSV(text: string) {
+  const lines = text.split('\n').filter(l => l.trim())
+  const start = lines[0]?.match(/[a-zA-Z]{3,}/) ? 1 : 0
+  const txns: any[] = []
+  lines.slice(start).forEach((line, i) => {
+    const sep = line.includes(';') ? ';' : ','
+    const cols = line.split(sep).map(c => c.trim().replace(/^"|"$/g, ''))
+    if (cols.length < 3) return
+    const raw = cols[0]
+    let date = ''
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(raw)) { const [d, mo, y] = raw.split('/'); date = `${y}-${mo}-${d}` }
+    else if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) { date = raw }
+    if (!date) return
+    const descricao = cols[1] || ''
+    let valor = 0, tipo = 'credito'
+    if (cols.length >= 4) {
+      const deb = parseFloat(cols[2].replace(/\./g, '').replace(',', '.')) || 0
+      const cred = parseFloat(cols[3].replace(/\./g, '').replace(',', '.')) || 0
+      if (cred > 0) { valor = cred; tipo = 'credito' } else if (deb > 0) { valor = deb; tipo = 'debito' }
+    } else {
+      const v = parseFloat(cols[2].replace(/\./g, '').replace(',', '.'))
+      if (isNaN(v)) return
+      valor = Math.abs(v); tipo = v >= 0 ? 'credito' : 'debito'
+    }
+    if (valor <= 0) return
+    txns.push({ id: `csv-${i}`, date, descricao, valor, tipo })
+  })
+  return txns
 }
 
 function FieldInput({ label, ...props }: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) {
@@ -118,6 +167,10 @@ export default function FinanceiroPage() {
   const [modalP, setModalP] = useState(false)
   const [modalE, setModalE] = useState(false)
   const [modalCfg, setModalCfg] = useState(false)
+  const [modalOFX, setModalOFX] = useState(false)
+  const [ofxTxns, setOfxTxns] = useState<any[]>([])
+  const [selOFX, setSelOFX] = useState<Set<string>>(new Set())
+  const fileRef = useRef<HTMLInputElement>(null)
   const [editId, setEditId] = useState<string | null>(null)
   const [formR, setFormR] = useState({ ...emptyR })
   const [formP, setFormP] = useState({ ...emptyP })
@@ -347,6 +400,45 @@ export default function FinanceiroPage() {
     return { ...e, saldo: balanco }
   })
 
+  // ── Conciliação OFX/CSV ───────────────────────────────────────────────────────
+  function isJaLancado(txn: any) {
+    return extrato.some(e =>
+      e.tipo === txn.tipo &&
+      Math.abs(e.valor - txn.valor) < 0.01 &&
+      Math.abs(new Date(e.data + 'T00:00:00').getTime() - new Date(txn.date + 'T00:00:00').getTime()) <= 86400000
+    )
+  }
+
+  function handleFileUpload(file: File) {
+    const reader = new FileReader()
+    reader.onload = ev => {
+      const text = ev.target?.result as string
+      const txns = file.name.toLowerCase().endsWith('.ofx') ? parseOFX(text) : parseCSV(text)
+      if (!txns.length) return toast.error('Nenhuma transação encontrada no arquivo.')
+      setOfxTxns(txns)
+      const novas = new Set(txns.filter(t => !isJaLancado(t)).map((t: any) => t.id))
+      setSelOFX(novas)
+      setModalOFX(true)
+    }
+    reader.readAsText(file, 'latin1')
+  }
+
+  async function importarOFX() {
+    const toImport = ofxTxns.filter(t => selOFX.has(t.id))
+    if (!toImport.length) return toast.error('Nenhuma transação selecionada.')
+    if (!contaSel) return toast.error('Selecione uma conta bancária.')
+    const rows = toImport.map(t => ({
+      org_id: orgId, conta_bancaria_id: contaSel,
+      data: t.date, descricao: t.descricao, tipo: t.tipo, valor: t.valor, origem: 'ofx',
+    }))
+    const { error } = await supabase.from('bm_extrato').insert(rows)
+    if (!error) {
+      toast.success(`${toImport.length} lançamento${toImport.length > 1 ? 's' : ''} importado${toImport.length > 1 ? 's' : ''}!`)
+      setModalOFX(false)
+      fetchExtrato(contaSel)
+    } else toast.error(error.message)
+  }
+
   // ── Fluxo de Caixa ───────────────────────────────────────────────────────────
   const meses6 = Array.from({ length: 6 }, (_, i) => {
     const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 5 + i)
@@ -406,10 +498,18 @@ export default function FinanceiroPage() {
               </button>
             )}
             {tab === 'extrato' && (
-              <button onClick={() => setModalE(true)}
-                className="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors">
-                + Lançamento Manual
-              </button>
+              <div className="flex gap-2">
+                <input ref={fileRef} type="file" accept=".ofx,.csv" className="hidden"
+                  onChange={e => { const f = e.target.files?.[0]; if (f) handleFileUpload(f); e.target.value = '' }} />
+                <button onClick={() => fileRef.current?.click()}
+                  className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors shadow-sm">
+                  Importar OFX / CSV
+                </button>
+                <button onClick={() => setModalE(true)}
+                  className="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors">
+                  + Manual
+                </button>
+              </div>
             )}
             {tab === 'config' && (
               <button onClick={() => {
@@ -969,6 +1069,80 @@ export default function FinanceiroPage() {
                 <button type="submit" className="flex-1 bg-slate-800 text-white py-2.5 rounded-xl font-semibold text-sm hover:bg-slate-700 transition-colors">{editId ? 'Atualizar' : 'Salvar'}</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL CONCILIAÇÃO OFX/CSV ── */}
+      {modalOFX && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl flex flex-col max-h-[85vh]">
+            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
+              <div>
+                <h2 className="text-base font-bold text-slate-900">Conciliação Bancária</h2>
+                <p className="text-xs text-slate-400 mt-0.5">{ofxTxns.length} transações encontradas no arquivo</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-full">
+                  {ofxTxns.filter(t => isJaLancado(t)).length} já lançadas
+                </span>
+                <span className="text-xs font-semibold text-indigo-700 bg-indigo-50 px-3 py-1.5 rounded-full">
+                  {ofxTxns.filter(t => !isJaLancado(t)).length} novas
+                </span>
+              </div>
+            </div>
+            <div className="px-6 py-3 border-b border-slate-50 flex items-center gap-4 flex-shrink-0">
+              <button onClick={() => setSelOFX(new Set(ofxTxns.filter(t => !isJaLancado(t)).map(t => t.id)))}
+                className="text-xs font-semibold text-indigo-600 hover:text-indigo-800">Selecionar todas novas</button>
+              <button onClick={() => setSelOFX(new Set())} className="text-xs font-semibold text-slate-400 hover:text-slate-600">Limpar seleção</button>
+              <span className="text-xs text-slate-400 ml-auto">{selOFX.size} selecionadas para importar</span>
+            </div>
+            <div className="overflow-y-auto flex-1">
+              <table className="w-full">
+                <thead className="sticky top-0 bg-white border-b border-slate-100">
+                  <tr>
+                    <th className="px-5 py-3 w-8" />
+                    <th className="px-5 py-3 text-left text-xs font-semibold text-slate-400">Data</th>
+                    <th className="px-5 py-3 text-left text-xs font-semibold text-slate-400">Descrição</th>
+                    <th className="px-5 py-3 text-right text-xs font-semibold text-slate-400">Valor</th>
+                    <th className="px-5 py-3 text-center text-xs font-semibold text-slate-400">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {ofxTxns.map(t => {
+                    const jaLancado = isJaLancado(t)
+                    const checked = selOFX.has(t.id)
+                    return (
+                      <tr key={t.id} className={`transition-colors ${jaLancado ? 'opacity-40' : checked ? 'bg-indigo-50/40' : 'hover:bg-slate-50/60'}`}>
+                        <td className="px-5 py-3">
+                          {!jaLancado && (
+                            <input type="checkbox" checked={checked} className="w-4 h-4 accent-indigo-600 cursor-pointer"
+                              onChange={e => { const s = new Set(selOFX); e.target.checked ? s.add(t.id) : s.delete(t.id); setSelOFX(s) }} />
+                          )}
+                        </td>
+                        <td className="px-5 py-3.5 text-xs text-slate-500 tabular-nums whitespace-nowrap">{fmtDate(t.date)}</td>
+                        <td className="px-5 py-3.5 text-sm text-slate-700 max-w-xs truncate">{t.descricao || '—'}</td>
+                        <td className={`px-5 py-3.5 text-sm font-bold text-right tabular-nums ${t.tipo === 'credito' ? 'text-emerald-600' : 'text-red-600'}`}>
+                          {t.tipo === 'credito' ? '+' : '-'}{fmt(t.valor)}
+                        </td>
+                        <td className="px-5 py-3.5 text-center">
+                          {jaLancado
+                            ? <span className="text-xs font-semibold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">Já lançado</span>
+                            : <span className="text-xs font-semibold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-full">Novo</span>}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div className="px-6 py-4 border-t border-slate-100 flex gap-3 flex-shrink-0">
+              <button onClick={() => setModalOFX(false)} className="flex-1 bg-slate-100 text-slate-600 py-2.5 rounded-xl font-semibold text-sm hover:bg-slate-200 transition-colors">Cancelar</button>
+              <button onClick={importarOFX} disabled={selOFX.size === 0}
+                className="flex-1 bg-indigo-600 text-white py-2.5 rounded-xl font-semibold text-sm hover:bg-indigo-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                Importar {selOFX.size > 0 ? `${selOFX.size} lançamento${selOFX.size > 1 ? 's' : ''}` : ''}
+              </button>
+            </div>
           </div>
         </div>
       )}
