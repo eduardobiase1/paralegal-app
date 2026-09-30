@@ -14,6 +14,8 @@ const FORMA_LABELS: Record<string, string> = {
   debito_automatico: 'Débito Automático', outro: 'Outro',
 }
 
+const MESES_PT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
+
 const STATUS_R: Record<string, { label: string; dot: string; badge: string }> = {
   aguardando: { label: 'A Receber',  dot: 'bg-blue-500',    badge: 'bg-blue-50 text-blue-700 ring-blue-200' },
   pago:       { label: 'Recebido',   dot: 'bg-emerald-500', badge: 'bg-emerald-50 text-emerald-700 ring-emerald-200' },
@@ -35,6 +37,12 @@ function fmtDate(d: string | null) {
   return new Date(d + 'T00:00:00').toLocaleDateString('pt-BR')
 }
 function today() { return new Date().toISOString().split('T')[0] }
+function fmtShort(n: number) {
+  const abs = Math.abs(n)
+  if (abs >= 1000000) return 'R$' + (n / 1000000).toFixed(1) + 'M'
+  if (abs >= 1000) return 'R$' + (n / 1000).toFixed(0) + 'k'
+  return 'R$' + n.toFixed(0)
+}
 
 const emptyR = {
   cliente_id: '', descricao: '', valor: '', data_vencimento: '',
@@ -317,6 +325,26 @@ export default function FinanceiroPage() {
     return { ...e, saldo: balanco }
   })
 
+  // ── Fluxo de Caixa ───────────────────────────────────────────────────────────
+  const meses6 = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 5 + i)
+    return d.toISOString().slice(0, 7)
+  })
+  const fluxoMeses = meses6.map(mes => {
+    const m = parseInt(mes.split('-')[1])
+    const entradas = receber.filter(r => r.status === 'pago' && r.data_pagamento?.startsWith(mes)).reduce((s, r) => s + (r.valor_pago || r.valor || 0), 0)
+    const saidas = pagar.filter(p => p.status === 'pago' && p.data_pagamento?.startsWith(mes)).reduce((s, p) => s + (p.valor_pago || p.valor || 0), 0)
+    return { mes, label: MESES_PT[m - 1], entradas, saidas, resultado: entradas - saidas }
+  })
+  const maxFluxo = Math.max(...fluxoMeses.flatMap(m => [m.entradas, m.saidas]), 100)
+
+  const proj = [30, 60, 90].map(dias => {
+    const limite = new Date(Date.now() + dias * 86400000).toISOString().split('T')[0]
+    const r = receber.filter(x => x.status === 'aguardando' && x.data_vencimento >= hj && x.data_vencimento <= limite).reduce((s, x) => s + x.valor, 0)
+    const p = pagar.filter(x => x.status === 'a_pagar' && x.data_vencimento >= hj && x.data_vencimento <= limite).reduce((s, x) => s + x.valor, 0)
+    return { dias, r, p, resultado: r - p }
+  })
+
   const MAIN_TABS: { id: MainTab; label: string }[] = [
     { id: 'dashboard', label: 'Visão Geral' },
     { id: 'receber',   label: 'A Receber' },
@@ -390,13 +418,93 @@ export default function FinanceiroPage() {
         {/* ── VISÃO GERAL ── */}
         {tab === 'dashboard' && (
           <div className="space-y-6">
+            {/* Summary cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <SummaryCard label="A Receber"        value={fmt(totalAReceber)} color="text-indigo-600" sub={`${receber.filter(r => r.status === 'aguardando').length} títulos`} />
-              <SummaryCard label="A Pagar"          value={fmt(totalAPagar)}   color="text-rose-600"   sub={`${pagar.filter(p => p.status === 'a_pagar').length} títulos`} />
-              <SummaryCard label="Em Atraso"        value={fmt(totalVencR)}    color="text-red-600"    sub="recebíveis vencidos" />
+              <SummaryCard label="A Receber"         value={fmt(totalAReceber)} color="text-indigo-600"  sub={`${receber.filter(r => r.status === 'aguardando').length} títulos`} />
+              <SummaryCard label="A Pagar"           value={fmt(totalAPagar)}   color="text-rose-600"    sub={`${pagar.filter(p => p.status === 'a_pagar').length} títulos`} />
+              <SummaryCard label="Em Atraso"         value={fmt(totalVencR)}    color="text-red-600"     sub="recebíveis vencidos" />
               <SummaryCard label="Recebido no Mês" value={fmt(totalPagoMes)}  color="text-emerald-600" sub={hj.slice(0, 7).split('-').reverse().join('/')} />
             </div>
 
+            {/* Fluxo de Caixa */}
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+              <div className="flex items-center justify-between mb-5">
+                <div>
+                  <h2 className="text-sm font-bold text-slate-800">Fluxo de Caixa</h2>
+                  <p className="text-xs text-slate-400 mt-0.5">Últimos 6 meses — entradas vs saídas realizadas</p>
+                </div>
+                <div className="flex items-center gap-5 text-xs font-semibold text-slate-500">
+                  <span className="flex items-center gap-1.5">
+                    <span className="inline-block w-2.5 h-2.5 rounded-sm bg-emerald-500 opacity-85" />Entradas
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="inline-block w-2.5 h-2.5 rounded-sm bg-rose-400 opacity-75" />Saídas
+                  </span>
+                </div>
+              </div>
+              <svg viewBox="0 0 660 195" className="w-full overflow-visible">
+                {/* Grid lines */}
+                {[1, 0.75, 0.5, 0.25].map((pct, i) => {
+                  const y = 15 + (1 - pct) * 140
+                  return (
+                    <g key={i}>
+                      <line x1="50" y1={y} x2="650" y2={y} stroke="#f1f5f9" strokeWidth="1.5" />
+                      <text x="44" y={y + 3.5} textAnchor="end" fontSize="9" fill="#cbd5e1">{fmtShort(maxFluxo * pct)}</text>
+                    </g>
+                  )
+                })}
+                <line x1="50" y1="155" x2="650" y2="155" stroke="#e2e8f0" strokeWidth="1" />
+                {/* Bars */}
+                {fluxoMeses.map((m, i) => {
+                  const gx = 50 + i * 100 + 11
+                  const cx = 50 + i * 100 + 50
+                  const hE = maxFluxo > 0 ? (m.entradas / maxFluxo) * 140 : 0
+                  const hS = maxFluxo > 0 ? (m.saidas / maxFluxo) * 140 : 0
+                  return (
+                    <g key={i}>
+                      <rect x={gx} y={155 - Math.max(hE, 2)} width="35" height={Math.max(hE, 2)} rx="3" fill="#10b981" opacity="0.85" />
+                      <rect x={gx + 43} y={155 - Math.max(hS, 2)} width="35" height={Math.max(hS, 2)} rx="3" fill="#f43f5e" opacity="0.75" />
+                      <text x={cx} y="170" textAnchor="middle" fontSize="10" fill="#64748b" fontWeight="600">{m.label}</text>
+                      <text x={cx} y="183" textAnchor="middle" fontSize="9" fontWeight="700"
+                        fill={m.resultado > 0 ? '#059669' : m.resultado < 0 ? '#e11d48' : '#94a3b8'}>
+                        {m.resultado > 0 ? '+' : ''}{m.resultado === 0 ? '—' : fmtShort(m.resultado)}
+                      </text>
+                    </g>
+                  )
+                })}
+              </svg>
+            </div>
+
+            {/* Projeções */}
+            <div className="grid grid-cols-3 gap-4">
+              {proj.map(p => (
+                <div key={p.dias} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3">Próximos {p.dias} dias</p>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-slate-500 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0" />A receber
+                      </span>
+                      <span className="text-xs font-semibold text-emerald-700 tabular-nums">{fmt(p.r)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-slate-500 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500 flex-shrink-0" />A pagar
+                      </span>
+                      <span className="text-xs font-semibold text-rose-700 tabular-nums">{fmt(p.p)}</span>
+                    </div>
+                    <div className="flex items-center justify-between border-t border-slate-100 pt-2 mt-1">
+                      <span className="text-xs font-bold text-slate-700">Resultado</span>
+                      <span className={`text-sm font-bold tabular-nums ${p.resultado >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+                        {p.resultado > 0 ? '+' : ''}{fmt(p.resultado)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Alertas */}
             <div className="grid lg:grid-cols-2 gap-4">
               <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
                 <div className="px-6 py-4 border-b border-slate-50 flex items-center justify-between">
