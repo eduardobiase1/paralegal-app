@@ -352,13 +352,9 @@ export default function FinanceiroPage() {
       juros: juros || null, multa: multa || null,
     }).eq('id', p.id)
     if (contaSel) {
-      const extras: string[] = []
-      if (multa > 0) extras.push('multa ' + fmt(multa))
-      if (juros > 0) extras.push('juros ' + fmt(juros))
-      const desc = extras.length ? p.descricao + ' [' + extras.join(' + ') + ']' : p.descricao
       await supabase.from('bm_extrato').insert([{
         org_id: orgId, conta_bancaria_id: contaSel, data: dt,
-        descricao: desc, tipo: 'debito', valor: totalPago,
+        descricao: p.descricao, tipo: 'debito', valor: totalPago,
         forma_pagamento: p.forma_pagamento, origem: 'contas_pagar', origem_id: p.id,
       }])
     }
