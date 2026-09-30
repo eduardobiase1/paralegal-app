@@ -643,7 +643,7 @@ export default function FinanceiroPage() {
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Financeiro</p>
-            <h1 className="text-xl font-bold text-slate-900 mt-0.5">{orgName}</h1>
+            <h1 className="text-xl font-bold text-slate-900 mt-0.5 uppercase">{orgName}</h1>
           </div>
           <div className="flex gap-2">
             {tab === 'receber' && (
