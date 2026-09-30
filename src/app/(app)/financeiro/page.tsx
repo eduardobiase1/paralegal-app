@@ -208,6 +208,10 @@ export default function FinanceiroPage() {
   const [modalOFX, setModalOFX] = useState(false)
   const [ofxTxns, setOfxTxns] = useState<any[]>([])
   const [selOFX, setSelOFX] = useState<Set<string>>(new Set())
+  const [modalPagto, setModalPagto] = useState(false)
+  const [pagtoItem, setPagtoItem] = useState<any>(null)
+  const [pagtoJuros, setPagtoJuros] = useState('0')
+  const [pagtoMulta, setPagtoMulta] = useState('0')
   const fileRef = useRef<HTMLInputElement>(null)
   const [relPeriodo, setRelPeriodo] = useState(new Date().toISOString().slice(0, 7))
   const [relTipo, setRelTipo] = useState<RelTipo>('dre')
@@ -329,13 +333,32 @@ export default function FinanceiroPage() {
     else toast.error(error.message)
   }
 
-  async function pagarPago(p: any) {
+  function abrirPagamento(p: any) {
+    setPagtoItem(p)
+    setPagtoJuros('0')
+    setPagtoMulta('0')
+    setModalPagto(true)
+  }
+
+  async function confirmarPagamento() {
+    if (!pagtoItem) return
+    const p = pagtoItem
     const dt = today()
-    await supabase.from('bm_contas_pagar').update({ status: 'pago', data_pagamento: dt, valor_pago: p.valor }).eq('id', p.id)
+    const juros = parseFloat(pagtoJuros) || 0
+    const multa = parseFloat(pagtoMulta) || 0
+    const totalPago = p.valor + juros + multa
+    await supabase.from('bm_contas_pagar').update({
+      status: 'pago', data_pagamento: dt, valor_pago: p.valor,
+      juros: juros || null, multa: multa || null,
+    }).eq('id', p.id)
     if (contaSel) {
+      const extras: string[] = []
+      if (multa > 0) extras.push('multa ' + fmt(multa))
+      if (juros > 0) extras.push('juros ' + fmt(juros))
+      const desc = extras.length ? p.descricao + ' [' + extras.join(' + ') + ']' : p.descricao
       await supabase.from('bm_extrato').insert([{
         org_id: orgId, conta_bancaria_id: contaSel, data: dt,
-        descricao: p.descricao, tipo: 'debito', valor: p.valor,
+        descricao: desc, tipo: 'debito', valor: totalPago,
         forma_pagamento: p.forma_pagamento, origem: 'contas_pagar', origem_id: p.id,
       }])
     }
@@ -352,13 +375,15 @@ export default function FinanceiroPage() {
       }
     }
     toast.success('Pagamento registrado!')
+    setModalPagto(false)
+    setPagtoItem(null)
     fetchAll()
     if (contaSel) fetchExtrato(contaSel)
   }
 
   async function estornarP(p: any) {
     if (!confirm('Estornar pagamento? O lançamento no extrato será removido.')) return
-    await supabase.from('bm_contas_pagar').update({ status: 'a_pagar', data_pagamento: null, valor_pago: null }).eq('id', p.id)
+    await supabase.from('bm_contas_pagar').update({ status: 'a_pagar', data_pagamento: null, valor_pago: null, juros: null, multa: null }).eq('id', p.id)
     await supabase.from('bm_extrato').delete().eq('origem', 'contas_pagar').eq('origem_id', p.id)
     toast.success('Pagamento estornado.')
     fetchAll()
@@ -818,7 +843,7 @@ export default function FinanceiroPage() {
                       </div>
                       <div className="text-right flex-shrink-0 ml-4">
                         <p className="text-sm font-bold text-rose-600 tabular-nums">{fmt(p.valor)}</p>
-                        <button onClick={() => pagarPago(p)} className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 mt-0.5">Marcar pago →</button>
+                        <button onClick={() => abrirPagamento(p)} className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 mt-0.5">Marcar pago →</button>
                       </div>
                     </div>
                   ))}
@@ -920,11 +945,18 @@ export default function FinanceiroPage() {
                         <td className="px-5 py-3.5 text-xs text-slate-400">{p.categoria?.nome || '—'}</td>
                         <td className="px-5 py-3.5 text-xs text-slate-400">{p.centro?.nome || '—'}</td>
                         <td className={`px-5 py-3.5 text-sm tabular-nums ${atrasado ? 'text-red-600 font-semibold' : 'text-slate-600'}`}>{fmtDate(p.data_vencimento)}</td>
-                        <td className="px-5 py-3.5 text-sm font-bold text-slate-900 tabular-nums">{fmt(p.valor)}</td>
+                        <td className="px-5 py-3.5 tabular-nums">
+                          <span className="text-sm font-bold text-slate-900">{fmt(p.valor)}</span>
+                          {p.status === 'pago' && ((p.juros || 0) + (p.multa || 0)) > 0 && (
+                            <span className="ml-1.5 text-[10px] font-semibold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded-full whitespace-nowrap">
+                              +{fmt((p.juros||0)+(p.multa||0))} taxas
+                            </span>
+                          )}
+                        </td>
                         <td className="px-5 py-3.5"><StatusBadge status={atrasado ? 'vencido' : p.status} map={STATUS_P} /></td>
                         <td className="px-5 py-3.5">
                           <div className="flex items-center gap-3">
-                            {p.status === 'a_pagar' && <button onClick={() => pagarPago(p)} className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 whitespace-nowrap">Pago ✓</button>}
+                            {p.status === 'a_pagar' && <button onClick={() => abrirPagamento(p)} className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 whitespace-nowrap">Pago ✓</button>}
                             {p.status === 'pago' && <button onClick={() => estornarP(p)} className="text-xs font-semibold text-amber-600 hover:text-amber-700 whitespace-nowrap">Estornar</button>}
                             <button onClick={() => {
                               setEditId(p.id)
@@ -1433,6 +1465,83 @@ export default function FinanceiroPage() {
           </div>
         </div>
       )}
+
+      {/* ── MODAL CONFIRMAR PAGAMENTO ── */}
+      {modalPagto && pagtoItem && (() => {
+        const juros = parseFloat(pagtoJuros) || 0
+        const multa = parseFloat(pagtoMulta) || 0
+        const total = pagtoItem.valor + juros + multa
+        const diasAtraso = pagtoItem.data_vencimento < hj
+          ? Math.floor((Date.now() - new Date(pagtoItem.data_vencimento + 'T00:00:00').getTime()) / 86400000)
+          : 0
+        return (
+          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl">
+              <div className="px-6 py-5 border-b border-slate-100">
+                <h2 className="text-base font-bold text-slate-900">Confirmar Pagamento</h2>
+                <p className="text-xs text-slate-400 mt-0.5">{pagtoItem.descricao}</p>
+              </div>
+              <div className="p-6 space-y-4">
+                {/* Info do título */}
+                <div className="bg-slate-50 rounded-xl p-4 space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500">Fornecedor</span>
+                    <span className="font-semibold text-slate-800">{pagtoItem.fornecedor?.nome || '—'}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500">Vencimento</span>
+                    <span className={'font-semibold ' + (diasAtraso > 0 ? 'text-red-600' : 'text-slate-800')}>{fmtDate(pagtoItem.data_vencimento)}</span>
+                  </div>
+                  {diasAtraso > 0 && (
+                    <div className="flex justify-center pt-1">
+                      <span className="text-xs font-bold text-red-600 bg-red-50 px-3 py-1 rounded-full">
+                        {diasAtraso} dia{diasAtraso !== 1 ? 's' : ''} em atraso
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm border-t border-slate-200 pt-2 mt-1">
+                    <span className="text-slate-500">Valor original</span>
+                    <span className="font-bold text-slate-900 tabular-nums">{fmt(pagtoItem.valor)}</span>
+                  </div>
+                </div>
+
+                {/* Multa + Juros */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-500 mb-1.5">Multa (R$)</label>
+                    <input type="number" min="0" step="0.01" value={pagtoMulta}
+                      onChange={e => setPagtoMulta(e.target.value)}
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-400 transition-all" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-500 mb-1.5">Juros (R$)</label>
+                    <input type="number" min="0" step="0.01" value={pagtoJuros}
+                      onChange={e => setPagtoJuros(e.target.value)}
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-400 transition-all" />
+                  </div>
+                </div>
+
+                {/* Total */}
+                <div className={'flex justify-between items-center rounded-xl px-4 py-3 ' + ((juros+multa) > 0 ? 'bg-orange-50' : 'bg-emerald-50')}>
+                  <span className="text-sm font-bold text-slate-700">Total a pagar</span>
+                  <span className={'text-lg font-black tabular-nums ' + ((juros+multa) > 0 ? 'text-orange-600' : 'text-emerald-700')}>{fmt(total)}</span>
+                </div>
+
+                <div className="flex gap-3 pt-1">
+                  <button type="button" onClick={() => setModalPagto(false)}
+                    className="flex-1 bg-slate-100 text-slate-600 py-2.5 rounded-xl font-semibold text-sm hover:bg-slate-200 transition-colors">
+                    Cancelar
+                  </button>
+                  <button onClick={confirmarPagamento}
+                    className="flex-1 bg-emerald-600 text-white py-2.5 rounded-xl font-semibold text-sm hover:bg-emerald-700 transition-colors">
+                    Confirmar Pagamento
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* ── MODAL CONCILIAÇÃO OFX/CSV ── */}
       {modalOFX && (
