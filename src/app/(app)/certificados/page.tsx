@@ -13,7 +13,8 @@ import toast from 'react-hot-toast'
 import { registrarAcao } from '@/lib/atividade'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { Download } from 'lucide-react'
+import { Download, FileText } from 'lucide-react'
+import { useOrg } from '@/lib/org-context'
 import { diaLocal } from '@/lib/atividade'
 
 type EditingDate = { id: string; field: 'aviso' | 'agenda' } | null
@@ -56,6 +57,7 @@ function localDatetimeToISO(localStr: string): string | null {
 
 function CertificadosPageInner() {
   const searchParams = useSearchParams()
+  const { orgName } = useOrg()
   const [certs, setCerts] = useState<CertificadoDigital[]>([])
   const [empresas, setEmpresas] = useState<Empresa[]>([])
   const [loading, setLoading] = useState(true)
@@ -223,6 +225,97 @@ function CertificadosPageInner() {
       ['Cadastrados na quinzena', qCadastrados.length, 'Concluídos na quinzena', qConcluidos.length, 'Cadastrados ainda pendentes', qPendentes.length],
       [],
     ])
+  }
+
+  // PDF do relatório quinzenal — abre em nova aba, sem baixar
+  async function abrirPdfQuinzena() {
+    if (daQuinzena.length === 0) { toast.error('Nada para gerar nesta quinzena.'); return }
+    // a aba precisa ser aberta já no clique, senão o navegador bloqueia como popup
+    const janela = window.open('', '_blank')
+    if (!janela) { toast.error('Permita popups neste site para abrir o PDF.'); return }
+    janela.document.title = 'Gerando relatório...'
+    try {
+      const jsPDF = (await import('jspdf')).default
+      await import('jspdf-autotable')
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
+      const W = doc.internal.pageSize.getWidth()
+      const H = doc.internal.pageSize.getHeight()
+
+      // Faixa da marca
+      doc.setFillColor(13, 13, 13)
+      doc.rect(0, 0, W, 24, 'F')
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(16)
+      doc.setTextColor(255, 255, 255); doc.text('PARALEGAL', 14, 15)
+      doc.setTextColor(245, 158, 11); doc.text('PRO', 14 + doc.getTextWidth('PARALEGAL '), 15)
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(200, 200, 200)
+      doc.text(orgName, W - 14, 11, { align: 'right' })
+      doc.text(`Emitido em ${new Date().toLocaleDateString('pt-BR')}`, W - 14, 16, { align: 'right' })
+
+      // Título e período
+      doc.setTextColor(15, 23, 42); doc.setFont('helvetica', 'bold'); doc.setFontSize(14)
+      doc.text('Certificados digitais — relatório quinzenal', 14, 36)
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(71, 85, 105)
+      const t = quinzena.titulo
+      doc.text(`${t.charAt(0).toUpperCase() + t.slice(1)} · ${quinzena.faixa}${empresaNomeAtual ? ' · ' + empresaNomeAtual : ''}`, 14, 42)
+
+      // Totais
+      const totais: Array<[string, number]> = [
+        ['Cadastrados na quinzena', qCadastrados.length],
+        ['Concluídos na quinzena', qConcluidos.length],
+        ['Cadastrados ainda pendentes', qPendentes.length],
+      ]
+      const boxW = 62
+      totais.forEach(([rotulo, valor], i) => {
+        const x = 14 + i * (boxW + 6)
+        doc.setDrawColor(226, 232, 240); doc.setFillColor(248, 250, 252)
+        doc.roundedRect(x, 48, boxW, 18, 2, 2, 'FD')
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(71, 85, 105)
+        doc.text(rotulo, x + 4, 54)
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.setTextColor(15, 23, 42)
+        doc.text(String(valor), x + 4, 62)
+      })
+
+      ;(doc as any).autoTable({
+        startY: 72,
+        margin: { left: 14, right: 14, bottom: 14 },
+        head: [['Cadastrado em', 'Concluído em', 'Empresa', 'CNPJ', 'Titular', 'Tipo / Uso', 'AC', 'Situação']],
+        body: daQuinzena.map(c => {
+          const x = c as any
+          const cnpj = c.cnpj || x.empresa_cnpj_livre || ''
+          return [
+            c.created_at ? formatDate(cadastradoEm(c)) : '—',
+            concluidoEm(c) ? formatDate(concluidoEm(c)) : '—',
+            c.razao_social || x.empresa_nome_livre || '—',
+            cnpj ? formatCNPJ(cnpj) : '—',
+            c.titular || '—',
+            `${c.tipo} · ${c.uso}`,
+            c.autoridade_certificadora || '—',
+            x.certificado_finalizado ? (concluidoEm(c) ? 'Concluído' : 'Concluído · sem data') : 'Pendente',
+          ]
+        }),
+        styles: { font: 'helvetica', fontSize: 8.5, cellPadding: 2.2, textColor: [15, 23, 42], lineColor: [226, 232, 240], lineWidth: 0.1 },
+        headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8.5 },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+        columnStyles: { 0: { cellWidth: 24 }, 1: { cellWidth: 24 }, 3: { cellWidth: 36 }, 5: { cellWidth: 26 }, 7: { cellWidth: 32 } },
+        didParseCell: (d: any) => {
+          if (d.section === 'body' && d.column.index === 7) {
+            d.cell.styles.fontStyle = 'bold'
+            d.cell.styles.textColor = String(d.cell.raw).startsWith('Concluído') ? [22, 101, 52] : [154, 52, 18]
+          }
+        },
+        didDrawPage: () => {
+          doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(100, 116, 139)
+          doc.text(`Página ${doc.getNumberOfPages()}`, W - 14, H - 6, { align: 'right' })
+          doc.text('Paralegal PRO · relatório quinzenal de certificados digitais', 14, H - 6)
+        },
+      })
+
+      doc.setProperties({ title: `Certificados - ${quinzena.titulo}` })
+      janela.location.href = doc.output('bloburl') as unknown as string
+    } catch (e: any) {
+      janela.close()
+      toast.error('Erro ao gerar o PDF: ' + (e?.message || ''))
+    }
   }
 
   async function handleDelete() {
@@ -680,10 +773,16 @@ function CertificadosPageInner() {
                   </div>
                   <button onClick={() => mudarQuinzena(1)} className="btn-secondary px-3" aria-label="Próxima quinzena">→</button>
                 </div>
-                <button onClick={exportarQuinzena} className="btn-primary">
-                  <Download className="w-4 h-4" />
-                  Exportar Excel desta quinzena
-                </button>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button onClick={abrirPdfQuinzena} className="btn-secondary" title="Abre o relatório em PDF em uma nova aba">
+                    <FileText className="w-4 h-4" />
+                    Abrir PDF
+                  </button>
+                  <button onClick={exportarQuinzena} className="btn-primary">
+                    <Download className="w-4 h-4" />
+                    Exportar Excel
+                  </button>
+                </div>
               </div>
 
               <div>
