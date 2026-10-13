@@ -76,7 +76,15 @@ function CertificadosPageInner() {
 
   async function saveControl(id: string, fields: Record<string, any>) {
     setSaving(id)
-    await supabase.from('certificados_digitais').update(fields).eq('id', id)
+    let { error } = await supabase.from('certificados_digitais').update(fields).eq('id', id)
+    // Coluna data_conclusao ainda não existe (migration_v14 pendente): salva o restante
+    if (error && 'data_conclusao' in fields && error.message?.includes('data_conclusao')) {
+      const { data_conclusao, ...resto } = fields
+      fields = resto
+      if (Object.keys(resto).length > 0) ({ error } = await supabase.from('certificados_digitais').update(resto).eq('id', id))
+      toast('Rode a migration_v14 no Supabase para registrar a data de conclusão.')
+    }
+    if (error) { setSaving(null); toast.error('Erro ao salvar: ' + error.message); return }
     setCerts(prev => prev.map(c => c.id === id ? { ...c, ...fields } : c))
     setSaving(null)
     if (fields.certificado_finalizado === true) {
@@ -94,11 +102,13 @@ function CertificadosPageInner() {
 
   async function load() {
     setLoading(true)
-    const [{ data: cs }, { data: emps }] = await Promise.all([
+    const [{ data: cs }, { data: emps }, { data: concl }] = await Promise.all([
       supabase.from('v_certificados_status').select('*').order('data_vencimento', { ascending: true }),
       supabase.from('empresas').select('id, razao_social, cnpj').order('razao_social'),
+      supabase.from('certificados_digitais').select('id, data_conclusao'),
     ])
-    setCerts(cs ?? [])
+    const conclusoes = new Map((concl ?? []).map((r: any) => [r.id, r.data_conclusao]))
+    setCerts((cs ?? []).map((c: any) => ({ ...c, data_conclusao: conclusoes.get(c.id) ?? null })))
     setEmpresas((emps ?? []) as Empresa[])
     setLoading(false)
   }
@@ -158,6 +168,7 @@ function CertificadosPageInner() {
   const todosMarcados = (lista: CertificadoDigital[]) => lista.length > 0 && lista.every(c => selecionados.has(c.id))
 
   const cadastradoEm = (c: CertificadoDigital) => (c.created_at ? diaLocal(new Date(c.created_at)) : '')
+  const concluidoEm  = (c: CertificadoDigital) => ((c as any).data_conclusao as string | null) || ''
 
   async function exportarExcel(lista: CertificadoDigital[], arquivo: string, cabecalho: (string | number)[][] = []) {
     if (lista.length === 0) { toast.error('Nada para exportar.'); return }
@@ -168,14 +179,14 @@ function CertificadosPageInner() {
       return [
         c.razao_social || x.empresa_nome_livre || '', cnpj ? formatCNPJ(cnpj) : '', c.titular, c.tipo, c.uso, c.autoridade_certificadora,
         c.created_at ? formatDate(cadastradoEm(c)) : '', c.data_emissao ? formatDate(c.data_emissao) : '', c.data_vencimento ? formatDate(c.data_vencimento) : '',
-        x.certificado_finalizado ? 'Concluído' : 'Pendente', x.pagamento_confirmado ? 'Confirmado' : 'Pendente',
+        x.certificado_finalizado ? 'Concluído' : 'Pendente', x.data_conclusao ? formatDate(x.data_conclusao) : '', x.pagamento_confirmado ? 'Confirmado' : 'Pendente',
         x.data_aviso_cliente ? formatDate(x.data_aviso_cliente) : '', fmtDateTime(x.data_agendamento) || '', c.observacoes || '',
       ]
     })
     const titulos = ['Empresa', 'CNPJ', 'Titular', 'Tipo', 'Uso', 'Autoridade certificadora', 'Cadastrado em', 'Emissão', 'Vencimento',
-      'Situação', 'Pagamento', 'Aviso ao cliente', 'Videoconferência', 'Observações']
+      'Situação', 'Concluído em', 'Pagamento', 'Aviso ao cliente', 'Videoconferência', 'Observações']
     const ws = XLSX.utils.aoa_to_sheet([...cabecalho, titulos, ...linhas])
-    ws['!cols'] = [38, 20, 28, 6, 10, 22, 14, 12, 12, 12, 12, 16, 18, 40].map(wch => ({ wch }))
+    ws['!cols'] = [38, 20, 28, 6, 10, 22, 14, 12, 12, 12, 14, 12, 16, 18, 40].map(wch => ({ wch }))
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Certificados')
     XLSX.writeFile(wb, arquivo + '.xlsx')
@@ -190,11 +201,13 @@ function CertificadosPageInner() {
 
   // ─── Relatório quinzenal: cadastrados no período, concluídos ou pendentes ──
   const quinzena = periodoQuinzena(qMes, qNum)
+  const noPeriodo = (d: string) => !!d && d >= quinzena.ini && d <= quinzena.fim
   const daQuinzena = byEmpresa(certs)
-    .filter(c => { const d = cadastradoEm(c); return d >= quinzena.ini && d <= quinzena.fim })
+    .filter(c => noPeriodo(cadastradoEm(c)) || noPeriodo(concluidoEm(c)))
     .sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''))
-  const qConcluidos = daQuinzena.filter(c => !!(c as any).certificado_finalizado)
-  const qPendentes  = daQuinzena.filter(c => !(c as any).certificado_finalizado)
+  const qCadastrados = daQuinzena.filter(c => noPeriodo(cadastradoEm(c)))
+  const qConcluidos  = daQuinzena.filter(c => noPeriodo(concluidoEm(c)))
+  const qPendentes   = qCadastrados.filter(c => !(c as any).certificado_finalizado)
 
   function mudarQuinzena(delta: 1 | -1) {
     if (delta === 1 && qNum === 1) { setQNum(2); return }
@@ -207,7 +220,7 @@ function CertificadosPageInner() {
   function exportarQuinzena() {
     exportarExcel(daQuinzena, `certificados_${qMes}_${qNum}a-quinzena`, [
       [`Certificados digitais — ${quinzena.titulo} (${quinzena.faixa})`],
-      ['Cadastrados', daQuinzena.length, 'Concluídos', qConcluidos.length, 'Pendentes', qPendentes.length],
+      ['Cadastrados na quinzena', qCadastrados.length, 'Concluídos na quinzena', qConcluidos.length, 'Cadastrados ainda pendentes', qPendentes.length],
       [],
     ])
   }
@@ -258,7 +271,7 @@ function CertificadosPageInner() {
             } ${isEditAgenda ? 'ring-1 ring-violet-400' : ''}`}>
             <span>🎥</span><span>{agendaFmt ?? 'Videoconf.'}</span>
           </button>
-          <button onClick={() => saveControl(c.id, { certificado_finalizado: true })}
+          <button onClick={() => saveControl(c.id, { certificado_finalizado: true, data_conclusao: diaLocal() })}
             disabled={saving === c.id}
             title="Marcar como emitido e finalizado"
             className="inline-flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full border border-slate-200 bg-white text-slate-400 hover:border-emerald-300 hover:text-emerald-600 hover:bg-emerald-50 transition-all">
@@ -559,6 +572,7 @@ function CertificadosPageInner() {
                         <th className="px-4 py-3 text-left font-medium text-slate-600">AC</th>
                         <th className="px-4 py-3 text-left font-medium text-slate-600">Emissão</th>
                         <th className="px-4 py-3 text-left font-medium text-slate-600">Vencimento</th>
+                        <th className="px-4 py-3 text-left font-medium text-slate-600">Conclusão</th>
                         <th className="px-4 py-3 text-left font-medium text-slate-600">Status</th>
                         <th className="px-4 py-3 text-right font-medium text-slate-600">Ações</th>
                       </tr>
@@ -597,6 +611,12 @@ function CertificadosPageInner() {
                           <td className="px-4 py-3 text-slate-500 text-xs">{formatDate(c.data_emissao) || '—'}</td>
                           <td className="px-4 py-3 text-slate-600">{formatDate(c.data_vencimento) || '—'}</td>
                           <td className="px-4 py-3">
+                            <input type="date" aria-label={`Data de conclusão de ${c.titular}`}
+                              value={concluidoEm(c)} max={diaLocal()} disabled={saving === c.id}
+                              onChange={e => saveControl(c.id, { data_conclusao: e.target.value || null })}
+                              className="border border-slate-300 rounded-lg px-2 py-1 text-xs bg-white outline-none focus:border-slate-500" />
+                          </td>
+                          <td className="px-4 py-3">
                             <StatusBadge status={c.status_cor ?? 'sem_data'} diasParaVencer={c.dias_para_vencer} />
                           </td>
                           <td className="px-4 py-3">
@@ -609,7 +629,7 @@ function CertificadosPageInner() {
                                   </svg>
                                 </a>
                               )}
-                              <button onClick={() => saveControl(c.id, { certificado_finalizado: false })}
+                              <button onClick={() => saveControl(c.id, { certificado_finalizado: false, data_conclusao: null })}
                                 disabled={saving === c.id}
                                 title="Reabrir para edição do processo"
                                 className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg">
@@ -668,14 +688,14 @@ function CertificadosPageInner() {
 
               <div>
                 <h2 className="text-base font-bold text-slate-900">{quinzena.titulo}</h2>
-                <p className="text-sm text-slate-500">Certificados cadastrados de {quinzena.faixa}{empresaNomeAtual ? ` · ${empresaNomeAtual}` : ''}</p>
+                <p className="text-sm text-slate-500">Certificados cadastrados ou concluídos de {quinzena.faixa}{empresaNomeAtual ? ` · ${empresaNomeAtual}` : ''}</p>
               </div>
 
               <div className="grid grid-cols-3 gap-3">
                 {[
-                  { label: 'Cadastrados', val: daQuinzena.length },
-                  { label: 'Concluídos', val: qConcluidos.length },
-                  { label: 'Pendentes', val: qPendentes.length },
+                  { label: 'Cadastrados na quinzena', val: qCadastrados.length },
+                  { label: 'Concluídos na quinzena', val: qConcluidos.length },
+                  { label: 'Cadastrados ainda pendentes', val: qPendentes.length },
                 ].map(k => (
                   <div key={k.label} className="card p-4">
                     <p className="text-xs font-semibold text-slate-500">{k.label}</p>
@@ -686,13 +706,13 @@ function CertificadosPageInner() {
 
               <div className="card overflow-hidden">
                 {daQuinzena.length === 0 ? (
-                  <p className="p-12 text-center text-sm text-slate-500">Nenhum certificado cadastrado nesta quinzena.</p>
+                  <p className="p-12 text-center text-sm text-slate-500">Nenhum certificado cadastrado ou concluído nesta quinzena.</p>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead className="bg-slate-50 border-b">
                         <tr>
-                          {['Cadastrado em', 'Empresa', 'Titular', 'Tipo / Uso', 'AC', 'Situação'].map(h => (
+                          {['Cadastrado em', 'Concluído em', 'Empresa', 'Titular', 'Tipo / Uso', 'AC', 'Situação'].map(h => (
                             <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-600">{h}</th>
                           ))}
                         </tr>
@@ -703,12 +723,13 @@ function CertificadosPageInner() {
                           return (
                             <tr key={c.id} className="hover:bg-slate-50 transition-colors">
                               <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{formatDate(cadastradoEm(c))}</td>
+                              <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{concluidoEm(c) ? formatDate(concluidoEm(c)) : '—'}</td>
                               <td className="px-4 py-3 font-semibold text-slate-900 break-words">{c.razao_social || (c as any).empresa_nome_livre || '—'}</td>
                               <td className="px-4 py-3 text-slate-700">{c.titular}</td>
                               <td className="px-4 py-3 text-slate-700 whitespace-nowrap">{c.tipo} · {c.uso}</td>
                               <td className="px-4 py-3 text-slate-600">{c.autoridade_certificadora}</td>
                               <td className="px-4 py-3">
-                                <span className={concluido ? 'badge-ok' : 'badge-critico'}>{concluido ? 'Concluído' : 'Pendente'}</span>
+                                <span className={concluido ? 'badge-ok' : 'badge-critico'}>{concluido ? (concluidoEm(c) ? 'Concluído' : 'Concluído · sem data') : 'Pendente'}</span>
                               </td>
                             </tr>
                           )
