@@ -22,7 +22,7 @@ export default function Header({ title, profile }: HeaderProps) {
 
   return (
     <header className="h-14 bg-white border-b px-6 flex items-center justify-between flex-shrink-0">
-      <h1 className="text-lg font-semibold text-gray-900">{title}</h1>
+      <h1 className="text-lg font-semibold text-slate-900">{title}</h1>
 
       <div className="flex items-center gap-3">
         {profile && (
@@ -33,14 +33,14 @@ export default function Header({ title, profile }: HeaderProps) {
               </span>
             </div>
             <div className="hidden sm:block">
-              <p className="text-sm font-medium text-gray-900 leading-tight">{profile.nome}</p>
-              <p className="text-xs text-gray-500 capitalize">{profile.perfil}</p>
+              <p className="text-sm font-medium text-slate-900 leading-tight">{profile.nome}</p>
+              <p className="text-xs text-slate-500 capitalize">{profile.perfil}</p>
             </div>
           </div>
         )}
         <button
           onClick={handleLogout}
-          className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+          className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
           title="Sair"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

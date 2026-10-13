@@ -284,7 +284,7 @@ export default function ProdutividadePage() {
               { label: 'Empresas atendidas',  val: String(empresasAtendidas), sub: 'com tempo ou ação' },
             ].map(c => (
               <div key={c.label} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{c.label}</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{c.label}</p>
                 <p className="text-2xl font-bold text-slate-900 mt-1">{c.val}</p>
                 <p className="text-xs text-slate-400 mt-0.5 truncate">{c.sub}</p>
               </div>
@@ -298,7 +298,7 @@ export default function ProdutividadePage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm min-w-[480px]">
                   <thead>
-                    <tr className="text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400 bg-slate-50">
+                    <tr className="text-left text-xs font-semibold uppercase tracking-wide text-slate-400 bg-slate-50">
                       <th className="px-5 py-2">Pessoa</th>
                       <th className="px-5 py-2">No sistema</th>
                       <th className="px-5 py-2">Em portais</th>
@@ -347,7 +347,7 @@ export default function ProdutividadePage() {
                   return (
                     <div key={item.k + (item.k === 'b' ? item.b.id : item.e.id)}>
                       {novoDia && (
-                        <p className="px-5 py-2 bg-slate-50 text-[11px] font-semibold uppercase tracking-wide text-slate-500 border-y border-slate-100 capitalize">
+                        <p className="px-5 py-2 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500 border-y border-slate-100 capitalize">
                           {fmtDia(item.dia)}
                         </p>
                       )}
@@ -380,7 +380,7 @@ export default function ProdutividadePage() {
                           </span>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm text-slate-700">
-                              <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded mr-2">{item.e.acao}</span>
+                              <span className="text-xs font-semibold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded mr-2">{item.e.acao}</span>
                               {item.e.descricao}
                               {item.e.empresa_nome && <span className="text-slate-500"> · {item.e.empresa_nome}</span>}
                             </p>
@@ -460,7 +460,7 @@ export default function ProdutividadePage() {
                   <div key={m.id} className="flex items-start gap-3 px-5 py-3 group">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-slate-700">
-                        <span className="text-[11px] font-semibold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded mr-2">{m.tipo}</span>
+                        <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded mr-2">{m.tipo}</span>
                         {m.descricao}
                         {m.empresa && <span className="text-slate-500"> · {m.empresa}</span>}
                       </p>
@@ -497,7 +497,7 @@ const inputCls = 'w-full border border-slate-200 rounded-lg px-3 py-2 text-sm ou
 function Campo({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 block mb-1">{label}</label>
+      <label className="text-xs font-semibold uppercase tracking-wide text-slate-400 block mb-1">{label}</label>
       {children}
     </div>
   )

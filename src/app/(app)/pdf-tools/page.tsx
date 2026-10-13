@@ -395,10 +395,10 @@ export default function PDFToolsPage() {
 
       {/* ── Header ── */}
       <header className="mb-8">
-        <h1 className="text-2xl md:text-3xl font-black italic tracking-tighter uppercase">
+        <h1 className="text-2xl md:text-3xl font-bold italic tracking-tighter uppercase">
           PARALEGAL PRO <span className="text-yellow-500">| PDF EXPERT</span>
         </h1>
-        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+        <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mt-1">
           Processamento 100% local · Sem envio de dados · Segurança total
         </p>
       </header>
@@ -424,8 +424,8 @@ export default function PDFToolsPage() {
               <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl ${t.bg} flex items-center justify-center mb-3 md:mb-4 group-hover:scale-110 transition-transform`}>
                 <Icon className={`w-5 h-5 md:w-6 md:h-6 ${t.color}`} />
               </div>
-              <h3 className="font-black text-xs md:text-sm text-slate-900 uppercase tracking-wide mb-1 md:mb-2">{t.title}</h3>
-              <p className="text-[10px] md:text-xs text-slate-500 leading-relaxed hidden sm:block">{t.description}</p>
+              <h3 className="font-bold text-xs md:text-sm text-slate-900 uppercase tracking-wide mb-1 md:mb-2">{t.title}</h3>
+              <p className="text-xs md:text-xs text-slate-500 leading-relaxed hidden sm:block">{t.description}</p>
             </button>
           )
         })}
@@ -441,8 +441,8 @@ export default function PDFToolsPage() {
               <tool.icon className={`w-5 h-5 ${tool.color}`} />
             </div>
             <div className="flex-1 min-w-0">
-              <h2 className="text-base font-black uppercase text-yellow-400">{tool.title}</h2>
-              <p className="text-[11px] text-slate-400 truncate">{tool.description}</p>
+              <h2 className="text-base font-bold uppercase text-yellow-400">{tool.title}</h2>
+              <p className="text-xs text-slate-400 truncate">{tool.description}</p>
             </div>
             <button onClick={() => { setActiveTool(null); reset() }} className="text-slate-500 hover:text-white transition-colors flex-shrink-0">
               <X className="w-5 h-5" />
@@ -471,7 +471,7 @@ export default function PDFToolsPage() {
                   onChange={e => addFiles(Array.from(e.target.files || []))}
                 />
                 <Upload className={`w-10 h-10 mx-auto mb-3 transition-colors ${isDragging ? 'text-yellow-500' : 'text-slate-400'}`} />
-                <p className="font-black text-slate-700 uppercase text-sm tracking-wide">
+                <p className="font-bold text-slate-700 uppercase text-sm tracking-wide">
                   {isDragging ? 'Solte aqui!' : 'Arraste ou clique para selecionar'}
                 </p>
                 <p className="text-xs text-slate-400 mt-1.5">
@@ -487,7 +487,7 @@ export default function PDFToolsPage() {
                     <div key={i} className="flex items-center gap-3 bg-white border border-slate-200 rounded-xl px-4 py-2.5 group">
                       <FileText className="w-4 h-4 text-yellow-500 flex-shrink-0" />
                       <span className="flex-1 text-sm font-medium text-slate-700 truncate">{f.name}</span>
-                      <span className="text-[10px] text-slate-400 font-mono flex-shrink-0">{(f.size / 1024).toFixed(1)} KB</span>
+                      <span className="text-xs text-slate-400 font-mono flex-shrink-0">{(f.size / 1024).toFixed(1)} KB</span>
                       <button
                         onClick={() => setFiles(prev => prev.filter((_, j) => j !== i))}
                         className="text-slate-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
@@ -502,7 +502,7 @@ export default function PDFToolsPage() {
               {/* Opções: Split */}
               {files.length > 0 && activeTool === 'split' && (
                 <div className="mt-4 bg-white border border-slate-200 rounded-xl p-4">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide block mb-2">
                     Páginas a extrair {totalPages ? `(total: ${totalPages})` : ''}
                   </label>
                   <input
@@ -512,14 +512,14 @@ export default function PDFToolsPage() {
                     placeholder="Ex: 1-3, 5, 7-9"
                     className="w-full bg-slate-50 border-2 border-slate-200 focus:border-yellow-400 rounded-xl px-4 py-2.5 text-sm outline-none font-mono transition-colors"
                   />
-                  <p className="text-[10px] text-slate-400 mt-1.5">Separe com vírgulas · Use hífen para intervalos</p>
+                  <p className="text-xs text-slate-400 mt-1.5">Separe com vírgulas · Use hífen para intervalos</p>
                 </div>
               )}
 
               {/* Opções: Protect */}
               {files.length > 0 && activeTool === 'protect' && (
                 <div className="mt-4 bg-white border border-slate-200 rounded-xl p-4">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Senha de acesso</label>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide block mb-2">Senha de acesso</label>
                   <input
                     type="password"
                     value={password}
@@ -527,7 +527,7 @@ export default function PDFToolsPage() {
                     placeholder="Digite a senha para o PDF"
                     className="w-full bg-slate-50 border-2 border-slate-200 focus:border-yellow-400 rounded-xl px-4 py-2.5 text-sm outline-none transition-colors"
                   />
-                  <p className="text-[10px] text-slate-400 mt-1.5">O PDF gerado exigirá esta senha para ser aberto</p>
+                  <p className="text-xs text-slate-400 mt-1.5">O PDF gerado exigirá esta senha para ser aberto</p>
                 </div>
               )}
 
@@ -536,7 +536,7 @@ export default function PDFToolsPage() {
                 <button
                   onClick={handleProcess}
                   disabled={processing}
-                  className="mt-5 w-full bg-black text-yellow-400 py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-slate-800 disabled:opacity-50 transition-all flex items-center justify-center gap-3 shadow-lg"
+                  className="mt-5 w-full bg-black text-yellow-400 py-4 rounded-2xl font-bold text-sm uppercase tracking-wide hover:bg-slate-800 disabled:opacity-50 transition-all flex items-center justify-center gap-3 shadow-lg"
                 >
                   {processing ? (
                     <><Loader2 className="w-5 h-5 animate-spin" /> Processando...</>
@@ -555,7 +555,7 @@ export default function PDFToolsPage() {
                 <div className="w-14 h-14 bg-yellow-400 rounded-full flex items-center justify-center mx-auto mb-3 shadow-md">
                   <CheckCircle2 className="w-7 h-7 text-black" />
                 </div>
-                <h3 className="font-black text-lg uppercase text-slate-900">Concluído!</h3>
+                <h3 className="font-bold text-lg uppercase text-slate-900">Concluído!</h3>
                 <p className="text-sm text-slate-500 mt-0.5">
                   {results.length === 1 ? '1 arquivo gerado' : `${results.length} arquivos gerados`}
                 </p>
@@ -570,7 +570,7 @@ export default function PDFToolsPage() {
                   >
                     <Download className="w-4 h-4 text-yellow-500 flex-shrink-0 group-hover:scale-110 transition-transform" />
                     <span className="flex-1 text-sm font-bold text-slate-700 text-left truncate">{r.name}</span>
-                    <span className="text-[10px] font-black text-yellow-600 uppercase flex-shrink-0">Baixar</span>
+                    <span className="text-xs font-bold text-yellow-600 uppercase flex-shrink-0">Baixar</span>
                   </button>
                 ))}
               </div>

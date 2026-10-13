@@ -29,7 +29,7 @@ export default async function EmpresaPage({ params, searchParams }: Props) {
   if (edit) {
     return (
       <div className="p-6 max-w-4xl">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">Editar Empresa</h1>
+        <h1 className="text-2xl font-bold text-slate-900 mb-6">Editar Empresa</h1>
         <div className="card">
           <EmpresaForm empresa={empresa} />
         </div>

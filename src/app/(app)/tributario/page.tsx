@@ -27,7 +27,7 @@ function BadgeRisco({ nivel }: { nivel: string }) {
   const cor = nivel === 'Alto' ? 'bg-red-100 text-red-700 border-red-200'
     : nivel === 'Médio' ? 'bg-yellow-100 text-yellow-700 border-yellow-200'
     : 'bg-green-100 text-green-700 border-green-200'
-  return <span className={`text-[10px] px-2 py-0.5 rounded border font-bold uppercase tracking-wide ${cor}`}>{nivel}</span>
+  return <span className={`text-xs px-2 py-0.5 rounded border font-bold uppercase tracking-wide ${cor}`}>{nivel}</span>
 }
 
 function BadgeAnexo({ anexo }: { anexo: string }) {
@@ -38,7 +38,7 @@ function BadgeAnexo({ anexo }: { anexo: string }) {
     : anexo === 'V'   ? 'bg-red-100 text-red-700 border-red-200'
     : 'bg-slate-100 text-slate-600 border-slate-200'
   return (
-    <span className={`text-[10px] px-2 py-0.5 rounded border font-bold ${cor}`}>
+    <span className={`text-xs px-2 py-0.5 rounded border font-bold ${cor}`}>
       {anexo === 'impedido' ? '⛔ Impedido' : `Anexo ${anexo}`}
     </span>
   )
@@ -99,7 +99,7 @@ function DonutChart({ segments, total }: {
           <div key={i} className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ background: a.color }} />
             <span className="text-slate-600 flex-1 min-w-0 truncate">{a.label}</span>
-            <span className="font-black text-slate-800">{a.value}</span>
+            <span className="font-bold text-slate-800">{a.value}</span>
             <span className="text-slate-400">({a.pct}%)</span>
           </div>
         ))}
@@ -136,24 +136,24 @@ function CnaeCard({
       >
         {/* Linha 1: código + badges */}
         <div className="flex items-start gap-2 flex-wrap mb-2">
-          <span className="font-mono text-[11px] font-black bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md">
+          <span className="font-mono text-xs font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md">
             {cnae.codigo}
           </span>
           {cnae.temFiscal ? (
             isImpedido ? (
-              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-200">⛔ Impedido Simples</span>
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-200">⛔ Impedido Simples</span>
             ) : (
-              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">✅ Simples Nacional</span>
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">✅ Simples Nacional</span>
             )
           ) : (
-            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-50 text-slate-400 border border-slate-200">❓ Não mapeado</span>
+            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-50 text-slate-400 border border-slate-200">❓ Não mapeado</span>
           )}
           {cnae.temFiscal && !isImpedido && <BadgeAnexo anexo={cnae.anexoSimples} />}
           {hasFatorR && (
-            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 border border-indigo-200">📊 Fator R</span>
+            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 border border-indigo-200">📊 Fator R</span>
           )}
           {cnae.conselhoClasse && (
-            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">{cnae.conselhoClasse}</span>
+            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">{cnae.conselhoClasse}</span>
           )}
         </div>
 
@@ -161,7 +161,7 @@ function CnaeCard({
         <p className="text-sm font-semibold text-slate-800 leading-snug mb-3">{cnae.descricao}</p>
 
         {/* Linha 3: riscos + licenças */}
-        <div className="flex items-center gap-3 flex-wrap text-[10px] text-slate-500">
+        <div className="flex items-center gap-3 flex-wrap text-xs text-slate-500">
           <span className="flex items-center gap-1">
             <span>🏥</span>
             <span>Vig.: </span>
@@ -185,7 +185,7 @@ function CnaeCard({
       <div className="border-t border-slate-100 px-4 py-2.5 flex gap-2 bg-slate-50">
         <button
           onClick={onSelect}
-          className={`flex-1 text-[10px] font-black uppercase px-2 py-1.5 rounded-lg transition-all ${
+          className={`flex-1 text-xs font-bold uppercase px-2 py-1.5 rounded-lg transition-all ${
             selected ? 'bg-slate-900 text-yellow-400' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
           }`}
         >
@@ -193,21 +193,21 @@ function CnaeCard({
         </button>
         <button
           onClick={onSimular}
-          className="text-[10px] font-black uppercase px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700 transition-all"
+          className="text-xs font-bold uppercase px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700 transition-all"
         >
           ⚖️ Simular
         </button>
         {hasFatorR && (
           <button
             onClick={onFatorR}
-            className="text-[10px] font-black uppercase px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700 transition-all"
+            className="text-xs font-bold uppercase px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700 transition-all"
           >
             📊 Fator R
           </button>
         )}
         <button
           onClick={onLicencas}
-          className="text-[10px] font-black uppercase px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-green-50 hover:border-green-200 hover:text-green-700 transition-all"
+          className="text-xs font-bold uppercase px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-green-50 hover:border-green-200 hover:text-green-700 transition-all"
         >
           ✅ Lic.
         </button>
@@ -242,9 +242,9 @@ export default function TributarioPage() {
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-2xl">🧠</span>
-                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-yellow-400">Portal de Inteligência Contábil</span>
+                <span className="text-xs font-bold uppercase tracking-wide text-yellow-400">Portal de Inteligência Contábil</span>
               </div>
-              <h1 className="text-2xl md:text-3xl font-black tracking-tight leading-tight">
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight leading-tight">
                 Estrategista Tributário & CNAE
               </h1>
               <p className="text-slate-400 text-sm mt-1.5 max-w-xl">
@@ -267,8 +267,8 @@ export default function TributarioPage() {
                 { val: '3', label: 'Regimes' },
               ].map(s => (
                 <div key={s.label} className="text-center">
-                  <p className="text-xl font-black text-yellow-400">{s.val}</p>
-                  <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500">{s.label}</p>
+                  <p className="text-xl font-bold text-yellow-400">{s.val}</p>
+                  <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{s.label}</p>
                 </div>
               ))}
             </div>
@@ -280,7 +280,7 @@ export default function TributarioPage() {
               <button
                 key={t.key}
                 onClick={() => setTab(t.key)}
-                className={`flex items-center gap-1.5 px-4 py-3 text-xs font-black uppercase tracking-wide whitespace-nowrap border-b-2 transition-all ${
+                className={`flex items-center gap-1.5 px-4 py-3 text-xs font-bold uppercase tracking-wide whitespace-nowrap border-b-2 transition-all ${
                   tab === t.key
                     ? 'border-yellow-400 text-yellow-400'
                     : 'border-transparent text-slate-500 hover:text-slate-300'
@@ -379,7 +379,7 @@ function TabConsultaCnae({ cnaeAtual, setCnaeAtual, setTab }: {
           {query && (
             <button
               onClick={() => setQuery('')}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 text-xs font-black"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 text-xs font-bold"
             >✕</button>
           )}
         </div>
@@ -400,7 +400,7 @@ function TabConsultaCnae({ cnaeAtual, setCnaeAtual, setTab }: {
           {/* Coluna esquerda: cards */}
           <div className="lg:col-span-2 space-y-3">
             {mostrando.length > 0 && (
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+              <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
                 {mostrando.length} resultado{mostrando.length !== 1 ? 's' : ''} encontrado{mostrando.length !== 1 ? 's' : ''}
               </p>
             )}
@@ -426,7 +426,7 @@ function TabConsultaCnae({ cnaeAtual, setCnaeAtual, setTab }: {
           {/* Coluna direita: gráfico + estatísticas */}
           <div className="space-y-4">
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">
+              <p className="text-xs font-bold uppercase tracking-wide text-slate-400 mb-4">
                 {resultados.length > 0 ? 'Distribuição dos Resultados' : 'CNAE Selecionado'}
               </p>
               <DonutChart segments={distribuicao} total={totalDist} />
@@ -434,7 +434,7 @@ function TabConsultaCnae({ cnaeAtual, setCnaeAtual, setTab }: {
 
             {/* Dicas contextuais */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-3">
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Referência Rápida</p>
+              <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Referência Rápida</p>
               {[
                 { cor: 'bg-emerald-500', label: 'Anexo III', desc: 'Serviços com CPP — alíq. 6% na 1ª faixa' },
                 { cor: 'bg-indigo-500',  label: 'Fator R',   desc: 'Folha ≥ 28% fatura → Anexo III vs V' },
@@ -451,7 +451,7 @@ function TabConsultaCnae({ cnaeAtual, setCnaeAtual, setTab }: {
 
             {/* Dica Osasco */}
             <div className="bg-slate-900 rounded-2xl p-4 text-xs text-slate-400 space-y-1">
-              <p className="font-black text-yellow-400 text-[10px] uppercase tracking-widest">📍 Osasco/SP</p>
+              <p className="font-bold text-yellow-400 text-xs uppercase tracking-wide">📍 Osasco/SP</p>
               <p>ISS municipal: <span className="text-white font-bold">2% a 5%</span> conforme atividade</p>
               <p>Alvará Digital disponível pelo portal <span className="text-white">poupatempo.sp.gov.br</span></p>
             </div>
@@ -477,7 +477,7 @@ function CnaeFichaCompleta({ cnae, setTab }: { cnae: CnaeInfo; setTab: (t: TabKe
   return (
     <div className="bg-white rounded-2xl border-2 border-slate-900 shadow-lg overflow-hidden">
       <div className="bg-slate-900 text-white px-5 py-3 flex items-center justify-between">
-        <span className="text-[10px] font-black uppercase tracking-widest text-yellow-400">CNAE Selecionado</span>
+        <span className="text-xs font-bold uppercase tracking-wide text-yellow-400">CNAE Selecionado</span>
         <span className="font-mono text-xs text-slate-400">{cnae.codigo}</span>
       </div>
 
@@ -490,7 +490,7 @@ function CnaeFichaCompleta({ cnae, setTab }: { cnae: CnaeInfo; setTab: (t: TabKe
             <div className="rounded-xl border-2 border-red-300 bg-red-50 p-4 flex items-start gap-3">
               <span className="text-2xl">⛔</span>
               <div>
-                <p className="font-black text-red-800">IMPEDIDO AO SIMPLES NACIONAL</p>
+                <p className="font-bold text-red-800">IMPEDIDO AO SIMPLES NACIONAL</p>
                 <p className="text-sm text-red-700 mt-0.5">{cnae.motivoImpedimento ?? 'Atividade vedada pela LC 123/2006'}</p>
                 <p className="text-xs text-red-600 mt-1">Regimes: <strong>Lucro Presumido</strong> ou <strong>Lucro Real</strong></p>
               </div>
@@ -499,7 +499,7 @@ function CnaeFichaCompleta({ cnae, setTab }: { cnae: CnaeInfo; setTab: (t: TabKe
             <div className="rounded-xl border-2 border-emerald-300 bg-emerald-50 p-4 flex items-start gap-3">
               <span className="text-2xl">✅</span>
               <div className="flex-1">
-                <p className="font-black text-emerald-800">ELEGÍVEL AO SIMPLES NACIONAL</p>
+                <p className="font-bold text-emerald-800">ELEGÍVEL AO SIMPLES NACIONAL</p>
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
                   <BadgeAnexo anexo={cnae.anexoSimples} />
                   <span className="text-sm text-emerald-700">{TABELAS_SIMPLES[cnae.anexoSimples as Anexo]?.nome ?? ''}</span>
@@ -515,7 +515,7 @@ function CnaeFichaCompleta({ cnae, setTab }: { cnae: CnaeInfo; setTab: (t: TabKe
           <div className="rounded-xl border-2 border-slate-200 bg-slate-50 p-4 flex items-start gap-3">
             <span className="text-2xl">❓</span>
             <div>
-              <p className="font-black text-slate-700">SIMPLES NACIONAL — NÃO MAPEADO</p>
+              <p className="font-bold text-slate-700">SIMPLES NACIONAL — NÃO MAPEADO</p>
               <p className="text-sm text-slate-500 mt-0.5">Consulte seu contador para verificar a elegibilidade.</p>
             </div>
           </div>
@@ -530,7 +530,7 @@ function CnaeFichaCompleta({ cnae, setTab }: { cnae: CnaeInfo; setTab: (t: TabKe
             ['Conselho de Classe', cnae.conselhoClasse || '—'],
           ].map(([label, val]) => (
             <div key={label as string} className="bg-slate-50 rounded-xl p-3">
-              <p className="text-[9px] text-slate-400 font-black uppercase tracking-wide mb-1">{label as string}</p>
+              <p className="text-xs text-slate-400 font-bold uppercase tracking-wide mb-1">{label as string}</p>
               <div className="font-semibold capitalize text-slate-800">{val as any}</div>
             </div>
           ))}
@@ -546,7 +546,7 @@ function CnaeFichaCompleta({ cnae, setTab }: { cnae: CnaeInfo; setTab: (t: TabKe
 
         {/* Licenças */}
         <div>
-          <p className="text-[9px] font-black text-slate-400 uppercase tracking-wide mb-2">Licenças Obrigatórias</p>
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">Licenças Obrigatórias</p>
           <div className="space-y-1">
             {cnae.licencasObrigatorias.map((l, i) => (
               <div key={i} className="flex items-start gap-2 text-sm">
@@ -610,19 +610,19 @@ function TabSimulador({ cnaeAtual }: { cnaeAtual: CnaeInfo | null }) {
         <h2 className="font-bold text-slate-900">Dados para Simulação</h2>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-wide block mb-1">Receita Bruta Mensal *</label>
+            <label className="text-xs font-bold text-slate-400 uppercase tracking-wide block mb-1">Receita Bruta Mensal *</label>
             <input className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-mono outline-none focus:border-slate-400" placeholder="Ex: 50.000,00" value={receitaStr} onChange={e => setReceitaStr(inputMoeda(e.target.value))} />
             {receitaMensal > 0 && <p className="text-xs text-slate-400 mt-1">Anual: {formatarMoeda(rbt12)}</p>}
           </div>
           {(cnaeAtual?.fatorRAplicavel || !cnaeAtual) && (
             <div>
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-wide block mb-1">Folha de Pagamento Mensal</label>
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wide block mb-1">Folha de Pagamento Mensal</label>
               <input className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-mono outline-none focus:border-slate-400" placeholder="Ex: 15.000,00" value={folhaStr} onChange={e => setFolhaStr(inputMoeda(e.target.value))} />
             </div>
           )}
           {tipoAtv === 'servico' && (
             <div>
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-wide block mb-1">Alíquota ISS Municipal (%)</label>
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wide block mb-1">Alíquota ISS Municipal (%)</label>
               <input className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-slate-400" placeholder="2 a 5" value={aliquotaIss} onChange={e => setAliquotaIss(e.target.value)} />
             </div>
           )}
@@ -641,10 +641,10 @@ function TabSimulador({ cnaeAtual }: { cnaeAtual: CnaeInfo | null }) {
               <div key={c.title} className={`bg-white rounded-2xl border-2 p-5 space-y-3 ${c.best ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200'}`}>
                 <div className="flex items-center justify-between">
                   <h3 className="font-bold text-slate-900 text-sm">{c.title}</h3>
-                  {c.best && <span className="text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded-full font-bold">✓ Mais barato</span>}
+                  {c.best && <span className="text-xs bg-emerald-600 text-white px-2 py-0.5 rounded-full font-bold">✓ Mais barato</span>}
                 </div>
                 {c.badge}
-                <div className="text-2xl font-black text-slate-900">{formatarMoeda(c.value)}<span className="text-sm font-normal text-slate-500">/mês</span></div>
+                <div className="text-2xl font-bold text-slate-900">{formatarMoeda(c.value)}<span className="text-sm font-normal text-slate-500">/mês</span></div>
                 <div className="space-y-1">{c.extra}</div>
                 <div className="flex justify-between text-sm font-bold border-t pt-1"><span>Anual</span><span>{formatarMoeda(c.anual)}</span></div>
               </div>
@@ -652,9 +652,9 @@ function TabSimulador({ cnaeAtual }: { cnaeAtual: CnaeInfo | null }) {
             <div className={`bg-white rounded-2xl border-2 p-5 space-y-3 ${maisBarato === 'Lucro Presumido' ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200'}`}>
               <div className="flex items-center justify-between">
                 <h3 className="font-bold text-slate-900 text-sm">Lucro Presumido</h3>
-                {maisBarato === 'Lucro Presumido' && <span className="text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded-full font-bold">✓ Mais barato</span>}
+                {maisBarato === 'Lucro Presumido' && <span className="text-xs bg-emerald-600 text-white px-2 py-0.5 rounded-full font-bold">✓ Mais barato</span>}
               </div>
-              <div className="text-2xl font-black text-slate-900">{formatarMoeda(lp.total)}<span className="text-sm font-normal text-slate-500">/mês</span></div>
+              <div className="text-2xl font-bold text-slate-900">{formatarMoeda(lp.total)}<span className="text-sm font-normal text-slate-500">/mês</span></div>
               <div className="space-y-1 text-sm text-slate-600">
                 {[['IRPJ', lp.irpj],['CSLL',lp.csll],['PIS',lp.pis],['COFINS',lp.cofins],tipoAtv==='servico'?[`ISS (${aliquotaIss}%)`,lp.iss]:null,['INSS Patronal',lp.cpp]].filter(Boolean).map(([l,v]:any) => <div key={l} className="flex justify-between"><span>{l}</span><span>{formatarMoeda(v)}</span></div>)}
                 <div className="flex justify-between font-bold border-t pt-1"><span>Alíquota efetiva</span><span>{formatarPorcentagem(lp.aliquotaEfetiva)}</span></div>
@@ -670,7 +670,7 @@ function TabSimulador({ cnaeAtual }: { cnaeAtual: CnaeInfo | null }) {
           </div>
 
           <div className={`p-4 rounded-2xl border-2 ${economiaSimples > 0 ? 'bg-emerald-50 border-emerald-200' : 'bg-orange-50 border-orange-200'}`}>
-            <p className="text-sm font-black text-slate-900">💡 Recomendação: <span className={economiaSimples > 0 ? 'text-emerald-700' : 'text-orange-700'}>{maisBarato}</span></p>
+            <p className="text-sm font-bold text-slate-900">💡 Recomendação: <span className={economiaSimples > 0 ? 'text-emerald-700' : 'text-orange-700'}>{maisBarato}</span></p>
             <p className="text-sm text-slate-700 mt-1">Economia estimada de <strong>{formatarMoeda(diferenca)}/mês</strong> ({formatarMoeda(diferenca * 12)}/ano)</p>
             <p className="text-xs text-slate-500 mt-2">⚠️ Simulação estimada. Confirme com o contador.</p>
           </div>
@@ -709,12 +709,12 @@ function TabFatorR({ cnaeAtual }: { cnaeAtual: CnaeInfo | null }) {
         <h2 className="font-bold text-slate-900">Dados dos últimos 12 meses</h2>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-wide block mb-1">Receita Bruta Mensal Média</label>
+            <label className="text-xs font-bold text-slate-400 uppercase tracking-wide block mb-1">Receita Bruta Mensal Média</label>
             <input className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-mono outline-none focus:border-slate-400" placeholder="Ex: 50.000,00" value={receitaStr} onChange={e => setReceitaStr(inputMoeda(e.target.value))} />
             {receita12 > 0 && <p className="text-xs text-slate-400 mt-1">Total: {formatarMoeda(receita12)}</p>}
           </div>
           <div>
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-wide block mb-1">Folha de Pagamento Mensal Média</label>
+            <label className="text-xs font-bold text-slate-400 uppercase tracking-wide block mb-1">Folha de Pagamento Mensal Média</label>
             <input className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-mono outline-none focus:border-slate-400" placeholder="Ex: 15.000,00" value={folhaStr} onChange={e => setFolhaStr(inputMoeda(e.target.value))} />
             <p className="text-xs text-slate-400 mt-1">Inclui pró-labore, salários e FGTS</p>
           </div>
@@ -727,7 +727,7 @@ function TabFatorR({ cnaeAtual }: { cnaeAtual: CnaeInfo | null }) {
       {resultado && iii && v && (
         <div className="space-y-4">
           <div className={`bg-white rounded-2xl border-2 p-5 text-center ${resultado.anexoAplicavel === 'III' ? 'border-emerald-300 bg-emerald-50' : 'border-orange-300 bg-orange-50'}`}>
-            <p className="text-4xl font-black tabular-nums mb-1" style={{ color: resultado.anexoAplicavel === 'III' ? '#16a34a' : '#ea580c' }}>{formatarPorcentagem(resultado.fatorR)}</p>
+            <p className="text-4xl font-bold tabular-nums mb-1" style={{ color: resultado.anexoAplicavel === 'III' ? '#16a34a' : '#ea580c' }}>{formatarPorcentagem(resultado.fatorR)}</p>
             <p className="text-sm text-slate-600 font-medium mb-2">Fator R atual</p>
             <div className="inline-flex items-center gap-2"><BadgeAnexo anexo={resultado.anexoAplicavel} /><span className="text-sm text-slate-700">aplicável</span></div>
             <div className="mt-4 mx-auto max-w-sm">
@@ -743,7 +743,7 @@ function TabFatorR({ cnaeAtual }: { cnaeAtual: CnaeInfo | null }) {
             {[{ a: 'III' as Anexo, data: iii, current: resultado.anexoAplicavel === 'III' }, { a: 'V' as Anexo, data: v, current: resultado.anexoAplicavel === 'V' }].map(({ a, data, current }) => (
               <div key={a} className={`bg-white rounded-2xl border-2 p-4 space-y-2 ${current ? (a === 'III' ? 'border-emerald-300' : 'border-orange-300') : 'border-slate-200'}`}>
                 <div className="flex items-center justify-between"><BadgeAnexo anexo={a} />{current && <span className={`text-xs font-bold ${a === 'III' ? 'text-emerald-600' : 'text-orange-600'}`}>✓ Atual</span>}</div>
-                <p className="text-xl font-black text-slate-900">{formatarMoeda(data.impostoMensal)}<span className="text-xs font-normal text-slate-500">/mês</span></p>
+                <p className="text-xl font-bold text-slate-900">{formatarMoeda(data.impostoMensal)}<span className="text-xs font-normal text-slate-500">/mês</span></p>
                 <p className="text-xs text-slate-500">Alíq. efetiva: {formatarPorcentagem(data.aliquotaEfetiva)}</p>
               </div>
             ))}
@@ -791,7 +791,7 @@ function TabLicencas({ cnaeAtual }: { cnaeAtual: CnaeInfo | null }) {
       <div className="bg-white rounded-2xl border border-slate-200 p-4">
         <div className="flex items-center justify-between mb-2">
           <div><p className="font-bold text-slate-900 text-sm">{cnaeAtual.descricao}</p><p className="text-xs text-slate-400 font-mono">{cnaeAtual.codigo}</p></div>
-          <div className="text-right"><p className="text-2xl font-black text-slate-900">{pct}%</p><p className="text-xs text-slate-400">{concluidos}/{total} itens</p></div>
+          <div className="text-right"><p className="text-2xl font-bold text-slate-900">{pct}%</p><p className="text-xs text-slate-400">{concluidos}/{total} itens</p></div>
         </div>
         <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
           <div className="h-full bg-emerald-500 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
@@ -877,7 +877,7 @@ function TabTagsSegmento({ setCnaeAtual, setTab }: {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-black text-slate-900 mb-1">Tags de Segmento</h2>
+        <h2 className="text-lg font-bold text-slate-900 mb-1">Tags de Segmento</h2>
         <p className="text-sm text-slate-500">Navegue pelos CNAEs agrupados por característica tributária ou de licenciamento.</p>
       </div>
 
@@ -887,14 +887,14 @@ function TabTagsSegmento({ setCnaeAtual, setTab }: {
           <button
             key={s.key}
             onClick={() => setFiltro(filtro === s.key ? null : s.key)}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border-2 text-xs font-black transition-all ${
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border-2 text-xs font-bold transition-all ${
               filtro === s.key
                 ? 'border-slate-900 bg-slate-900 text-white shadow-md scale-105'
                 : `${s.color} border hover:scale-105`
             }`}
           >
             {s.label}
-            <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[9px] font-black ${filtro === s.key ? 'bg-white/20 text-white' : 'bg-white/60'}`}>
+            <span className={`ml-1 px-1.5 py-0.5 rounded-full text-xs font-bold ${filtro === s.key ? 'bg-white/20 text-white' : 'bg-white/60'}`}>
               {s.count}
             </span>
           </button>
@@ -904,7 +904,7 @@ function TabTagsSegmento({ setCnaeAtual, setTab }: {
       {/* Lista de CNAEs filtrados */}
       {segAtual && (
         <div>
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">
+          <p className="text-xs font-bold uppercase tracking-wide text-slate-400 mb-3">
             {cnaesFiltrados.length} CNAEs — {segAtual.label}
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -915,10 +915,10 @@ function TabTagsSegmento({ setCnaeAtual, setTab }: {
                 className="text-left bg-white border border-slate-200 hover:border-slate-400 rounded-xl p-3 transition-all hover:shadow-md"
               >
                 <div className="flex items-start gap-2 mb-1 flex-wrap">
-                  <span className="font-mono text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">{c.codigo}</span>
+                  <span className="font-mono text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">{c.codigo}</span>
                   {c.temFiscal && !c.impedidoSimples && <BadgeAnexo anexo={c.anexoSimples} />}
-                  {c.impedidoSimples && <span className="text-[9px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded border border-red-200 font-bold">⛔ Impedido</span>}
-                  {c.fatorRAplicavel && <span className="text-[9px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded border border-indigo-200 font-bold">Fator R</span>}
+                  {c.impedidoSimples && <span className="text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded border border-red-200 font-bold">⛔ Impedido</span>}
+                  {c.fatorRAplicavel && <span className="text-xs bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded border border-indigo-200 font-bold">Fator R</span>}
                 </div>
                 <p className="text-xs font-semibold text-slate-800 leading-snug">{c.descricao}</p>
               </button>

@@ -98,7 +98,7 @@ export default function ProcessoForm({ empresas, defaultEmpresaId, onSuccess }: 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label className="block text-sm font-bold text-gray-700 mb-1">Empresa *</label>
+        <label className="block text-sm font-bold text-slate-700 mb-1">Empresa *</label>
         <select 
           className="w-full p-2 border rounded-md" 
           required 
@@ -113,7 +113,7 @@ export default function ProcessoForm({ empresas, defaultEmpresaId, onSuccess }: 
       </div>
 
       <div>
-        <label className="block text-sm font-bold text-gray-700 mb-1">Tipo de Processo *</label>
+        <label className="block text-sm font-bold text-slate-700 mb-1">Tipo de Processo *</label>
         <select 
           className="w-full p-2 border rounded-md" 
           required 
@@ -127,7 +127,7 @@ export default function ProcessoForm({ empresas, defaultEmpresaId, onSuccess }: 
       </div>
 
       <div>
-        <label className="block text-sm font-bold text-gray-700 mb-1">Título / Referência</label>
+        <label className="block text-sm font-bold text-slate-700 mb-1">Título / Referência</label>
         <input 
           className="w-full p-2 border rounded-md" 
           placeholder="Ex: Alteração de endereço" 
@@ -137,7 +137,7 @@ export default function ProcessoForm({ empresas, defaultEmpresaId, onSuccess }: 
       </div>
 
       <div>
-        <label className="block text-sm font-bold text-gray-700 mb-1">Observações</label>
+        <label className="block text-sm font-bold text-slate-700 mb-1">Observações</label>
         <textarea 
           className="w-full p-2 border rounded-md resize-none" 
           rows={3} 
@@ -153,7 +153,7 @@ export default function ProcessoForm({ empresas, defaultEmpresaId, onSuccess }: 
       <div className="flex gap-3 pt-2">
         <button 
           type="submit" 
-          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:bg-gray-400" 
+          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:bg-slate-400" 
           disabled={loading}
         >
           {loading ? 'Processando...' : 'Criar Processo'}

@@ -132,8 +132,8 @@ export default function DashboardPage() {
 
       {/* Header */}
       <header className="mb-8">
-        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-1 capitalize">{hoje}</p>
-        <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Painel de Controle</h1>
+        <p className="text-xs font-bold uppercase tracking-wide text-slate-400 mb-1 capitalize">{hoje}</p>
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Painel de Controle</h1>
         <p className="text-sm text-slate-500 mt-0.5"><span className="font-bold text-slate-700">{orgName}</span></p>
       </header>
 
@@ -143,10 +143,10 @@ export default function DashboardPage() {
           <Link key={kpi.label} href={kpi.link}
             className={`${kpi.bg} p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all group`}>
             <div className="flex items-center justify-between mb-3">
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 leading-tight">{kpi.label}</p>
+              <p className="text-xs font-bold uppercase tracking-wide text-slate-400 leading-tight">{kpi.label}</p>
               <span className={`${kpi.color} opacity-40 group-hover:opacity-100 transition-opacity`}>{kpi.icon}</span>
             </div>
-            <p className={`text-3xl font-black ${kpi.color}`}>{kpi.value}</p>
+            <p className={`text-3xl font-bold ${kpi.color}`}>{kpi.value}</p>
           </Link>
         ))}
       </div>
@@ -157,8 +157,8 @@ export default function DashboardPage() {
         {/* Processos em Andamento */}
         <section className="xl:col-span-2 flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Processos em Andamento</h3>
-            <Link href="/societario" className="text-[10px] font-bold text-blue-600 hover:underline">Ver todos →</Link>
+            <h3 className="text-xs font-bold uppercase tracking-wide text-slate-400">Processos em Andamento</h3>
+            <Link href="/societario" className="text-xs font-bold text-blue-600 hover:underline">Ver todos →</Link>
           </div>
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex-1">
             {processos.length === 0 ? (
@@ -175,17 +175,17 @@ export default function DashboardPage() {
                       <div className="flex items-start justify-between gap-2 mb-2">
                         <div className="min-w-0">
                           <p className="font-bold text-slate-800 text-sm truncate">{proc.empresas?.razao_social || proc.cliente_nome || '—'}</p>
-                          <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 uppercase mt-0.5 inline-block">
+                          <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 uppercase mt-0.5 inline-block">
                             {(proc.tipo || '').replace(/_/g, ' ')}
                           </span>
                         </div>
-                        <Link href={`/societario?processo=${proc.id}`} className="text-[10px] font-bold text-blue-600 hover:underline flex-shrink-0 mt-0.5">Abrir</Link>
+                        <Link href={`/societario?processo=${proc.id}`} className="text-xs font-bold text-blue-600 hover:underline flex-shrink-0 mt-0.5">Abrir</Link>
                       </div>
                       <div className="flex items-center gap-2 mt-1">
                         <div className="flex-1 h-1 bg-slate-100 rounded-full overflow-hidden">
                           <div className="h-full bg-yellow-400 rounded-full" style={{ width: `${porc}%` }} />
                         </div>
-                        <span className="text-[9px] font-black text-slate-400 flex-shrink-0">{porc}%</span>
+                        <span className="text-xs font-bold text-slate-400 flex-shrink-0">{porc}%</span>
                       </div>
                     </div>
                   )
@@ -198,8 +198,8 @@ export default function DashboardPage() {
         {/* Alertas de Vencimento */}
         <section className="xl:col-span-3 flex flex-col gap-3">
           <div className="flex items-center justify-between flex-wrap gap-2">
-            <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Alertas de Vencimento</h3>
-            <div className="flex gap-3 text-[9px] font-bold text-slate-500">
+            <h3 className="text-xs font-bold uppercase tracking-wide text-slate-400">Alertas de Vencimento</h3>
+            <div className="flex gap-3 text-xs font-bold text-slate-500">
               <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500 inline-block" />Crítico ≤15d</span>
               <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-orange-400 inline-block" />≤30d</span>
               <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-400 inline-block" />≤60d</span>
@@ -212,7 +212,7 @@ export default function DashboardPage() {
                 <thead className="bg-slate-50 border-b border-slate-100">
                   <tr>
                     {['Empresa', 'Documento', 'Vencimento', 'Prazo', ''].map(h => (
-                      <th key={h} className="px-4 py-3 text-[9px] font-black uppercase text-slate-400 tracking-widest">{h}</th>
+                      <th key={h} className="px-4 py-3 text-xs font-bold uppercase text-slate-400 tracking-wide">{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -227,17 +227,17 @@ export default function DashboardPage() {
                           <p className="max-w-[130px] truncate">{alerta.empresas?.razao_social || '—'}</p>
                         </td>
                         <td className="px-4 py-3">
-                          <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 uppercase block w-fit">{alerta.categoria}</span>
-                          <p className="text-[10px] text-slate-500 mt-0.5 max-w-[150px] truncate">{alerta.desc}</p>
+                          <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 uppercase block w-fit">{alerta.categoria}</span>
+                          <p className="text-xs text-slate-500 mt-0.5 max-w-[150px] truncate">{alerta.desc}</p>
                         </td>
                         <td className="px-4 py-3 text-xs font-mono font-bold text-slate-700 whitespace-nowrap">
                           {alerta.data_vencimento ? new Date(alerta.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}
                         </td>
                         <td className="px-4 py-3">
-                          <span className={`text-[9px] font-black px-2 py-0.5 rounded-full whitespace-nowrap ${badge}`}>{label}</span>
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${badge}`}>{label}</span>
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <Link href={alerta.href} className="text-[10px] font-bold text-blue-600 hover:underline whitespace-nowrap">Tratar →</Link>
+                          <Link href={alerta.href} className="text-xs font-bold text-blue-600 hover:underline whitespace-nowrap">Tratar →</Link>
                         </td>
                       </tr>
                     )

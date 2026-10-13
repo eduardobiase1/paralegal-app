@@ -272,13 +272,13 @@ export default function ContratoReverse() {
           <div key={label} className="flex items-center flex-1 last:flex-none">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
               i + 1 === step  ? 'bg-blue-600 text-white' :
-              i + 1 < step    ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-400'}`}>
+              i + 1 < step    ? 'bg-green-500 text-white' : 'bg-slate-100 text-slate-400'}`}>
               {i + 1 < step ? '✓' : i + 1}
             </div>
-            <span className={`ml-2 text-xs font-medium ${i + 1 === step ? 'text-gray-900' : 'text-gray-400'}`}>
+            <span className={`ml-2 text-xs font-medium ${i + 1 === step ? 'text-slate-900' : 'text-slate-400'}`}>
               {label}
             </span>
-            {i < STEPS.length - 1 && <div className="flex-1 h-px bg-gray-200 mx-3" />}
+            {i < STEPS.length - 1 && <div className="flex-1 h-px bg-slate-200 mx-3" />}
           </div>
         ))}
       </div>
@@ -303,10 +303,10 @@ export default function ContratoReverse() {
             <label className="label">Upload do PDF</label>
             <label className={`flex flex-col items-center justify-center h-28 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${
               loading
-                ? 'border-gray-200 bg-gray-50 cursor-not-allowed'
+                ? 'border-slate-200 bg-slate-50 cursor-not-allowed'
                 : 'border-blue-300 bg-blue-50 hover:border-blue-400 hover:bg-blue-100'}`}>
               {loading ? (
-                <div className="text-center text-gray-500 text-sm">
+                <div className="text-center text-slate-500 text-sm">
                   <svg className="animate-spin w-6 h-6 mx-auto mb-1" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
@@ -339,7 +339,7 @@ export default function ContratoReverse() {
           <div>
             <label className="label">
               Texto do Contrato *
-              <span className="text-gray-400 font-normal ml-1">(preenchido automaticamente pelo PDF, ou cole manualmente)</span>
+              <span className="text-slate-400 font-normal ml-1">(preenchido automaticamente pelo PDF, ou cole manualmente)</span>
             </label>
             <textarea
               className="input resize-none h-72 font-mono text-xs leading-relaxed"
@@ -347,7 +347,7 @@ export default function ContratoReverse() {
               value={textoOriginal}
               onChange={e => setTextoOriginal(e.target.value)}
             />
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-xs text-slate-400 mt-1">
               {textoOriginal.length.toLocaleString('pt-BR')} caracteres
             </p>
           </div>
@@ -370,10 +370,10 @@ export default function ContratoReverse() {
 
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-semibold text-gray-900">
+              <p className="text-sm font-semibold text-slate-900">
                 {entidades.length} elemento(s) detectado(s)
               </p>
-              <p className="text-xs text-gray-500 mt-0.5">
+              <p className="text-xs text-slate-500 mt-0.5">
                 Preencha apenas os campos que serão alterados. Deixe em branco para manter o valor original.
               </p>
             </div>
@@ -383,7 +383,7 @@ export default function ContratoReverse() {
           </div>
 
           {entidades.length === 0 ? (
-            <div className="card p-8 text-center text-gray-500">
+            <div className="card p-8 text-center text-slate-500">
               <p className="text-sm font-medium">Nenhum elemento detectado automaticamente</p>
               <p className="text-xs mt-1">Avance para a próxima etapa e edite o texto diretamente na prévia.</p>
             </div>
@@ -394,11 +394,11 @@ export default function ContratoReverse() {
                 if (!grupo.length) return null
                 return (
                   <div key={tipo} className="card p-4">
-                    <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                    <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
                       <span className={`text-xs px-2 py-0.5 rounded border font-medium ${TIPO_COR[tipo]}`}>
                         {grupo[0].label}
                       </span>
-                      <span className="text-gray-400 font-normal">{grupo.length} encontrado(s)</span>
+                      <span className="text-slate-400 font-normal">{grupo.length} encontrado(s)</span>
                     </h3>
                     <div className="space-y-3">
                       {grupo.map(sub => (
@@ -414,7 +414,7 @@ export default function ContratoReverse() {
                               <span className="font-mono text-sm bg-yellow-50 border border-yellow-200 text-yellow-800 px-2 py-1 rounded flex-shrink-0">
                                 {sub.original}
                               </span>
-                              <svg className="w-4 h-4 text-gray-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <svg className="w-4 h-4 text-slate-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                               </svg>
                               <input
@@ -426,7 +426,7 @@ export default function ContratoReverse() {
                               />
                             </div>
                           </div>
-                          <p className="text-xs text-gray-400 pl-6 truncate" title={sub.contexto}>
+                          <p className="text-xs text-slate-400 pl-6 truncate" title={sub.contexto}>
                             {sub.contexto}
                           </p>
                         </div>
@@ -461,15 +461,15 @@ export default function ContratoReverse() {
                 {alteracoesAtivas.map(s => (
                   <div key={s.id} className="flex items-center gap-1 text-xs bg-white border border-green-200 rounded-lg px-2 py-1">
                     <span className="font-mono text-red-600 line-through">{s.original}</span>
-                    <span className="text-gray-400 mx-0.5">→</span>
+                    <span className="text-slate-400 mx-0.5">→</span>
                     <span className="font-mono text-green-700 font-medium">{s.novo}</span>
                   </div>
                 ))}
               </div>
             </div>
           ) : (
-            <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl">
-              <p className="text-sm text-gray-500">
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+              <p className="text-sm text-slate-500">
                 Nenhuma substituição definida. O documento será gerado com o texto original.
               </p>
             </div>
@@ -477,7 +477,7 @@ export default function ContratoReverse() {
 
           {/* Diff toggle */}
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-gray-900">Prévia do documento</h3>
+            <h3 className="text-sm font-semibold text-slate-900">Prévia do documento</h3>
             <button
               className="text-xs text-blue-600 hover:text-blue-800 font-medium underline underline-offset-2"
               onClick={() => setShowDiff(!showDiff)}
@@ -489,25 +489,25 @@ export default function ContratoReverse() {
           {showDiff ? (
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Original</p>
+                <p className="text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wide">Original</p>
                 <div className="border rounded-xl p-4 h-96 overflow-auto bg-red-50 border-red-200">
-                  <pre className="text-xs whitespace-pre-wrap font-mono text-gray-700 leading-relaxed">
+                  <pre className="text-xs whitespace-pre-wrap font-mono text-slate-700 leading-relaxed">
                     {textoOriginal}
                   </pre>
                 </div>
               </div>
               <div>
-                <p className="text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Alterado</p>
+                <p className="text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wide">Alterado</p>
                 <div className="border rounded-xl p-4 h-96 overflow-auto bg-green-50 border-green-200">
-                  <pre className="text-xs whitespace-pre-wrap font-mono text-gray-700 leading-relaxed">
+                  <pre className="text-xs whitespace-pre-wrap font-mono text-slate-700 leading-relaxed">
                     {textoFinal}
                   </pre>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="border rounded-xl p-4 h-96 overflow-auto bg-gray-50">
-              <pre className="text-xs whitespace-pre-wrap font-mono text-gray-700 leading-relaxed">
+            <div className="border rounded-xl p-4 h-96 overflow-auto bg-slate-50">
+              <pre className="text-xs whitespace-pre-wrap font-mono text-slate-700 leading-relaxed">
                 {textoFinal}
               </pre>
             </div>
@@ -515,7 +515,7 @@ export default function ContratoReverse() {
 
           {/* Editar texto diretamente */}
           <details className="group">
-            <summary className="cursor-pointer text-xs text-gray-500 hover:text-gray-700 font-medium select-none">
+            <summary className="cursor-pointer text-xs text-slate-500 hover:text-slate-700 font-medium select-none">
               Editar texto manualmente antes de exportar
             </summary>
             <div className="mt-2">

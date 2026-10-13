@@ -37,7 +37,7 @@ const ROLE_LABELS: Record<OrgRole, string> = {
 const ROLE_COLORS: Record<OrgRole, string> = {
   admin: 'bg-amber-100 text-amber-700',
   operador: 'bg-blue-100 text-blue-700',
-  viewer: 'bg-gray-100 text-gray-600',
+  viewer: 'bg-slate-100 text-slate-600',
 }
 
 const ROLE_DESCRIPTIONS: Record<OrgRole, string> = {
@@ -189,8 +189,8 @@ export default function UsuariosPage() {
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Usuários</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <h1 className="text-2xl font-bold text-slate-900">Usuários</h1>
+          <p className="text-sm text-slate-500 mt-0.5">
             {members.length} membro(s) em <strong>{orgName}</strong>
           </p>
         </div>
@@ -214,27 +214,27 @@ export default function UsuariosPage() {
 
       <div className="card">
         {loading ? (
-          <div className="p-12 text-center text-gray-400">Carregando...</div>
+          <div className="p-12 text-center text-slate-400">Carregando...</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b">
+              <thead className="bg-slate-50 border-b">
                 <tr>
-                  <th className="px-4 py-3 text-left font-medium text-gray-600">Nome</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-600">E-mail</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-600">Papel</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-600">Status</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-600">Desde</th>
+                  <th className="px-4 py-3 text-left font-medium text-slate-600">Nome</th>
+                  <th className="px-4 py-3 text-left font-medium text-slate-600">E-mail</th>
+                  <th className="px-4 py-3 text-left font-medium text-slate-600">Papel</th>
+                  <th className="px-4 py-3 text-left font-medium text-slate-600">Status</th>
+                  <th className="px-4 py-3 text-left font-medium text-slate-600">Desde</th>
                   {isAdmin && (
-                    <th className="px-4 py-3 text-right font-medium text-gray-600">Ações</th>
+                    <th className="px-4 py-3 text-right font-medium text-slate-600">Ações</th>
                   )}
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {members.map(m => (
-                  <tr key={m.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium text-gray-900">{getProfile(m.profiles)?.nome ?? '—'}</td>
-                    <td className="px-4 py-3 text-gray-600">{getProfile(m.profiles)?.email ?? '—'}</td>
+                  <tr key={m.id} className="hover:bg-slate-50">
+                    <td className="px-4 py-3 font-medium text-slate-900">{getProfile(m.profiles)?.nome ?? '—'}</td>
+                    <td className="px-4 py-3 text-slate-600">{getProfile(m.profiles)?.email ?? '—'}</td>
                     <td className="px-4 py-3">
                       {isAdmin ? (
                         <select
@@ -254,12 +254,12 @@ export default function UsuariosPage() {
                     </td>
                     <td className="px-4 py-3">
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                        getProfile(m.profiles)?.ativo !== false ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                        getProfile(m.profiles)?.ativo !== false ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'
                       }`}>
                         {getProfile(m.profiles)?.ativo !== false ? 'Ativo' : 'Inativo'}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-gray-500">{formatDate(m.created_at)}</td>
+                    <td className="px-4 py-3 text-slate-500">{formatDate(m.created_at)}</td>
                     {isAdmin && (
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-2">
@@ -296,7 +296,7 @@ export default function UsuariosPage() {
 
           {/* E-mail */}
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">
+            <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wide">
               E-mail
             </label>
             <input
@@ -307,13 +307,13 @@ export default function UsuariosPage() {
               value={inviteEmail}
               onChange={e => setInviteEmail(e.target.value)}
               placeholder="usuario@empresa.com.br"
-              className="w-full border-2 border-gray-200 focus:border-amber-400 rounded-xl px-4 py-3 text-sm outline-none transition-colors"
+              className="w-full border-2 border-slate-200 focus:border-amber-400 rounded-xl px-4 py-3 text-sm outline-none transition-colors"
             />
           </div>
 
           {/* Senha temporária */}
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">
+            <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wide">
               Senha temporária
             </label>
             <div className="relative">
@@ -325,12 +325,12 @@ export default function UsuariosPage() {
                 onChange={e => setInvitePassword(e.target.value)}
                 placeholder="Mínimo 6 caracteres"
                 minLength={6}
-                className="w-full border-2 border-gray-200 focus:border-amber-400 rounded-xl px-4 py-3 text-sm outline-none transition-colors pr-11"
+                className="w-full border-2 border-slate-200 focus:border-amber-400 rounded-xl px-4 py-3 text-sm outline-none transition-colors pr-11"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(v => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   {showPassword
@@ -340,14 +340,14 @@ export default function UsuariosPage() {
                 </svg>
               </button>
             </div>
-            <p className="text-[11px] text-gray-400 mt-1.5">
+            <p className="text-xs text-slate-400 mt-1.5">
               No primeiro acesso o usuário será obrigado a criar uma senha própria.
             </p>
           </div>
 
           {/* Nível de acesso */}
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
+            <label className="block text-xs font-semibold text-slate-600 mb-2 uppercase tracking-wide">
               Nível de acesso
             </label>
             <div className="space-y-2">
@@ -355,7 +355,7 @@ export default function UsuariosPage() {
                 <label
                   key={r}
                   className={`flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
-                    inviteRole === r ? 'border-amber-400 bg-amber-50' : 'border-gray-200 hover:border-gray-300'
+                    inviteRole === r ? 'border-amber-400 bg-amber-50' : 'border-slate-200 hover:border-slate-300'
                   }`}
                 >
                   <input
@@ -367,10 +367,10 @@ export default function UsuariosPage() {
                     className="mt-0.5 accent-amber-500"
                   />
                   <div className="min-w-0">
-                    <span className={`text-xs font-black px-2 py-0.5 rounded-full ${ROLE_COLORS[r]}`}>
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${ROLE_COLORS[r]}`}>
                       {ROLE_LABELS[r]}
                     </span>
-                    <p className="text-xs text-gray-500 mt-0.5">{ROLE_DESCRIPTIONS[r]}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">{ROLE_DESCRIPTIONS[r]}</p>
                   </div>
                 </label>
               ))}
@@ -385,7 +385,7 @@ export default function UsuariosPage() {
             <button
               type="submit"
               disabled={inviting || !inviteEmail.trim() || invitePassword.length < 6}
-              className="flex-1 bg-black hover:bg-slate-800 disabled:opacity-50 text-amber-400 font-black rounded-xl px-4 py-2.5 text-sm transition-colors flex items-center justify-center gap-2 uppercase tracking-wide"
+              className="flex-1 bg-black hover:bg-slate-800 disabled:opacity-50 text-amber-400 font-bold rounded-xl px-4 py-2.5 text-sm transition-colors flex items-center justify-center gap-2 uppercase tracking-wide"
             >
               {inviting ? (
                 <>
@@ -415,14 +415,14 @@ export default function UsuariosPage() {
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center gap-3">
               <span className="text-2xl">🔑</span>
               <div>
-                <p className="text-sm font-semibold text-gray-800">{getProfile(resetTarget.profiles)?.nome ?? '—'}</p>
-                <p className="text-xs text-gray-500">{getProfile(resetTarget.profiles)?.email ?? '—'}</p>
+                <p className="text-sm font-semibold text-slate-800">{getProfile(resetTarget.profiles)?.nome ?? '—'}</p>
+                <p className="text-xs text-slate-500">{getProfile(resetTarget.profiles)?.email ?? '—'}</p>
               </div>
             </div>
 
             {/* Nova senha */}
             <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wide">
                 Nova senha temporária
               </label>
               <div className="relative">
@@ -435,12 +435,12 @@ export default function UsuariosPage() {
                   onChange={e => setResetPassword(e.target.value)}
                   placeholder="Mínimo 6 caracteres"
                   minLength={6}
-                  className="w-full border-2 border-gray-200 focus:border-amber-400 rounded-xl px-4 py-3 text-sm outline-none transition-colors pr-11"
+                  className="w-full border-2 border-slate-200 focus:border-amber-400 rounded-xl px-4 py-3 text-sm outline-none transition-colors pr-11"
                 />
                 <button
                   type="button"
                   onClick={() => setShowResetPass(v => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                 >
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     {showResetPass
@@ -450,7 +450,7 @@ export default function UsuariosPage() {
                   </svg>
                 </button>
               </div>
-              <p className="text-[11px] text-gray-400 mt-1.5">
+              <p className="text-xs text-slate-400 mt-1.5">
                 O usuário será obrigado a criar uma nova senha no próximo acesso.
               </p>
             </div>
@@ -467,7 +467,7 @@ export default function UsuariosPage() {
               <button
                 type="submit"
                 disabled={resetting || resetPassword.length < 6}
-                className="flex-1 bg-black hover:bg-slate-800 disabled:opacity-50 text-amber-400 font-black rounded-xl px-4 py-2.5 text-sm transition-colors flex items-center justify-center gap-2 uppercase tracking-wide"
+                className="flex-1 bg-black hover:bg-slate-800 disabled:opacity-50 text-amber-400 font-bold rounded-xl px-4 py-2.5 text-sm transition-colors flex items-center justify-center gap-2 uppercase tracking-wide"
               >
                 {resetting ? (
                   <>

@@ -28,6 +28,6 @@ function dotColor(status: StatusCor): string {
     case 'atencao': return 'bg-yellow-500'
     case 'critico': return 'bg-orange-500'
     case 'vencido': return 'bg-red-500'
-    default:        return 'bg-gray-400'
+    default:        return 'bg-slate-400'
   }
 }

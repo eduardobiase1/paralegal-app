@@ -11,7 +11,7 @@ import Link from 'next/link'
 // ─── Cores por status ────────────────────────────────────────────────────────
 
 const STATUS_CARD: Record<string, string> = {
-  pendente:           'border-gray-200 bg-white',
+  pendente:           'border-slate-200 bg-white',
   em_andamento:       'border-blue-300 bg-blue-50',
   concluido:          'border-green-300 bg-green-50',
   aguardando_cliente: 'border-yellow-300 bg-yellow-50',
@@ -19,7 +19,7 @@ const STATUS_CARD: Record<string, string> = {
 }
 
 const STATUS_BADGE: Record<string, string> = {
-  pendente:           'bg-gray-100 text-gray-600',
+  pendente:           'bg-slate-100 text-slate-600',
   em_andamento:       'bg-blue-100 text-blue-700',
   concluido:          'bg-green-100 text-green-700',
   aguardando_cliente: 'bg-yellow-100 text-yellow-700',
@@ -27,7 +27,7 @@ const STATUS_BADGE: Record<string, string> = {
 }
 
 const STATUS_CIRCLE: Record<string, string> = {
-  pendente:           'bg-gray-200 text-gray-600',
+  pendente:           'bg-slate-200 text-slate-600',
   em_andamento:       'bg-blue-500 text-white',
   concluido:          'bg-green-500 text-white',
   aguardando_cliente: 'bg-yellow-500 text-white',
@@ -252,10 +252,10 @@ export default function ProcessoChecklist({ processo, etapas: initialEtapas }: P
   return (
     <div className="p-6 max-w-4xl">
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
+      <div className="flex items-center gap-2 text-sm text-slate-500 mb-4">
         <Link href="/societario" className="hover:text-primary-600">Módulo Societário</Link>
         <span>/</span>
-        <span className="text-gray-900">{processo.empresa?.razao_social}</span>
+        <span className="text-slate-900">{processo.empresa?.razao_social}</span>
       </div>
 
       {/* Header card */}
@@ -264,7 +264,7 @@ export default function ProcessoChecklist({ processo, etapas: initialEtapas }: P
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap mb-1">
-                <h1 className="text-xl font-bold text-gray-900 truncate">{processo.empresa?.razao_social}</h1>
+                <h1 className="text-xl font-bold text-slate-900 truncate">{processo.empresa?.razao_social}</h1>
                 <span className="text-sm px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-medium whitespace-nowrap">
                   {TIPO_PROCESSO_LABELS[processo.tipo]}
                 </span>
@@ -274,23 +274,23 @@ export default function ProcessoChecklist({ processo, etapas: initialEtapas }: P
                   </span>
                 )}
               </div>
-              {processo.titulo && <p className="text-sm text-gray-600">{processo.titulo}</p>}
-              <p className="text-xs text-gray-400 mt-1">Aberto em {formatDate(processo.data_abertura)}</p>
+              {processo.titulo && <p className="text-sm text-slate-600">{processo.titulo}</p>}
+              <p className="text-xs text-slate-400 mt-1">Aberto em {formatDate(processo.data_abertura)}</p>
             </div>
 
             {/* Controles direita */}
             <div className="flex items-center gap-3 flex-wrap">
               {/* SLA */}
               <div className="flex items-center gap-1.5">
-                <span className="text-xs text-gray-500">Previsão:</span>
+                <span className="text-xs text-slate-500">Previsão:</span>
                 <input
                   type="date"
-                  className={`text-xs border rounded-lg px-2 py-1 ${sla?.vencido ? 'border-red-400 text-red-600 bg-red-50' : 'border-gray-200 bg-white'}`}
+                  className={`text-xs border rounded-lg px-2 py-1 ${sla?.vencido ? 'border-red-400 text-red-600 bg-red-50' : 'border-slate-200 bg-white'}`}
                   value={previsao}
                   onChange={e => handlePrevisao(e.target.value)}
                 />
                 {sla && !sla.vencido && (
-                  <span className="text-xs text-gray-400">{sla.diff}d restantes</span>
+                  <span className="text-xs text-slate-400">{sla.diff}d restantes</span>
                 )}
                 {sla?.vencido && (
                   <span className="text-xs font-semibold text-red-600">Atrasado!</span>
@@ -314,10 +314,10 @@ export default function ProcessoChecklist({ processo, etapas: initialEtapas }: P
           {/* Barra de progresso */}
           <div className="mt-4">
             <div className="flex justify-between text-sm mb-1">
-              <span className="text-gray-600">Progresso</span>
-              <span className="font-medium text-gray-900">{concluidas}/{total} etapas ({progresso}%)</span>
+              <span className="text-slate-600">Progresso</span>
+              <span className="font-medium text-slate-900">{concluidas}/{total} etapas ({progresso}%)</span>
             </div>
-            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+            <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
               <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${progresso}%` }} />
             </div>
           </div>
@@ -329,19 +329,19 @@ export default function ProcessoChecklist({ processo, etapas: initialEtapas }: P
         <div className="card mb-6">
           <div className="card-header flex items-center justify-between">
             <div>
-              <h2 className="font-semibold text-gray-900">Checklist de Documentos</h2>
-              <p className="text-xs text-gray-500 mt-0.5">
+              <h2 className="font-semibold text-slate-900">Checklist de Documentos</h2>
+              <p className="text-xs text-slate-500 mt-0.5">
                 {docs.filter(d => d.recebido).length}/{docs.length} documentos recebidos
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <div className="h-1.5 w-24 bg-gray-100 rounded-full overflow-hidden">
+              <div className="h-1.5 w-24 bg-slate-100 rounded-full overflow-hidden">
                 <div
                   className="h-full rounded-full bg-green-500 transition-all"
                   style={{ width: `${Math.round((docs.filter(d => d.recebido).length / docs.length) * 100)}%` }}
                 />
               </div>
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-slate-500">
                 {Math.round((docs.filter(d => d.recebido).length / docs.length) * 100)}%
               </span>
             </div>
@@ -362,7 +362,7 @@ export default function ProcessoChecklist({ processo, etapas: initialEtapas }: P
 
       {/* Checklist */}
       <div className="space-y-3">
-        <h2 className="text-base font-semibold text-gray-900">Checklist de Etapas</h2>
+        <h2 className="text-base font-semibold text-slate-900">Checklist de Etapas</h2>
         {etapas.map(etapa => (
           <EtapaCard
             key={etapa.id}
@@ -421,12 +421,12 @@ function EtapaCard({ etapa, empresaNome, saving, uploading, onStatusChange, onSa
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-medium text-gray-900">{etapa.nome}</span>
+            <span className="font-medium text-slate-900">{etapa.nome}</span>
             <span className={`text-xs px-2 py-0.5 rounded-full ${badgeCls}`}>
               {STATUS_LABELS[etapa.status] ?? etapa.status}
             </span>
             {dias !== null && (
-              <span className="flex items-center gap-1 text-xs text-gray-400">
+              <span className="flex items-center gap-1 text-xs text-slate-400">
                 <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
@@ -435,7 +435,7 @@ function EtapaCard({ etapa, empresaNome, saving, uploading, onStatusChange, onSa
             )}
           </div>
           {etapa.data_conclusao && (
-            <p className="text-xs text-gray-400 mt-0.5">Concluído em {formatDate(etapa.data_conclusao)}</p>
+            <p className="text-xs text-slate-400 mt-0.5">Concluído em {formatDate(etapa.data_conclusao)}</p>
           )}
         </div>
 
@@ -454,7 +454,7 @@ function EtapaCard({ etapa, empresaNome, saving, uploading, onStatusChange, onSa
             <option value="em_exigencia">Em Exigência</option>
           </select>
           {saving && (
-            <svg className="animate-spin w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24">
+            <svg className="animate-spin w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
             </svg>
@@ -470,8 +470,8 @@ function EtapaCard({ etapa, empresaNome, saving, uploading, onStatusChange, onSa
           <div className="flex items-center gap-2 flex-wrap">
             {/* Upload */}
             <label className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border cursor-pointer transition-colors
-              ${uploading ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
-                         : 'border-gray-200 bg-white text-gray-600 hover:border-blue-300 hover:text-blue-600'}`}>
+              ${uploading ? 'border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed'
+                         : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-600'}`}>
               {uploading ? (
                 <>
                   <svg className="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24">
@@ -536,7 +536,7 @@ function EtapaCard({ etapa, empresaNome, saving, uploading, onStatusChange, onSa
         {etapa.ordem === 4 && (
           <div className="flex items-center gap-2 flex-wrap">
             <div className="flex items-center gap-1.5">
-              <span className="text-xs text-gray-500 whitespace-nowrap">Nº Protocolo:</span>
+              <span className="text-xs text-slate-500 whitespace-nowrap">Nº Protocolo:</span>
               <input
                 className="text-xs border rounded-lg px-2 py-1 bg-white w-36"
                 placeholder="Ex: 123456/2024"
@@ -549,14 +549,14 @@ function EtapaCard({ etapa, empresaNome, saving, uploading, onStatusChange, onSa
               />
             </div>
             <a href="https://www.jucesponline.sp.gov.br" target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 hover:border-blue-300 hover:text-blue-600">
+              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-600">
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
               </svg>
               JUCESP Online
             </a>
             <a href="https://www.redesim.gov.br" target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 hover:border-blue-300 hover:text-blue-600">
+              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-600">
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
               </svg>
@@ -568,7 +568,7 @@ function EtapaCard({ etapa, empresaNome, saving, uploading, onStatusChange, onSa
         {/* Botão expandir observações */}
         <button
           onClick={() => setExpanded(!expanded)}
-          className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 mt-1"
+          className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 mt-1"
         >
           <svg className={`w-3 h-3 transition-transform ${expanded ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -582,7 +582,7 @@ function EtapaCard({ etapa, empresaNome, saving, uploading, onStatusChange, onSa
       {expanded && (
         <div className="mt-3 ml-10 grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="flex items-center gap-1 text-xs font-medium text-gray-500 mb-1">
+            <label className="flex items-center gap-1 text-xs font-medium text-slate-500 mb-1">
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
@@ -600,7 +600,7 @@ function EtapaCard({ etapa, empresaNome, saving, uploading, onStatusChange, onSa
             />
           </div>
           <div>
-            <label className="flex items-center gap-1 text-xs font-medium text-gray-500 mb-1">
+            <label className="flex items-center gap-1 text-xs font-medium text-slate-500 mb-1">
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
@@ -645,7 +645,7 @@ function DocCheckItem({ doc, saving, onToggle, onSaveObs }: DocCheckItemProps) {
           className={`mt-0.5 w-5 h-5 rounded flex-shrink-0 border-2 flex items-center justify-center transition-colors ${
             doc.recebido
               ? 'bg-green-500 border-green-500 text-white'
-              : 'border-gray-300 hover:border-green-400'
+              : 'border-slate-300 hover:border-green-400'
           }`}
         >
           {doc.recebido && (
@@ -656,7 +656,7 @@ function DocCheckItem({ doc, saving, onToggle, onSaveObs }: DocCheckItemProps) {
         </button>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <p className={`text-sm ${doc.recebido ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+            <p className={`text-sm ${doc.recebido ? 'line-through text-slate-400' : 'text-slate-900'}`}>
               {doc.documento}
             </p>
             {doc.obrigatorio && !doc.recebido && (
@@ -664,7 +664,7 @@ function DocCheckItem({ doc, saving, onToggle, onSaveObs }: DocCheckItemProps) {
             )}
           </div>
           {doc.observacao && !expanded && (
-            <p className="text-xs text-gray-500 mt-0.5">{doc.observacao}</p>
+            <p className="text-xs text-slate-500 mt-0.5">{doc.observacao}</p>
           )}
           {expanded && (
             <input
@@ -678,7 +678,7 @@ function DocCheckItem({ doc, saving, onToggle, onSaveObs }: DocCheckItemProps) {
         </div>
         <button
           onClick={() => setExpanded(p => !p)}
-          className="text-gray-400 hover:text-gray-600 flex-shrink-0 p-1"
+          className="text-slate-400 hover:text-slate-600 flex-shrink-0 p-1"
           title="Adicionar observação"
         >
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

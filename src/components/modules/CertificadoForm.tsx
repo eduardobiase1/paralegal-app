@@ -195,7 +195,7 @@ export default function CertificadoForm({ empresas, certificado, defaultEmpresaI
         <div>
           <label className="label">
             Data de Emissão
-            <span className="ml-1 text-[9px] font-normal text-slate-400 normal-case">(preencher após emissão)</span>
+            <span className="ml-1 text-xs font-normal text-slate-400 normal-case">(preencher após emissão)</span>
           </label>
           <input type="date" className="input" value={form.data_emissao}
             onChange={e => set('data_emissao', e.target.value)} />
@@ -203,7 +203,7 @@ export default function CertificadoForm({ empresas, certificado, defaultEmpresaI
         <div>
           <label className="label">
             Data de Vencimento
-            <span className="ml-1 text-[9px] font-normal text-slate-400 normal-case">(preencher após emissão)</span>
+            <span className="ml-1 text-xs font-normal text-slate-400 normal-case">(preencher após emissão)</span>
           </label>
           <input type="date" className="input" value={form.data_vencimento}
             onChange={e => set('data_vencimento', e.target.value)} />
@@ -221,13 +221,13 @@ export default function CertificadoForm({ empresas, certificado, defaultEmpresaI
       {/* ===== CONTROLE DO PROCESSO ===== */}
       <div className="border border-slate-200 rounded-2xl overflow-hidden">
         <div className="bg-slate-50 px-4 py-2.5 border-b border-slate-200">
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">📋 Controle do Processo de Renovação</p>
+          <p className="text-xs font-bold uppercase tracking-wide text-slate-500">📋 Controle do Processo de Renovação</p>
         </div>
         <div className="p-4 space-y-4">
 
           {/* Aviso ao cliente */}
           <div>
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1.5">
+            <label className="text-xs font-bold uppercase tracking-wide text-slate-500 block mb-1.5">
               📧 Aviso Enviado ao Cliente
             </label>
             <div className="flex gap-2 items-center">
@@ -243,7 +243,7 @@ export default function CertificadoForm({ empresas, certificado, defaultEmpresaI
 
           {/* Pagamento */}
           <div>
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1.5">
+            <label className="text-xs font-bold uppercase tracking-wide text-slate-500 block mb-1.5">
               💰 Pagamento pelo Cliente
             </label>
             <div className="flex gap-2">
@@ -266,7 +266,7 @@ export default function CertificadoForm({ empresas, certificado, defaultEmpresaI
 
           {/* Agendamento de videoconferência */}
           <div>
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1.5">
+            <label className="text-xs font-bold uppercase tracking-wide text-slate-500 block mb-1.5">
               🎥 Videoconferência Agendada
             </label>
             <input type="datetime-local" className="input w-full" value={form.data_agendamento}
@@ -275,7 +275,7 @@ export default function CertificadoForm({ empresas, certificado, defaultEmpresaI
 
           {/* Certificado emitido/finalizado */}
           <div>
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1.5">
+            <label className="text-xs font-bold uppercase tracking-wide text-slate-500 block mb-1.5">
               ✅ Certificado Emitido / Finalizado
             </label>
             <div className="flex gap-2">

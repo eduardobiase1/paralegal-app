@@ -161,8 +161,8 @@ export default function SimuladorPage() {
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Simulador de Taxas</h1>
-        <p className="text-sm text-gray-500 mt-1">Calcule os custos estimados por serviço e localidade</p>
+        <h1 className="text-2xl font-bold text-slate-900">Simulador de Taxas</h1>
+        <p className="text-sm text-slate-500 mt-1">Calcule os custos estimados por serviço e localidade</p>
       </div>
 
       {/* Tabs */}
@@ -170,7 +170,7 @@ export default function SimuladorPage() {
         {TABS.map(t => (
           <button key={t.key} onClick={() => setTab(t.key as any)}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              tab === t.key ? 'border-primary-600 text-primary-600' : 'border-transparent text-gray-600 hover:text-gray-900'}`}>
+              tab === t.key ? 'border-primary-600 text-primary-600' : 'border-transparent text-slate-600 hover:text-slate-900'}`}>
             {t.label}
           </button>
         ))}
@@ -181,7 +181,7 @@ export default function SimuladorPage() {
         <div className="space-y-5">
           {/* Filtros */}
           <div className="card">
-            <div className="card-header"><h2 className="font-semibold text-gray-900">Parâmetros da Simulação</h2></div>
+            <div className="card-header"><h2 className="font-semibold text-slate-900">Parâmetros da Simulação</h2></div>
             <div className="card-body">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
@@ -197,7 +197,7 @@ export default function SimuladorPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="label">Cidade <span className="text-gray-400 text-xs">(opcional)</span></label>
+                  <label className="label">Cidade <span className="text-slate-400 text-xs">(opcional)</span></label>
                   <input className="input" placeholder="Ex: São Paulo"
                     value={simCidade} onChange={e => setSimCidade(e.target.value)} />
                 </div>
@@ -207,10 +207,10 @@ export default function SimuladorPage() {
 
           {/* Resultado */}
           {loading ? (
-            <div className="card p-12 text-center text-gray-400">Carregando taxas...</div>
+            <div className="card p-12 text-center text-slate-400">Carregando taxas...</div>
           ) : taxasSimuladas.length === 0 ? (
-            <div className="card p-12 text-center text-gray-500">
-              <svg className="w-10 h-10 mx-auto text-gray-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div className="card p-12 text-center text-slate-500">
+              <svg className="w-10 h-10 mx-auto text-slate-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                   d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
               </svg>
@@ -224,8 +224,8 @@ export default function SimuladorPage() {
                 {Object.entries(porTipo).map(([tipo, itens]) => (
                   <div key={tipo} className="card">
                     <div className="card-header flex items-center justify-between">
-                      <h3 className="font-semibold text-gray-900">{tipo}</h3>
-                      <span className="text-sm font-semibold text-gray-700">
+                      <h3 className="font-semibold text-slate-900">{tipo}</h3>
+                      <span className="text-sm font-semibold text-slate-700">
                         {formatBRL(itens.reduce((s, t) => s + Number(t.valor), 0))}
                       </span>
                     </div>
@@ -233,10 +233,10 @@ export default function SimuladorPage() {
                       {itens.map(t => (
                         <div key={t.id} className="px-6 py-3 flex items-center justify-between">
                           <div>
-                            <p className="text-sm font-medium text-gray-900">{t.nome}</p>
-                            {t.observacoes && <p className="text-xs text-gray-500 mt-0.5">{t.observacoes}</p>}
+                            <p className="text-sm font-medium text-slate-900">{t.nome}</p>
+                            {t.observacoes && <p className="text-xs text-slate-500 mt-0.5">{t.observacoes}</p>}
                           </div>
-                          <span className="text-sm font-medium text-gray-700 ml-4 flex-shrink-0">{formatBRL(Number(t.valor))}</span>
+                          <span className="text-sm font-medium text-slate-700 ml-4 flex-shrink-0">{formatBRL(Number(t.valor))}</span>
                         </div>
                       ))}
                     </div>
@@ -286,7 +286,7 @@ export default function SimuladorPage() {
           {/* Formulário */}
           <div className="card">
             <div className="card-header">
-              <h2 className="font-semibold text-gray-900">Cadastrar Nova Taxa</h2>
+              <h2 className="font-semibold text-slate-900">Cadastrar Nova Taxa</h2>
             </div>
             <div className="card-body space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -322,7 +322,7 @@ export default function SimuladorPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="label">Cidade <span className="text-gray-400 text-xs">(deixe vazio p/ valer para todo o estado)</span></label>
+                  <label className="label">Cidade <span className="text-slate-400 text-xs">(deixe vazio p/ valer para todo o estado)</span></label>
                   <input className="input" placeholder="Ex: São Paulo"
                     value={novaForm.cidade} onChange={e => setNovaForm(p => ({ ...p, cidade: e.target.value }))} />
                 </div>
@@ -342,43 +342,43 @@ export default function SimuladorPage() {
 
           {/* Lista */}
           {loading ? (
-            <div className="card p-8 text-center text-gray-400">Carregando...</div>
+            <div className="card p-8 text-center text-slate-400">Carregando...</div>
           ) : taxas.length === 0 ? (
-            <div className="card p-8 text-center text-gray-500">Nenhuma taxa cadastrada ainda</div>
+            <div className="card p-8 text-center text-slate-500">Nenhuma taxa cadastrada ainda</div>
           ) : (
             <div className="card">
               <div className="card-header">
-                <h2 className="font-semibold text-gray-900">Taxas Cadastradas ({taxas.length})</h2>
+                <h2 className="font-semibold text-slate-900">Taxas Cadastradas ({taxas.length})</h2>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-gray-50 border-b">
+                  <thead className="bg-slate-50 border-b">
                     <tr>
-                      <th className="px-4 py-3 text-left font-medium text-gray-600">Nome</th>
-                      <th className="px-4 py-3 text-left font-medium text-gray-600">Tipo</th>
-                      <th className="px-4 py-3 text-left font-medium text-gray-600">Serviço</th>
-                      <th className="px-4 py-3 text-left font-medium text-gray-600">Localidade</th>
-                      <th className="px-4 py-3 text-right font-medium text-gray-600">Valor</th>
-                      <th className="px-4 py-3 text-right font-medium text-gray-600">Ação</th>
+                      <th className="px-4 py-3 text-left font-medium text-slate-600">Nome</th>
+                      <th className="px-4 py-3 text-left font-medium text-slate-600">Tipo</th>
+                      <th className="px-4 py-3 text-left font-medium text-slate-600">Serviço</th>
+                      <th className="px-4 py-3 text-left font-medium text-slate-600">Localidade</th>
+                      <th className="px-4 py-3 text-right font-medium text-slate-600">Valor</th>
+                      <th className="px-4 py-3 text-right font-medium text-slate-600">Ação</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
                     {taxas.map(t => (
-                      <tr key={t.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 font-medium text-gray-900">
+                      <tr key={t.id} className="hover:bg-slate-50">
+                        <td className="px-4 py-3 font-medium text-slate-900">
                           {t.nome}
-                          {t.observacoes && <p className="text-xs text-gray-400 font-normal">{t.observacoes}</p>}
+                          {t.observacoes && <p className="text-xs text-slate-400 font-normal">{t.observacoes}</p>}
                         </td>
                         <td className="px-4 py-3">
                           <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">{t.tipo}</span>
                         </td>
-                        <td className="px-4 py-3 text-gray-600 text-xs">
+                        <td className="px-4 py-3 text-slate-600 text-xs">
                           {SERVICOS.find(s => s.value === t.servico)?.label ?? t.servico}
                         </td>
-                        <td className="px-4 py-3 text-gray-600">
+                        <td className="px-4 py-3 text-slate-600">
                           {t.uf}{t.cidade ? ` / ${t.cidade}` : ' (todo estado)'}
                         </td>
-                        <td className="px-4 py-3 text-right font-semibold text-gray-900">
+                        <td className="px-4 py-3 text-right font-semibold text-slate-900">
                           {formatBRL(Number(t.valor))}
                         </td>
                         <td className="px-4 py-3 text-right">

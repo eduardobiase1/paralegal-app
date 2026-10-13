@@ -210,7 +210,7 @@ export default function EmpresaForm({ empresa }: EmpresaFormProps) {
 
       {/* ── Identificação ─────────────────────────────────────────────────────── */}
       <section>
-        <h2 className="text-base font-semibold text-gray-900 mb-4 pb-2 border-b">Identificação</h2>
+        <h2 className="text-base font-semibold text-slate-900 mb-4 pb-2 border-b">Identificação</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="md:col-span-2">
             <label className="label">Razão Social *</label>
@@ -239,16 +239,16 @@ export default function EmpresaForm({ empresa }: EmpresaFormProps) {
               className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-all ${
                 prioritaria
                   ? 'border-violet-400 bg-violet-50'
-                  : 'border-gray-200 bg-gray-50 hover:border-gray-300'
+                  : 'border-slate-200 bg-slate-50 hover:border-slate-300'
               }`}
             >
               <div className="flex items-center gap-3">
                 <span className="text-lg">{prioritaria ? '⭐' : '☆'}</span>
                 <div className="text-left">
-                  <p className={`text-sm font-semibold ${prioritaria ? 'text-violet-800' : 'text-gray-700'}`}>
+                  <p className={`text-sm font-semibold ${prioritaria ? 'text-violet-800' : 'text-slate-700'}`}>
                     Empresa Prioritária
                   </p>
-                  <p className={`text-xs ${prioritaria ? 'text-violet-600' : 'text-gray-400'}`}>
+                  <p className={`text-xs ${prioritaria ? 'text-violet-600' : 'text-slate-400'}`}>
                     {prioritaria
                       ? 'Certidões, alvarás e licenças aparecem no Briefing a cada 30 dias'
                       : 'Ativar para monitorar esta empresa mensalmente no Briefing Diário'}
@@ -256,7 +256,7 @@ export default function EmpresaForm({ empresa }: EmpresaFormProps) {
                 </div>
               </div>
               <div className={`w-11 h-6 rounded-full transition-colors flex items-center px-0.5 flex-shrink-0 ${
-                prioritaria ? 'bg-violet-500' : 'bg-gray-300'
+                prioritaria ? 'bg-violet-500' : 'bg-slate-300'
               }`}>
                 <div className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${
                   prioritaria ? 'translate-x-5' : 'translate-x-0'
@@ -266,7 +266,7 @@ export default function EmpresaForm({ empresa }: EmpresaFormProps) {
           </div>
           <div>
             <label className="label">
-              CNPJ {isEmAbertura ? <span className="text-gray-400 text-xs ml-1">(opcional em abertura)</span> : '*'}
+              CNPJ {isEmAbertura ? <span className="text-slate-400 text-xs ml-1">(opcional em abertura)</span> : '*'}
             </label>
             <input
               className="input font-mono"
@@ -297,7 +297,7 @@ export default function EmpresaForm({ empresa }: EmpresaFormProps) {
 
       {/* ── Cartão CNPJ ───────────────────────────────────────────────────────── */}
       <section>
-        <h2 className="text-base font-semibold text-gray-900 mb-4 pb-2 border-b">Dados do Cartão CNPJ</h2>
+        <h2 className="text-base font-semibold text-slate-900 mb-4 pb-2 border-b">Dados do Cartão CNPJ</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="label">Natureza Jurídica</label>
@@ -325,14 +325,14 @@ export default function EmpresaForm({ empresa }: EmpresaFormProps) {
               value={form.cnaes_secundarios_txt}
               onChange={e => set('cnaes_secundarios_txt', e.target.value)}
             />
-            <p className="text-xs text-gray-400 mt-1">Um CNAE por linha. Estes valores alimentam o campo objeto_social nos contratos.</p>
+            <p className="text-xs text-slate-400 mt-1">Um CNAE por linha. Estes valores alimentam o campo objeto_social nos contratos.</p>
           </div>
         </div>
       </section>
 
       {/* ── Capital Social ────────────────────────────────────────────────────── */}
       <section>
-        <h2 className="text-base font-semibold text-gray-900 mb-4 pb-2 border-b">Capital Social</h2>
+        <h2 className="text-base font-semibold text-slate-900 mb-4 pb-2 border-b">Capital Social</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="label">Capital Social (R$)</label>
@@ -353,12 +353,12 @@ export default function EmpresaForm({ empresa }: EmpresaFormProps) {
               onChange={e => set('valor_quota', e.target.value)} />
           </div>
         </div>
-        <p className="text-xs text-gray-400 mt-2">Esses valores alimentam automaticamente as tags dos contratos (capital_social_extenso, capital_quotas_extenso etc.).</p>
+        <p className="text-xs text-slate-400 mt-2">Esses valores alimentam automaticamente as tags dos contratos (capital_social_extenso, capital_quotas_extenso etc.).</p>
       </section>
 
       {/* ── Contatos ──────────────────────────────────────────────────────────── */}
       <section>
-        <h2 className="text-base font-semibold text-gray-900 mb-4 pb-2 border-b">Contatos</h2>
+        <h2 className="text-base font-semibold text-slate-900 mb-4 pb-2 border-b">Contatos</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="md:col-span-2">
             <label className="label">E-mail</label>
@@ -383,7 +383,7 @@ export default function EmpresaForm({ empresa }: EmpresaFormProps) {
 
       {/* ── Endereço ──────────────────────────────────────────────────────────── */}
       <section>
-        <h2 className="text-base font-semibold text-gray-900 mb-4 pb-2 border-b">Endereço</h2>
+        <h2 className="text-base font-semibold text-slate-900 mb-4 pb-2 border-b">Endereço</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="label">CEP</label>
@@ -456,7 +456,7 @@ export default function EmpresaForm({ empresa }: EmpresaFormProps) {
 
       {/* ── Registro na Junta ─────────────────────────────────────────────────── */}
       <section>
-        <h2 className="text-base font-semibold text-gray-900 mb-4 pb-2 border-b">Registro na Junta Comercial</h2>
+        <h2 className="text-base font-semibold text-slate-900 mb-4 pb-2 border-b">Registro na Junta Comercial</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="label">NIRE</label>
@@ -475,8 +475,8 @@ export default function EmpresaForm({ empresa }: EmpresaFormProps) {
 
       {/* ── URLs personalizadas ───────────────────────────────────────────────── */}
       <section>
-        <h2 className="text-base font-semibold text-gray-900 mb-1 pb-2 border-b">Portais Municipais</h2>
-        <p className="text-xs text-gray-500 mb-4">URLs dos portais específicos desta empresa para renovações e certidões municipais</p>
+        <h2 className="text-base font-semibold text-slate-900 mb-1 pb-2 border-b">Portais Municipais</h2>
+        <p className="text-xs text-slate-500 mb-4">URLs dos portais específicos desta empresa para renovações e certidões municipais</p>
         <div className="grid grid-cols-1 gap-4">
           <div>
             <label className="label">Portal de Renovação de Alvará</label>
@@ -523,7 +523,7 @@ export default function EmpresaForm({ empresa }: EmpresaFormProps) {
       {/* Modal de confirmação de exclusão */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-xl max-w-sm w-full p-6">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-sm w-full p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-xl bg-red-100 border border-red-200 flex items-center justify-center flex-shrink-0">
                 <svg className="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -531,11 +531,11 @@ export default function EmpresaForm({ empresa }: EmpresaFormProps) {
                 </svg>
               </div>
               <div>
-                <p className="text-sm font-bold text-gray-900">Excluir empresa</p>
-                <p className="text-xs text-gray-500 mt-0.5">Esta ação não pode ser desfeita</p>
+                <p className="text-sm font-bold text-slate-900">Excluir empresa</p>
+                <p className="text-xs text-slate-500 mt-0.5">Esta ação não pode ser desfeita</p>
               </div>
             </div>
-            <p className="text-sm text-gray-700 mb-6">
+            <p className="text-sm text-slate-700 mb-6">
               Tem certeza que deseja excluir <span className="font-semibold">{empresa?.razao_social}</span>? Todos os dados vinculados (certidões, alvarás, licenças) também serão removidos.
             </p>
             <div className="flex gap-2">

@@ -4,60 +4,32 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
 import Image from 'next/image'
+import {
+  Sun, Moon, Table2, Building2, CalendarClock, ListChecks, CircleDollarSign,
+  Wrench, Users, LogOut, ChevronsLeft, ChevronDown, type LucideIcon,
+} from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { useOrg } from '@/lib/org-context'
+import { gruposDoPerfil, navAtiva } from '@/lib/navigation'
 
 async function switchOrg(orgId: string) {
   await fetch('/api/switch-org', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orgId }) })
   window.location.href = '/briefing'
 }
 
-const navigation = [
-  {
-    label: 'Principal',
-    items: [
-      { href: '/briefing',     label: 'Briefing Diário', icon: BriefingIcon },
-      { href: '/societario/painel', label: 'Briefing Societário', icon: PainelIcon },
-      { href: '/visao-geral',  label: 'Visão Geral',    icon: VisaoGeralIcon },
-      { href: '/dashboard',    label: 'Dashboard',       icon: HomeIcon },
-      { href: '/empresas',     label: 'Empresas',        icon: BuildingIcon },
-      { href: '/financeiro',   label: 'Financeiro',  icon: CurrencyDollarIcon },
-    ],
-  },
-  {
-    label: 'Controles',
-    items: [
-      { href: '/certidoes',     label: 'Certidões Negativas',        icon: DocumentCheckIcon },
-      { href: '/alvaras',       label: 'Alvarás',                    icon: BadgeCheckIcon },
-      { href: '/licencas',      label: 'Licenças Sanitárias',        icon: ShieldIcon },
-      { href: '/certificados',  label: 'Certificados Digitais',      icon: KeyIcon },
-      { href: '/taxas-licenca', label: 'Taxas de Licença',           icon: TaxaLicencaIcon },
-    ],
-  },
-  {
-    label: 'Processos',
-    items: [
-      { href: '/societario', label: 'Módulo Societário', icon: UsersIcon, exact: true },
-      { href: '/contratos', label: 'Contratos', icon: DocumentTextIcon },
-      { href: '/simulador', label: 'Simulador de Taxas', icon: CalculatorIcon },
-      { href: '/tributario', label: 'Estrategista Tributário', icon: TaxIcon },
-    ],
-  },
-  {
-    label: 'Relatórios',
-    items: [
-      { href: '/relatorios', label: 'Relatórios PDF', icon: PrinterIcon },
-      { href: '/pdf-tools', label: 'PDF Expert', icon: PDFToolsIcon },
-    ],
-  },
-  {
-    label: 'Produtividade',
-    items: [
-      { href: '/produtividade', label: 'Registro de Atividades', icon: ProdutividadeIcon },
-    ],
-  },
-]
+const ICONES: Record<string, LucideIcon> = {
+  'hoje': Sun,
+  'visao-geral': Table2,
+  'carteira': Building2,
+  'vencimentos': CalendarClock,
+  'processos': ListChecks,
+  'financeiro': CircleDollarSign,
+  'ferramentas': Wrench,
+  'equipe': Users,
+}
+
+const itemCls = 'w-full flex items-center gap-3 px-3 min-h-[40px] rounded-lg text-sm transition-colors'
 
 export default function Sidebar({ isOpen = true, onToggle, isDark = false, onToggleDark }: {
   isOpen?: boolean; onToggle?: () => void; isDark?: boolean; onToggleDark?: () => void
@@ -71,8 +43,10 @@ export default function Sidebar({ isOpen = true, onToggle, isDark = false, onTog
   const [savingOrg, setSavingOrg] = useState(false)
   const [showOrgs, setShowOrgs] = useState(false)
   const { orgName, orgId, isAdmin, role, allOrgs } = useOrg()
-  const isViewer = role === 'viewer'
-  const isFinanceiro = role === 'financeiro'
+
+  const grupos = gruposDoPerfil(role)
+  const ativa = navAtiva(pathname, grupos)
+  const outrasOrgs = allOrgs.filter(o => o.id !== orgId)
 
   async function handleLogout() {
     setLoggingOut(true)
@@ -91,385 +65,108 @@ export default function Sidebar({ isOpen = true, onToggle, isDark = false, onTog
 
   return (
     <aside
-      className={`fixed inset-y-0 left-0 w-64 bg-[#0d0d0d] border-r border-white/[0.06] flex flex-col z-30 transition-transform duration-300 ${
+      className={`fixed inset-y-0 left-0 w-60 bg-[#0d0d0d] border-r border-white/[0.06] flex flex-col z-30 transition-transform duration-300 ${
         isOpen ? 'translate-x-0' : '-translate-x-full'
       }`}
     >
-      {/* Logo + collapse button */}
-      <div className="flex items-center gap-3 px-5 py-4 border-b border-white/[0.06]">
-        <div className="relative w-9 h-9 flex-shrink-0">
-          <Image
-            src="/logo.png"
-            alt="Paralegal PRO"
-            fill
-            className="object-contain"
-            priority
-          />
+      {/* Logo + recolher */}
+      <div className="flex items-center gap-3 px-5 py-4">
+        <div className="relative w-8 h-8 flex-shrink-0">
+          <Image src="/logo.png" alt="" fill className="object-contain" priority />
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="font-bold text-white text-sm leading-tight tracking-wide">
-            PARALEGAL <span className="text-amber-400">PRO</span>
-          </p>
-          <p className="text-[10px] text-gray-500 tracking-widest uppercase">Gestão para Escritórios</p>
-        </div>
+        <p className="min-w-0 flex-1 font-bold text-white text-[15px] leading-tight tracking-wide">
+          PARALEGAL <span className="text-amber-500">PRO</span>
+        </p>
         {onToggle && (
-          <button
-            onClick={onToggle}
-            className="text-gray-500 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10 flex-shrink-0"
-            aria-label="Recolher menu"
-            title="Recolher menu"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-            </svg>
+          <button onClick={onToggle} aria-label="Recolher menu" title="Recolher menu"
+            className="text-neutral-400 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-white/10 flex-shrink-0">
+            <ChevronsLeft className="w-4 h-4" />
           </button>
         )}
       </div>
 
-      {/* Role badges */}
-      {isViewer && (
-        <div className="px-4 py-2 bg-amber-500/10 border-b border-amber-500/20 flex items-center gap-2">
-          <span className="text-[9px] font-black uppercase tracking-widest text-amber-400">👁 Modo Visualização</span>
-        </div>
-      )}
-      {isFinanceiro && (
-        <div className="px-4 py-2 bg-emerald-500/10 border-b border-emerald-500/20 flex items-center gap-2">
-          <span className="text-[9px] font-black uppercase tracking-widest text-emerald-400">💰 Acesso Financeiro</span>
-        </div>
-      )}
-
-      {/* Org Badge + Switcher */}
-      <div className="px-4 py-3 border-b border-white/[0.06]">
+      {/* Organização */}
+      <div className="px-3 pb-3">
         {editingOrg ? (
-          <div className="flex gap-1">
+          <div className="flex gap-1 px-2">
             <input
               autoFocus
+              aria-label="Nome da organização"
               value={orgNameInput}
               onChange={e => setOrgNameInput(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') handleSaveOrg(); if (e.key === 'Escape') setEditingOrg(false) }}
-              className="flex-1 bg-white/10 text-white text-xs px-2 py-1 rounded outline-none border border-amber-500/40 min-w-0"
+              className="flex-1 bg-white/10 text-white text-xs px-2 py-1.5 rounded outline-none border border-amber-500/40 min-w-0"
             />
-            <button onClick={handleSaveOrg} disabled={savingOrg} className="text-amber-400 text-xs px-1.5 hover:text-amber-300">
-              {savingOrg ? '...' : '✓'}
+            <button onClick={handleSaveOrg} disabled={savingOrg} className="text-amber-400 text-xs px-2 hover:text-amber-300">
+              {savingOrg ? '...' : 'Salvar'}
             </button>
-            <button onClick={() => setEditingOrg(false)} className="text-gray-500 text-xs px-1 hover:text-gray-300">✕</button>
-          </div>
-        ) : allOrgs.length > 1 ? (
-          <div className="space-y-1">
-            <p className="text-[9px] font-black uppercase tracking-widest text-gray-600">Organização ativa</p>
-            <div className="flex flex-col gap-0.5">
-              {/* Org ativa — sempre visível */}
-              <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                <div className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-green-400" />
-                <p className="text-[11px] font-medium truncate flex-1 min-w-0 text-amber-400">{orgName}</p>
-                {isAdmin && (
-                  <button
-                    onClick={() => { setOrgNameInput(orgName); setEditingOrg(true) }}
-                    className="text-gray-600 hover:text-amber-400 transition-all text-[10px]"
-                    title="Editar nome"
-                  >✎</button>
-                )}
-              </div>
-
-              {/* Toggle outras empresas */}
-              <button
-                onClick={() => setShowOrgs(v => !v)}
-                className="flex items-center gap-1.5 px-2 py-1 text-[10px] text-gray-600 hover:text-gray-400 transition-colors w-full"
-                title={showOrgs ? 'Ocultar empresas' : 'Mostrar outras empresas'}
-              >
-                <svg className={'w-3 h-3 transition-transform duration-200 ' + (showOrgs ? 'rotate-180' : '')} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-                {showOrgs ? 'Ocultar empresas' : (allOrgs.length - 1) + ' outra' + (allOrgs.length - 1 !== 1 ? 's' : '') + ' empresa' + (allOrgs.length - 1 !== 1 ? 's' : '')}
-              </button>
-
-              {/* Outras orgs — só aparecem quando showOrgs = true */}
-              {showOrgs && allOrgs.filter(o => o.id !== orgId).map(o => (
-                <button
-                  key={o.id}
-                  onClick={() => switchOrg(o.id)}
-                  className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-left transition-all w-full hover:bg-white/5 border border-transparent"
-                >
-                  <div className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-gray-600" />
-                  <p className="text-[11px] font-medium truncate flex-1 min-w-0 text-gray-500">{o.name}</p>
-                </button>
-              ))}
-            </div>
           </div>
         ) : (
-          <div className="flex items-center gap-2 group">
-            <div className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0" />
-            <p className="text-[11px] text-gray-300 font-medium truncate flex-1 min-w-0">{orgName}</p>
+          <div className="group flex items-center gap-2 px-2">
+            <p className="text-xs text-neutral-400 truncate flex-1 min-w-0">{orgName}</p>
             {isAdmin && (
-              <button
-                onClick={() => { setOrgNameInput(orgName); setEditingOrg(true) }}
-                className="opacity-0 group-hover:opacity-100 text-gray-600 hover:text-amber-400 transition-all text-[10px]"
-                title="Editar nome da organização"
-              >✎</button>
+              <button onClick={() => { setOrgNameInput(orgName); setEditingOrg(true) }}
+                className="opacity-0 group-hover:opacity-100 focus:opacity-100 text-neutral-400 hover:text-amber-400 transition-all text-xs">
+                Editar
+              </button>
+            )}
+            {outrasOrgs.length > 0 && (
+              <button onClick={() => setShowOrgs(v => !v)} aria-expanded={showOrgs}
+                aria-label="Trocar de organização" title="Trocar de organização"
+                className="text-neutral-400 hover:text-white p-1 rounded hover:bg-white/10">
+                <ChevronDown className={'w-3.5 h-3.5 transition-transform ' + (showOrgs ? 'rotate-180' : '')} />
+              </button>
             )}
           </div>
         )}
+        {showOrgs && outrasOrgs.map(o => (
+          <button key={o.id} onClick={() => switchOrg(o.id)}
+            className="mt-1 w-full text-left px-2 py-1.5 rounded-lg text-xs text-neutral-300 hover:bg-white/5 hover:text-white truncate">
+            {o.name}
+          </button>
+        ))}
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 overflow-y-auto py-4 px-3">
-        {navigation
-          .map(section => ({
-            ...section,
-            items: isViewer
-              ? section.items.filter(item => item.href === '/societario')
-              : isFinanceiro
-              ? section.items.filter(item => item.href === '/financeiro')
-              : section.items,
-          }))
-          .filter(section => section.items.length > 0)
-          .map((section) => (
-          <div key={section.label} className="mb-5">
-            <p className="px-3 mb-1.5 text-[10px] font-semibold text-gray-600 uppercase tracking-widest">
-              {section.label}
-            </p>
-            <ul className="space-y-0.5">
-              {section.items.map((item) => {
-                const active = pathname === item.href || (!item.exact && pathname.startsWith(item.href + '/'))
-                return (
-                  <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      className={cn(
-                        'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all',
-                        active
-                          ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                          : 'text-gray-400 hover:bg-white/5 hover:text-gray-100 border border-transparent'
-                      )}
-                    >
-                      <item.icon className={cn('w-4 h-4 flex-shrink-0', active ? 'text-amber-400' : 'text-gray-600')} />
-                      {item.label}
-                    </Link>
-                  </li>
-                )
-              })}
-            </ul>
-          </div>
-        ))}
+      {role === 'viewer' && (
+        <p className="mx-3 mb-2 px-3 py-1.5 rounded-lg bg-white/5 text-xs text-neutral-300">Modo visualização</p>
+      )}
+      {role === 'financeiro' && (
+        <p className="mx-3 mb-2 px-3 py-1.5 rounded-lg bg-white/5 text-xs text-neutral-300">Acesso financeiro</p>
+      )}
+
+      {/* Navegação */}
+      <nav aria-label="Menu principal" className="flex-1 overflow-y-auto px-3 space-y-0.5">
+        {grupos.map(g => {
+          const Icon = ICONES[g.id] ?? Sun
+          const active = ativa?.group.id === g.id
+          return (
+            <Link key={g.id} href={g.pages[0].href} aria-current={active ? 'page' : undefined}
+              className={cn(itemCls, active
+                ? 'bg-white/[0.08] text-amber-400 font-semibold'
+                : 'text-neutral-300 font-medium hover:bg-white/5 hover:text-white')}>
+              <Icon className="w-[18px] h-[18px] flex-shrink-0" strokeWidth={1.8} />
+              {g.label}
+            </Link>
+          )
+        })}
       </nav>
 
-      {/* Footer */}
-      <div className="border-t border-white/[0.06] px-3 py-3 space-y-0.5">
-        {!isViewer && !isFinanceiro && (
-          <Link
-            href="/usuarios"
-            className={cn(
-              'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all border border-transparent',
-              pathname === '/usuarios'
-                ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                : 'text-gray-400 hover:bg-white/5 hover:text-gray-100'
-            )}
-          >
-            <UserIcon className="w-4 h-4 flex-shrink-0 text-gray-600" />
-            Usuários
-          </Link>
-        )}
-
-        {/* Dark mode toggle */}
+      {/* Rodapé */}
+      <div className="border-t border-white/10 px-3 py-3 space-y-0.5">
         {onToggleDark && (
-          <button
-            onClick={onToggleDark}
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all text-gray-400 hover:bg-white/5 hover:text-gray-100 border border-transparent"
-            title={isDark ? 'Modo claro' : 'Modo escuro'}
-          >
-            {isDark ? (
-              <svg className="w-4 h-4 flex-shrink-0 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1M4.22 4.22l.707.707m12.02 12.02l.707.707M1 12h2m18 0h2M4.22 19.78l.707-.707M18.95 5.05l.707-.707M12 7a5 5 0 100 10A5 5 0 0012 7z" />
-              </svg>
-            ) : (
-              <svg className="w-4 h-4 flex-shrink-0 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-              </svg>
-            )}
+          <button onClick={onToggleDark} className={cn(itemCls, 'text-neutral-300 font-medium hover:bg-white/5 hover:text-white')}>
+            {isDark
+              ? <Sun className="w-[18px] h-[18px] flex-shrink-0" strokeWidth={1.8} />
+              : <Moon className="w-[18px] h-[18px] flex-shrink-0" strokeWidth={1.8} />}
             {isDark ? 'Modo claro' : 'Modo escuro'}
           </button>
         )}
-
-        <button
-          onClick={handleLogout}
-          disabled={loggingOut}
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all text-red-400 hover:bg-red-500/10 hover:text-red-300 border border-transparent"
-        >
-          <LogoutIcon className="w-4 h-4 flex-shrink-0" />
+        <button onClick={handleLogout} disabled={loggingOut}
+          className={cn(itemCls, 'text-neutral-300 font-medium hover:bg-white/5 hover:text-white')}>
+          <LogOut className="w-[18px] h-[18px] flex-shrink-0" strokeWidth={1.8} />
           {loggingOut ? 'Saindo...' : 'Sair'}
         </button>
       </div>
     </aside>
-  )
-}
-
-// ── Icons ────────────────────────────────────────────────────
-
-function CurrencyDollarIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-  )
-}
-
-function HomeIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-    </svg>
-  )
-}
-
-function BuildingIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-    </svg>
-  )
-}
-
-function DocumentCheckIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-  )
-}
-
-function BadgeCheckIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138z" />
-    </svg>
-  )
-}
-
-function ShieldIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-    </svg>
-  )
-}
-
-function KeyIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-    </svg>
-  )
-}
-
-function TaxaLicencaIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-    </svg>
-  )
-}
-
-function UsersIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-    </svg>
-  )
-}
-
-function PainelIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-    </svg>
-  )
-}
-
-function DocumentTextIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-    </svg>
-  )
-}
-
-function PrinterIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-    </svg>
-  )
-}
-
-function UserIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-    </svg>
-  )
-}
-
-function PDFToolsIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13h6M9 17h4" />
-    </svg>
-  )
-}
-
-function CalculatorIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-    </svg>
-  )
-}
-
-function TaxIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z" />
-    </svg>
-  )
-}
-
-function LogoutIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-    </svg>
-  )
-}
-
-function VisaoGeralIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18M10 3v18M6 3h12a1 1 0 011 1v16a1 1 0 01-1 1H6a1 1 0 01-1-1V4a1 1 0 011-1z" />
-    </svg>
-  )
-}
-
-function ProdutividadeIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-    </svg>
-  )
-}
-
-function FinanceiroBMIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-    </svg>
-  )
-}
-
-function BriefingIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1M4.22 4.22l.707.707m12.02 12.02l.707.707M1 12h2m18 0h2M4.22 19.78l.707-.707M18.95 5.05l.707-.707M12 7a5 5 0 100 10A5 5 0 0012 7z" />
-    </svg>
   )
 }

@@ -88,8 +88,8 @@ export default function KeyboardHelpButton() {
           >
             <div className="sticky top-0 bg-white rounded-t-2xl px-6 pt-5 pb-3 border-b border-slate-100 flex items-center justify-between">
               <div>
-                <h2 className="text-base font-black text-slate-900">Atalhos de teclado</h2>
-                <p className="text-xs text-slate-400 mt-0.5">Pressione <kbd className="bg-slate-100 px-1.5 py-0.5 rounded text-[11px] font-mono">?</kbd> a qualquer momento para abrir</p>
+                <h2 className="text-base font-bold text-slate-900">Atalhos de teclado</h2>
+                <p className="text-xs text-slate-400 mt-0.5">Pressione <kbd className="bg-slate-100 px-1.5 py-0.5 rounded text-xs font-mono">?</kbd> a qualquer momento para abrir</p>
               </div>
               <button onClick={() => setOpen(false)}
                 className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center text-sm transition-colors">
@@ -100,12 +100,12 @@ export default function KeyboardHelpButton() {
             <div className="px-6 py-4 space-y-5">
               {ATALHOS.map(grupo => (
                 <div key={grupo.grupo}>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">{grupo.grupo}</p>
+                  <p className="text-xs font-bold uppercase tracking-wide text-slate-400 mb-2">{grupo.grupo}</p>
                   <div className="space-y-1">
                     {grupo.itens.map(item => (
                       <div key={item.tecla} className="flex items-center justify-between py-1.5 px-3 rounded-lg hover:bg-slate-50 transition-colors">
                         <span className="text-sm text-slate-600">{item.desc}</span>
-                        <kbd className="bg-slate-100 border border-slate-200 text-slate-700 text-[11px] font-mono px-2 py-0.5 rounded-md shadow-sm whitespace-nowrap">
+                        <kbd className="bg-slate-100 border border-slate-200 text-slate-700 text-xs font-mono px-2 py-0.5 rounded-md shadow-sm whitespace-nowrap">
                           {item.tecla}
                         </kbd>
                       </div>
@@ -116,7 +116,7 @@ export default function KeyboardHelpButton() {
             </div>
 
             <div className="px-6 pb-5 pt-2 border-t border-slate-100">
-              <p className="text-[11px] text-slate-400 text-center">
+              <p className="text-xs text-slate-400 text-center">
                 Atalhos de navegação (G + letra) funcionam em sequência, sem Shift
               </p>
             </div>

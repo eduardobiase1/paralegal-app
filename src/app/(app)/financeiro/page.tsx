@@ -642,7 +642,7 @@ export default function FinanceiroPage() {
       <div className="bg-white border-b border-slate-100 px-6 py-5">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Financeiro</p>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Financeiro</p>
             <h1 className="text-xl font-bold text-slate-900 mt-0.5 uppercase">{orgName}</h1>
           </div>
           <div className="flex gap-2">
@@ -774,7 +774,7 @@ export default function FinanceiroPage() {
             <div className="grid grid-cols-3 gap-4">
               {proj.map(p => (
                 <div key={p.dias} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3">Próximos {p.dias} dias</p>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3">Próximos {p.dias} dias</p>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-slate-500 flex items-center gap-1.5">
@@ -944,7 +944,7 @@ export default function FinanceiroPage() {
                         <td className="px-5 py-3.5 tabular-nums">
                           <span className="text-sm font-bold text-slate-900">{fmt(p.valor)}</span>
                           {p.status === 'pago' && ((p.juros || 0) + (p.multa || 0)) > 0 && (
-                            <span className="ml-1.5 text-[10px] font-semibold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded-full whitespace-nowrap">
+                            <span className="ml-1.5 text-xs font-semibold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded-full whitespace-nowrap">
                               +{fmt((p.juros||0)+(p.multa||0))} taxas
                             </span>
                           )}
@@ -1136,7 +1136,7 @@ export default function FinanceiroPage() {
                 </div>
                 <div>
                   <div className="px-6 py-3 bg-emerald-50/40">
-                    <p className="text-xs font-black text-emerald-700 uppercase tracking-widest">Receitas</p>
+                    <p className="text-xs font-bold text-emerald-700 uppercase tracking-wide">Receitas</p>
                   </div>
                   {Object.entries(recByCat).map(([cat, val]) => (
                     <div key={cat} className="px-6 py-3 flex items-center justify-between border-b border-slate-50 hover:bg-slate-50/50">
@@ -1155,7 +1155,7 @@ export default function FinanceiroPage() {
                   <div className="h-2 bg-slate-50" />
 
                   <div className="px-6 py-3 bg-rose-50/40">
-                    <p className="text-xs font-black text-rose-700 uppercase tracking-widest">Despesas</p>
+                    <p className="text-xs font-bold text-rose-700 uppercase tracking-wide">Despesas</p>
                   </div>
                   {Object.entries(pagByCat).map(([cat, val]) => (
                     <div key={cat} className="px-6 py-3 flex items-center justify-between border-b border-slate-50 hover:bg-slate-50/50">
@@ -1172,8 +1172,8 @@ export default function FinanceiroPage() {
                   </div>
 
                   <div className={'px-6 py-5 flex items-center justify-between ' + (dreResultado >= 0 ? 'bg-emerald-50' : 'bg-red-50')}>
-                    <span className="text-base font-black text-slate-900">Resultado Líquido</span>
-                    <span className={'text-xl font-black tabular-nums ' + (dreResultado >= 0 ? 'text-emerald-700' : 'text-red-700')}>
+                    <span className="text-base font-bold text-slate-900">Resultado Líquido</span>
+                    <span className={'text-xl font-bold tabular-nums ' + (dreResultado >= 0 ? 'text-emerald-700' : 'text-red-700')}>
                       {dreResultado > 0 ? '+' : ''}{fmt(dreResultado)}
                     </span>
                   </div>
@@ -1520,7 +1520,7 @@ export default function FinanceiroPage() {
                 {/* Total */}
                 <div className={'flex justify-between items-center rounded-xl px-4 py-3 ' + ((juros+multa) > 0 ? 'bg-orange-50' : 'bg-emerald-50')}>
                   <span className="text-sm font-bold text-slate-700">Total a pagar</span>
-                  <span className={'text-lg font-black tabular-nums ' + ((juros+multa) > 0 ? 'text-orange-600' : 'text-emerald-700')}>{fmt(total)}</span>
+                  <span className={'text-lg font-bold tabular-nums ' + ((juros+multa) > 0 ? 'text-orange-600' : 'text-emerald-700')}>{fmt(total)}</span>
                 </div>
 
                 <div className="flex gap-3 pt-1">

@@ -34,10 +34,10 @@ function urgBorder(dias: number | null): string {
 
 function PrazoBadge({ dias }: { dias: number | null }) {
   if (dias === null) return <span className="text-xs text-slate-400">—</span>
-  if (dias < 0) return <span className="inline-flex items-center text-[10px] font-black px-2 py-0.5 rounded-full bg-red-100 text-red-700">Vencida há {Math.abs(dias)}d</span>
-  if (dias <= 30) return <span className="inline-flex items-center text-[10px] font-black px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">{dias}d</span>
-  if (dias <= 60) return <span className="inline-flex items-center text-[10px] font-black px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">{dias}d</span>
-  return <span className="inline-flex items-center text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">{dias}d</span>
+  if (dias < 0) return <span className="inline-flex items-center text-xs font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700">Vencida há {Math.abs(dias)}d</span>
+  if (dias <= 30) return <span className="inline-flex items-center text-xs font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">{dias}d</span>
+  if (dias <= 60) return <span className="inline-flex items-center text-xs font-bold px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">{dias}d</span>
+  return <span className="inline-flex items-center text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">{dias}d</span>
 }
 
 function LicencasPage() {
@@ -164,7 +164,7 @@ function LicencasPage() {
       <header className="flex flex-wrap justify-between items-center gap-3 bg-white p-4 md:p-6 rounded-2xl border border-slate-200 shadow-sm">
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-slate-900">Licenças Sanitárias</h1>
-          <p className="text-[10px] font-black uppercase text-blue-600 tracking-widest mt-1">{empresaNome || orgName}</p>
+          <p className="text-xs font-bold uppercase text-blue-600 tracking-wide mt-1">{empresaNome || orgName}</p>
         </div>
         <button onClick={openNovo}
           className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-800 transition-all whitespace-nowrap">
@@ -177,25 +177,25 @@ function LicencasPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <button onClick={() => setFilterPrazo('todas')}
             className={`text-left p-4 rounded-xl border transition-all ${filterPrazo === 'todas' ? 'bg-slate-900 border-slate-900' : 'bg-white border-slate-200 hover:border-slate-300'}`}>
-            <p className="text-[10px] font-black uppercase tracking-widest mb-1 text-slate-400">Total</p>
+            <p className="text-xs font-bold uppercase tracking-wide mb-1 text-slate-400">Total</p>
             <p className={`text-2xl font-bold ${filterPrazo === 'todas' ? 'text-white' : 'text-slate-800'}`}>{dadosBase.length}</p>
             <p className="text-xs mt-0.5 text-slate-400">licenças cadastradas</p>
           </button>
           <button onClick={() => setFilterPrazo(filterPrazo === 'vencidas' ? 'todas' : 'vencidas')}
             className={`text-left p-4 rounded-xl border transition-all ${filterPrazo === 'vencidas' ? 'bg-red-600 border-red-600' : 'bg-white border-slate-200 hover:border-red-200'}`}>
-            <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${filterPrazo === 'vencidas' ? 'text-red-200' : 'text-slate-400'}`}>Vencidas</p>
+            <p className={`text-xs font-bold uppercase tracking-wide mb-1 ${filterPrazo === 'vencidas' ? 'text-red-200' : 'text-slate-400'}`}>Vencidas</p>
             <p className={`text-2xl font-bold ${filterPrazo === 'vencidas' ? 'text-white' : totalVencidas > 0 ? 'text-red-600' : 'text-slate-800'}`}>{totalVencidas}</p>
             <p className={`text-xs mt-0.5 ${filterPrazo === 'vencidas' ? 'text-red-200' : 'text-slate-400'}`}>exigem ação imediata</p>
           </button>
           <button onClick={() => setFilterPrazo(filterPrazo === 'alerta' ? 'todas' : 'alerta')}
             className={`text-left p-4 rounded-xl border transition-all ${filterPrazo === 'alerta' ? 'bg-orange-500 border-orange-500' : 'bg-white border-slate-200 hover:border-orange-200'}`}>
-            <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${filterPrazo === 'alerta' ? 'text-orange-100' : 'text-slate-400'}`}>Vencendo em 30d</p>
+            <p className={`text-xs font-bold uppercase tracking-wide mb-1 ${filterPrazo === 'alerta' ? 'text-orange-100' : 'text-slate-400'}`}>Vencendo em 30d</p>
             <p className={`text-2xl font-bold ${filterPrazo === 'alerta' ? 'text-white' : totalAlerta > 0 ? 'text-orange-500' : 'text-slate-800'}`}>{totalAlerta}</p>
             <p className={`text-xs mt-0.5 ${filterPrazo === 'alerta' ? 'text-orange-100' : 'text-slate-400'}`}>requerem atenção</p>
           </button>
           <button onClick={() => setFilterPrazo(filterPrazo === 'ok' ? 'todas' : 'ok')}
             className={`text-left p-4 rounded-xl border transition-all ${filterPrazo === 'ok' ? 'bg-emerald-600 border-emerald-600' : 'bg-white border-slate-200 hover:border-emerald-200'}`}>
-            <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${filterPrazo === 'ok' ? 'text-emerald-100' : 'text-slate-400'}`}>Regulares</p>
+            <p className={`text-xs font-bold uppercase tracking-wide mb-1 ${filterPrazo === 'ok' ? 'text-emerald-100' : 'text-slate-400'}`}>Regulares</p>
             <p className={`text-2xl font-bold ${filterPrazo === 'ok' ? 'text-white' : 'text-emerald-600'}`}>{totalOk}</p>
             <p className={`text-xs mt-0.5 ${filterPrazo === 'ok' ? 'text-emerald-100' : 'text-slate-400'}`}>dentro do prazo</p>
           </button>
@@ -217,7 +217,7 @@ function LicencasPage() {
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left min-w-[640px]">
-            <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-black uppercase text-slate-500 tracking-widest">
+            <thead className="bg-slate-50 border-b border-slate-200 text-xs font-bold uppercase text-slate-500 tracking-wide">
               <tr>
                 <th className="px-5 py-4">Empresa</th>
                 <th className="px-5 py-4">Órgão</th>
@@ -249,7 +249,7 @@ function LicencasPage() {
                     <td className="px-5 py-3.5 text-right">
                       <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button onClick={() => openEdit(item)} title="Editar licença"
-                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-yellow-100 text-slate-500 hover:text-yellow-700 text-[10px] font-black uppercase transition-all">
+                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-yellow-100 text-slate-500 hover:text-yellow-700 text-xs font-bold uppercase transition-all">
                           <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                           </svg>
@@ -280,11 +280,11 @@ function LicencasPage() {
               <h2 className="text-lg font-bold text-slate-900">
                 {editItem ? 'Editar Licença Sanitária' : 'Nova Licença Sanitária'}
               </h2>
-              <button onClick={() => { setModal(false); setEditItem(null) }} className="text-slate-400 hover:text-slate-700 font-black text-lg leading-none">✕</button>
+              <button onClick={() => { setModal(false); setEditItem(null) }} className="text-slate-400 hover:text-slate-700 font-bold text-lg leading-none">✕</button>
             </div>
             <form onSubmit={handleSave} className="space-y-4">
               <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wide block mb-1">Empresa *</label>
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wide block mb-1">Empresa *</label>
                 <select required value={form.empresa_id} onChange={e => setForm({ ...form, empresa_id: e.target.value })}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-slate-400">
                   <option value="">Selecione...</option>
@@ -293,7 +293,7 @@ function LicencasPage() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-wide block mb-1">Órgão *</label>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide block mb-1">Órgão *</label>
                   <select required value={form.orgao} onChange={e => setForm({ ...form, orgao: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-slate-400">
                     <option value="VISA_MUNICIPAL">VISA Municipal</option>
@@ -301,29 +301,29 @@ function LicencasPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-wide block mb-1">Nº da Licença</label>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide block mb-1">Nº da Licença</label>
                   <input value={form.numero_licenca} onChange={e => setForm({ ...form, numero_licenca: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-slate-400" />
                 </div>
                 <div className="col-span-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-wide block mb-1">Atividade Sanitária</label>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide block mb-1">Atividade Sanitária</label>
                   <input value={form.atividade_sanitaria} onChange={e => setForm({ ...form, atividade_sanitaria: e.target.value })}
                     placeholder="Ex: Manipulação de alimentos"
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-slate-400" />
                 </div>
                 <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-wide block mb-1">Data de Emissão</label>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide block mb-1">Data de Emissão</label>
                   <input type="date" value={form.data_emissao} onChange={e => setForm({ ...form, data_emissao: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-slate-400" />
                 </div>
                 <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-wide block mb-1">Data de Vencimento</label>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide block mb-1">Data de Vencimento</label>
                   <input type="date" value={form.data_vencimento} onChange={e => setForm({ ...form, data_vencimento: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-slate-400" />
                 </div>
               </div>
               <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-wide block mb-1">Observações</label>
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wide block mb-1">Observações</label>
                 <input value={form.observacoes} onChange={e => setForm({ ...form, observacoes: e.target.value })}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-slate-400" />
               </div>

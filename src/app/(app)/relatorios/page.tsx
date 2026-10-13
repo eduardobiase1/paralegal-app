@@ -336,19 +336,19 @@ export default function RelatoriosPage() {
     <div className="p-8 bg-[#F8FAFC] min-h-screen font-sans">
       {/* Cabeçalho */}
       <header className="mb-8">
-        <h1 className="text-2xl font-black italic tracking-tighter uppercase text-slate-900">
+        <h1 className="text-2xl font-bold italic tracking-tighter uppercase text-slate-900">
           PARALEGAL PRO <span className="text-yellow-500">| RELATÓRIOS PDF</span>
         </h1>
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{orgName}</p>
+        <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mt-1">{orgName}</p>
       </header>
 
       <div className="max-w-2xl space-y-6">
         {/* Card principal */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8">
-          <h2 className="text-lg font-black text-slate-900 mb-1">Relatório por Cliente</h2>
+          <h2 className="text-lg font-bold text-slate-900 mb-1">Relatório por Cliente</h2>
           <p className="text-xs text-slate-400 mb-6">Gera um PDF completo com todos os documentos e processos da empresa selecionada.</p>
 
-          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Selecione a Empresa</label>
+          <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Selecione a Empresa</label>
           <select
             className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl mt-2 text-sm font-bold outline-none focus:border-yellow-400 text-slate-800 transition-all"
             value={empresaId}
@@ -360,7 +360,7 @@ export default function RelatoriosPage() {
 
           {empresaId && (
             <div className="mt-5 bg-slate-50 border border-slate-200 rounded-xl p-4">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">O relatório incluirá:</p>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3">O relatório incluirá:</p>
               <div className="grid grid-cols-2 gap-2">
                 {[
                   'Processos Societários',
@@ -372,7 +372,7 @@ export default function RelatoriosPage() {
                 ].map(item => (
                   <div key={item} className="flex items-center gap-2">
                     <div className="w-4 h-4 bg-yellow-400 rounded flex items-center justify-center flex-shrink-0">
-                      <span className="text-[8px] font-black text-black">→</span>
+                      <span className="text-[8px] font-bold text-black">→</span>
                     </div>
                     <span className="text-xs font-medium text-slate-600">{item}</span>
                   </div>
@@ -384,7 +384,7 @@ export default function RelatoriosPage() {
           <button
             onClick={gerarRelatorio}
             disabled={loading || !empresaId}
-            className={`mt-6 w-full py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl transition-all flex items-center justify-center gap-2 ${
+            className={`mt-6 w-full py-4 rounded-2xl font-bold text-xs uppercase tracking-wide shadow-xl transition-all flex items-center justify-center gap-2 ${
               !empresaId
                 ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
                 : 'bg-black text-yellow-400 hover:bg-slate-800 hover:scale-[1.02]'
@@ -412,17 +412,17 @@ export default function RelatoriosPage() {
 
         {/* Preview do modelo */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Prévia do Modelo</p>
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-4">Prévia do Modelo</p>
           <div className="border-2 border-slate-100 rounded-xl overflow-hidden">
             {/* Simulação do cabeçalho do PDF */}
             <div className="bg-[#0d0d0d] p-4 flex justify-between items-start">
               <div>
-                <p className="font-black text-white text-lg tracking-tight">
+                <p className="font-bold text-white text-lg tracking-tight">
                   PARALEGAL <span className="text-yellow-400">PRO</span>
                 </p>
-                <p className="text-[9px] text-slate-400 mt-0.5">Gestão Paralegal para Escritórios Contábeis</p>
+                <p className="text-xs text-slate-400 mt-0.5">Gestão Paralegal para Escritórios Contábeis</p>
               </div>
-              <div className="bg-yellow-400 text-black text-[9px] font-black px-3 py-1.5 rounded">
+              <div className="bg-yellow-400 text-black text-xs font-bold px-3 py-1.5 rounded">
                 Relatório de Cliente
               </div>
             </div>
@@ -431,7 +431,7 @@ export default function RelatoriosPage() {
               {['Processos Societários', 'Certidões Negativas', 'Alvarás', 'Licenças', 'Certificados Digitais'].map(s => (
                 <div key={s} className="flex items-center gap-2">
                   <div className="w-5 h-5 bg-yellow-400 rounded flex items-center justify-center flex-shrink-0">
-                    <span className="text-[9px] font-black">→</span>
+                    <span className="text-xs font-bold">→</span>
                   </div>
                   <div className="flex-1 h-1.5 bg-slate-200 rounded-full" />
                 </div>

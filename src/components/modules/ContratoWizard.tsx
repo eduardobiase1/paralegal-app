@@ -449,7 +449,7 @@ export default function ContratoWizard({ template, empresas, defaultEmpresaId = 
     blue:   'bg-blue-50 border-blue-200 text-blue-800',
     red:    'bg-red-50 border-red-200 text-red-800',
     orange: 'bg-orange-50 border-orange-200 text-orange-800',
-    gray:   'bg-gray-50 border-gray-200 text-gray-700',
+    gray:   'bg-slate-50 border-slate-200 text-slate-700',
   }
 
   const stepLabels = tipo === 'alteracao'
@@ -476,13 +476,13 @@ export default function ContratoWizard({ template, empresas, defaultEmpresaId = 
           <div key={label} className="flex items-center flex-1 last:flex-none">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
               i + 1 === step  ? 'bg-blue-600 text-white' :
-              i + 1 < step   ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-400'}`}>
+              i + 1 < step   ? 'bg-green-500 text-white' : 'bg-slate-100 text-slate-400'}`}>
               {i + 1 < step ? '✓' : i + 1}
             </div>
-            <span className={`ml-2 text-xs font-medium ${i + 1 === step ? 'text-gray-900' : 'text-gray-400'}`}>
+            <span className={`ml-2 text-xs font-medium ${i + 1 === step ? 'text-slate-900' : 'text-slate-400'}`}>
               {label}
             </span>
-            {i < stepLabels.length - 1 && <div className="flex-1 h-px bg-gray-200 mx-3" />}
+            {i < stepLabels.length - 1 && <div className="flex-1 h-px bg-slate-200 mx-3" />}
           </div>
         ))}
       </div>
@@ -501,11 +501,11 @@ export default function ContratoWizard({ template, empresas, defaultEmpresaId = 
           </div>
 
           {empresaObj && (
-            <div className="border rounded-xl p-4 space-y-3 bg-gray-50">
+            <div className="border rounded-xl p-4 space-y-3 bg-slate-50">
               <div className="flex items-center gap-2 mb-1">
                 <div className="w-2 h-2 rounded-full bg-blue-500" />
-                <h3 className="text-sm font-semibold text-gray-700">Dados da Empresa</h3>
-                <span className="text-xs text-gray-400">(editáveis para este contrato)</span>
+                <h3 className="text-sm font-semibold text-slate-700">Dados da Empresa</h3>
+                <span className="text-xs text-slate-400">(editáveis para este contrato)</span>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -568,7 +568,7 @@ export default function ContratoWizard({ template, empresas, defaultEmpresaId = 
                     value={empresaDados.capital_social}
                     onChange={e => setEmpresaDados(p => ({ ...p, capital_social: e.target.value }))} />
                   {empresaDados.capital_social && (
-                    <p className="text-xs text-gray-400 mt-0.5">{capitalExtenso(empresaDados.capital_social)}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">{capitalExtenso(empresaDados.capital_social)}</p>
                   )}
                 </div>
                 <div>
@@ -577,7 +577,7 @@ export default function ContratoWizard({ template, empresas, defaultEmpresaId = 
                     value={empresaDados.valor_quota}
                     onChange={e => setEmpresaDados(p => ({ ...p, valor_quota: e.target.value }))} />
                   {empresaDados.capital_social && empresaDados.valor_quota && (
-                    <p className="text-xs text-gray-400 mt-0.5">
+                    <p className="text-xs text-slate-400 mt-0.5">
                       = {calcularCapitalSocial(empresaDados.capital_social, empresaDados.valor_quota).quantidade_extenso}
                     </p>
                   )}
@@ -607,18 +607,18 @@ export default function ContratoWizard({ template, empresas, defaultEmpresaId = 
       ══════════════════════════════════════════════════════════════ */}
       {step === 2 && tipo === 'alteracao' && (
         <div className="space-y-4">
-          <p className="text-sm text-gray-600">Selecione o que este documento irá alterar:</p>
+          <p className="text-sm text-slate-600">Selecione o que este documento irá alterar:</p>
           <div className="grid grid-cols-1 gap-2">
             {EVENTOS.map(ev => (
               <label key={ev.key}
                 className={`flex items-center gap-3 p-3 border-2 rounded-xl cursor-pointer transition-all ${
-                  events.has(ev.key) ? 'border-blue-400 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'}`}>
+                  events.has(ev.key) ? 'border-blue-400 bg-blue-50' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
                 <input type="checkbox" className="w-4 h-4 accent-blue-600"
                   checked={events.has(ev.key)}
                   onChange={() => toggleEvent(ev.key)} />
                 <div>
-                  <p className={`text-sm font-medium ${events.has(ev.key) ? 'text-blue-700' : 'text-gray-800'}`}>{ev.label}</p>
-                  <p className="text-xs text-gray-500">{ev.desc}</p>
+                  <p className={`text-sm font-medium ${events.has(ev.key) ? 'text-blue-700' : 'text-slate-800'}`}>{ev.label}</p>
+                  <p className="text-xs text-slate-500">{ev.desc}</p>
                 </div>
               </label>
             ))}
@@ -741,7 +741,7 @@ function SociosPanel({ titulo, socios, setSocios, setSocioField, multiSocio = tr
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <h3 className="font-semibold text-gray-900">{titulo}</h3>
+        <h3 className="font-semibold text-slate-900">{titulo}</h3>
         {multiSocio && (
           <button type="button" onClick={() => setSocios(p => [...p, { ...EMPTY_SOCIO_LOCAL }])}
             className="btn-secondary text-xs py-1.5 px-3">+ Adicionar Sócio</button>
@@ -749,9 +749,9 @@ function SociosPanel({ titulo, socios, setSocios, setSocioField, multiSocio = tr
       </div>
       <div className="space-y-4">
         {socios.map((s, i) => (
-          <div key={i} className="border rounded-xl p-4 space-y-3 bg-gray-50">
+          <div key={i} className="border rounded-xl p-4 space-y-3 bg-slate-50">
             <div className="flex items-center justify-between">
-              <h4 className="text-sm font-medium text-gray-700">Sócio {i + 1}</h4>
+              <h4 className="text-sm font-medium text-slate-700">Sócio {i + 1}</h4>
               {socios.length > 1 && (
                 <button onClick={() => setSocios(p => p.filter((_, idx) => idx !== i))}
                   className="text-xs text-red-500 hover:text-red-700">Remover</button>
@@ -888,19 +888,19 @@ function PainelConfirmacao({ dataContrato, setDataContrato, cidadeAssinatura, se
       {/* Cláusulas adicionais */}
       {clausulas.length > 0 && (
         <div>
-          <h3 className="font-semibold text-gray-900 mb-3">Cláusulas Adicionais <span className="text-xs text-gray-400 font-normal">(opcional)</span></h3>
+          <h3 className="font-semibold text-slate-900 mb-3">Cláusulas Adicionais <span className="text-xs text-slate-400 font-normal">(opcional)</span></h3>
           <div className="border rounded-xl overflow-hidden divide-y">
             {clausulas.map(c => (
               <label key={c.id} className={`flex items-start gap-3 p-3 cursor-pointer transition-colors ${
-                clausulasSel.includes(c.id) ? 'bg-indigo-50' : 'bg-white hover:bg-gray-50'}`}>
+                clausulasSel.includes(c.id) ? 'bg-indigo-50' : 'bg-white hover:bg-slate-50'}`}>
                 <input type="checkbox" className="mt-0.5 w-4 h-4 accent-indigo-600"
                   checked={clausulasSel.includes(c.id)}
                   onChange={e => setClausulasSel(e.target.checked
                     ? [...clausulasSel, c.id]
                     : clausulasSel.filter(id => id !== c.id))} />
                 <div>
-                  <p className="text-sm font-medium text-gray-800">{c.titulo}</p>
-                  <p className="text-xs text-gray-400">{c.tipo}</p>
+                  <p className="text-sm font-medium text-slate-800">{c.titulo}</p>
+                  <p className="text-xs text-slate-400">{c.tipo}</p>
                 </div>
               </label>
             ))}
@@ -983,12 +983,12 @@ function FormConstituicao({ socios, setSocios, setSocioField, cnaes, setCnaes, o
 
       {/* Objeto Social */}
       <div>
-        <h3 className="font-semibold text-gray-900 mb-3">Objeto Social / Atividades (CNAE)</h3>
-        <div className="border rounded-xl p-4 bg-gray-50 space-y-3">
-          <p className="text-xs text-gray-500">Adicione as atividades da empresa. Elas serão formatadas automaticamente em texto jurídico.</p>
+        <h3 className="font-semibold text-slate-900 mb-3">Objeto Social / Atividades (CNAE)</h3>
+        <div className="border rounded-xl p-4 bg-slate-50 space-y-3">
+          <p className="text-xs text-slate-500">Adicione as atividades da empresa. Elas serão formatadas automaticamente em texto jurídico.</p>
           {cnaes.map((c: string, i: number) => (
             <div key={i} className="flex items-center gap-2">
-              <span className="text-xs text-gray-400 w-5 flex-shrink-0 text-right">{i + 1}.</span>
+              <span className="text-xs text-slate-400 w-5 flex-shrink-0 text-right">{i + 1}.</span>
               <input className="input bg-white text-sm flex-1"
                 placeholder={i === 0 ? 'Ex: Consultoria em gestão empresarial' : 'Ex: Assessoria contábil e tributária'}
                 value={c}
@@ -1013,7 +1013,7 @@ function FormConstituicao({ socios, setSocios, setSocioField, cnaes, setCnaes, o
           {objetoFormatado && (
             <div className="p-3 bg-white rounded-lg border border-purple-100">
               <p className="text-xs text-purple-700 font-medium mb-1">Prévia do texto jurídico:</p>
-              <p className="text-xs text-gray-700 italic leading-relaxed">{objetoFormatado}</p>
+              <p className="text-xs text-slate-700 italic leading-relaxed">{objetoFormatado}</p>
             </div>
           )}
         </div>
@@ -1053,9 +1053,9 @@ function FormDistrato({ socios, setSocios, setSocioField,
       </div>
 
       {/* Data de início das atividades — Cláusula Primeira */}
-      <div className="border rounded-xl p-4 bg-gray-50">
-        <h3 className="font-semibold text-gray-900 mb-3 text-sm flex items-center gap-2">
-          <span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded font-mono">Cláusula 1ª</span>
+      <div className="border rounded-xl p-4 bg-slate-50">
+        <h3 className="font-semibold text-slate-900 mb-3 text-sm flex items-center gap-2">
+          <span className="text-xs bg-slate-200 text-slate-600 px-2 py-0.5 rounded font-mono">Cláusula 1ª</span>
           Data de Início das Atividades *
         </h3>
         <div className="grid grid-cols-2 gap-3">
@@ -1157,8 +1157,8 @@ function FormAlteracao({ events, socios, setSocios, setSocioField, novoEnd, setN
 
       {events.has('endereco') && (
         <div>
-          <h3 className="font-semibold text-gray-900 mb-3">Novo Endereço da Sede</h3>
-          <div className="border rounded-xl p-4 bg-gray-50 grid grid-cols-2 gap-3">
+          <h3 className="font-semibold text-slate-900 mb-3">Novo Endereço da Sede</h3>
+          <div className="border rounded-xl p-4 bg-slate-50 grid grid-cols-2 gap-3">
             <div className="col-span-2">
               <label className="label text-xs">Logradouro</label>
               <input className="input bg-white text-sm" value={novoEnd.logradouro}
@@ -1188,8 +1188,8 @@ function FormAlteracao({ events, socios, setSocios, setSocioField, novoEnd, setN
 
       {events.has('capital') && (
         <div>
-          <h3 className="font-semibold text-gray-900 mb-3">Capital Social</h3>
-          <div className="border rounded-xl p-4 bg-gray-50 grid grid-cols-2 gap-3">
+          <h3 className="font-semibold text-slate-900 mb-3">Capital Social</h3>
+          <div className="border rounded-xl p-4 bg-slate-50 grid grid-cols-2 gap-3">
             <div>
               <label className="label text-xs">Capital Atual (R$)</label>
               <input className="input bg-white text-sm" placeholder="Ex: 10.000,00" value={capAtual}
@@ -1206,11 +1206,11 @@ function FormAlteracao({ events, socios, setSocios, setSocioField, novoEnd, setN
 
       {events.has('objeto') && (
         <div>
-          <h3 className="font-semibold text-gray-900 mb-3">Novo Objeto Social</h3>
-          <div className="border rounded-xl p-4 bg-gray-50 space-y-3">
+          <h3 className="font-semibold text-slate-900 mb-3">Novo Objeto Social</h3>
+          <div className="border rounded-xl p-4 bg-slate-50 space-y-3">
             {cnaes.map((c: string, i: number) => (
               <div key={i} className="flex items-center gap-2">
-                <span className="text-xs text-gray-400 w-5 flex-shrink-0 text-right">{i + 1}.</span>
+                <span className="text-xs text-slate-400 w-5 flex-shrink-0 text-right">{i + 1}.</span>
                 <input className="input bg-white text-sm flex-1" value={c}
                   placeholder="Ex: Consultoria em gestão empresarial"
                   onChange={e => setCnaes((prev: string[]) => prev.map((v: string, idx: number) => idx === i ? e.target.value : v))} />
@@ -1233,7 +1233,7 @@ function FormAlteracao({ events, socios, setSocios, setSocioField, novoEnd, setN
             {objetoFormatado && (
               <div className="p-3 bg-white rounded-lg border border-purple-100">
                 <p className="text-xs text-purple-700 font-medium mb-1">Prévia:</p>
-                <p className="text-xs text-gray-700 italic">{objetoFormatado}</p>
+                <p className="text-xs text-slate-700 italic">{objetoFormatado}</p>
               </div>
             )}
           </div>
@@ -1262,8 +1262,8 @@ function FormGenerico({ socios, setSocios, setSocioField, cnaes, setCnaes, objet
     <div className="space-y-6">
       <SociosPanel titulo="Partes / Sócios" socios={socios} setSocios={setSocios} setSocioField={setSocioField} />
       <div>
-        <h3 className="font-semibold text-gray-900 mb-3">Objeto / Conteúdo</h3>
-        <div className="border rounded-xl p-4 bg-gray-50">
+        <h3 className="font-semibold text-slate-900 mb-3">Objeto / Conteúdo</h3>
+        <div className="border rounded-xl p-4 bg-slate-50">
           <textarea className="input bg-white text-sm resize-none h-28"
             placeholder="Descreva o objeto do documento..."
             value={objeto} onChange={e => setObjeto(e.target.value)} />

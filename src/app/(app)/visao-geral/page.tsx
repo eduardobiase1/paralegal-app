@@ -6,7 +6,7 @@ import { useOrg } from '@/lib/org-context'
 import Link from 'next/link'
 
 type CellInfo = { date: string | null; pendente: boolean }
-type CellKey = 'federal' | 'estadual' | 'municipal' | 'fgts' | 'trabalhista' | 'previdenciaria' | 'alvara' | 'certificado'
+type CellKey = 'federal' | 'estadual' | 'municipal' | 'fgts' | 'trabalhista' | 'previdenciaria' | 'alvara' | 'licenca' | 'certificado'
 type Row = { id: string; nome: string } & Record<CellKey, CellInfo>
 
 const EMPTY: CellInfo = { date: null, pendente: false }
@@ -19,6 +19,7 @@ const COLS: Array<{ key: CellKey; label: string }> = [
   { key: 'trabalhista',    label: 'Trabalhista' },
   { key: 'previdenciaria', label: 'Previdenciária' },
   { key: 'alvara',         label: 'Alvará' },
+  { key: 'licenca',        label: 'Lic. Sanitária' },
   { key: 'certificado',    label: 'Cert. Digital' },
 ]
 
@@ -34,10 +35,9 @@ function cellColor(info: CellInfo): string {
   const d = diasParaVencer(info.date)
   if (d === null) return 'text-slate-400'
   if (d < 0)   return 'bg-red-100 text-red-700 font-bold'
-  if (d <= 15) return 'bg-red-50 text-red-600 font-semibold'
-  if (d <= 30) return 'bg-orange-50 text-orange-600'
-  if (d <= 60) return 'bg-yellow-50 text-yellow-700'
-  return 'bg-emerald-50 text-emerald-700'
+  if (d <= 30) return 'bg-orange-100 text-orange-900 font-semibold'
+  if (d <= 60) return 'bg-yellow-100 text-yellow-900'
+  return 'text-slate-700'
 }
 
 function cellLabel(info: CellInfo): string {
@@ -100,10 +100,11 @@ export default function VisaoGeralPage() {
       return
     }
 
-    const [{ data: certidoes }, { data: alvaras }, { data: certificados }] = await Promise.all([
+    const [{ data: certidoes }, { data: alvaras }, { data: certificados }, { data: licencas }] = await Promise.all([
       supabase.from('certidoes').select('empresa_id, tipo, data_vencimento, pendencia_status').in('empresa_id', empresaIds),
       supabase.from('alvaras').select('empresa_id, data_vencimento').in('empresa_id', empresaIds),
       supabase.from('certificados_digitais').select('empresa_id, data_vencimento').in('empresa_id', empresaIds),
+      supabase.from('licencas_sanitarias').select('empresa_id, data_vencimento').in('empresa_id', empresaIds),
     ])
 
     const built: Row[] = (empresas || []).map(emp => {
@@ -118,6 +119,7 @@ export default function VisaoGeralPage() {
         trabalhista:    worstCertidao(certs.filter(c => c.tipo === 'Trabalhista')),
         previdenciaria: worstCertidao(certs.filter(c => c.tipo === 'Previdenciária')),
         alvara:         worstDate((alvaras || []).filter(a => a.empresa_id === emp.id)),
+        licenca:        worstDate((licencas || []).filter(l => l.empresa_id === emp.id)),
         certificado:    worstDate((certificados || []).filter(c => c.empresa_id === emp.id)),
       }
     })
@@ -159,7 +161,7 @@ export default function VisaoGeralPage() {
       {/* ── Cabeçalho ─────────────────────────────────────────────── */}
       <div className="flex items-start justify-between mb-5 flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-black text-slate-900">Visão Geral</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Visão Geral</h1>
           <p className="text-sm text-slate-500 mt-0.5">Todas as empresas · vencimentos consolidados</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -210,13 +212,12 @@ export default function VisaoGeralPage() {
       </div>
 
       {/* ── Legenda ────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-4 mb-4 flex-wrap text-[11px]">
+      <div className="flex items-center gap-4 mb-4 flex-wrap text-xs">
         {[
           { color: 'bg-red-100 border-red-200',    label: 'Vencida' },
-          { color: 'bg-red-50 border-red-100',     label: '≤ 15 dias' },
-          { color: 'bg-orange-50 border-orange-100', label: '≤ 30 dias' },
-          { color: 'bg-yellow-50 border-yellow-100', label: '≤ 60 dias' },
-          { color: 'bg-emerald-50 border-emerald-100', label: 'Em dia' },
+          { color: 'bg-orange-100 border-orange-200', label: '≤ 30 dias' },
+          { color: 'bg-yellow-100 border-yellow-200', label: '≤ 60 dias' },
+          { color: 'bg-white border-slate-300', label: 'Em dia' },
         ].map(({ color, label }) => (
           <div key={label} className="flex items-center gap-1.5">
             <div className={`w-3 h-3 rounded ${color} border`} />
@@ -235,14 +236,14 @@ export default function VisaoGeralPage() {
         <div className="text-center py-16 text-slate-400 text-sm">Carregando...</div>
       ) : (
         <div className="overflow-x-auto rounded-2xl border border-slate-200 shadow-sm">
-          <table className="w-full text-[11px] border-collapse">
+          <table className="w-full text-xs border-collapse">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
-                <th className="sticky left-0 z-10 bg-slate-50 text-left px-4 py-3 font-black uppercase tracking-wide text-slate-500 min-w-[180px] border-r border-slate-200">
+                <th className="sticky left-0 z-10 bg-slate-50 text-left px-4 py-3 font-bold uppercase tracking-wide text-slate-500 min-w-[180px] border-r border-slate-200">
                   Empresa
                 </th>
                 {COLS.map(col => (
-                  <th key={col.key} className="text-center px-3 py-3 font-black uppercase tracking-wide text-slate-500 whitespace-nowrap min-w-[105px]">
+                  <th key={col.key} className="text-center px-3 py-3 font-bold uppercase tracking-wide text-slate-500 whitespace-nowrap min-w-[105px]">
                     {col.label}
                   </th>
                 ))}
@@ -295,7 +296,7 @@ export default function VisaoGeralPage() {
         </div>
       )}
 
-      <p className="text-[11px] text-slate-400 mt-3 text-right">
+      <p className="text-xs text-slate-400 mt-3 text-right">
         {filtered.length} empresa{filtered.length !== 1 ? 's' : ''} · dados em tempo real
       </p>
     </div>

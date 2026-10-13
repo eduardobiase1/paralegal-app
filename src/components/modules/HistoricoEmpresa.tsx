@@ -101,8 +101,8 @@ export default function HistoricoEmpresa({ empresaId }: { empresaId: string }) {
     <div className="card">
       <div className="card-header flex items-center justify-between">
         <div>
-          <h2 className="font-semibold text-gray-900">Histórico & Caixa Postal</h2>
-          <p className="text-xs text-gray-500 mt-0.5">Comunicados enviados, renovações e anotações internas</p>
+          <h2 className="font-semibold text-slate-900">Histórico & Caixa Postal</h2>
+          <p className="text-xs text-slate-500 mt-0.5">Comunicados enviados, renovações e anotações internas</p>
         </div>
         <button
           onClick={() => setExibirForm(v => !v)}
@@ -116,7 +116,7 @@ export default function HistoricoEmpresa({ empresaId }: { empresaId: string }) {
       {exibirForm && (
         <div className="px-4 pb-2 pt-1">
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
-            <p className="text-[10px] font-black uppercase tracking-wide text-amber-700 mb-2">📝 Nova anotação manual</p>
+            <p className="text-xs font-bold uppercase tracking-wide text-amber-700 mb-2">📝 Nova anotação manual</p>
             <textarea
               rows={3}
               value={texto}
@@ -146,12 +146,12 @@ export default function HistoricoEmpresa({ empresaId }: { empresaId: string }) {
 
       <div className="card-body">
         {loading ? (
-          <p className="text-sm text-gray-400 italic text-center py-6">Carregando histórico...</p>
+          <p className="text-sm text-slate-400 italic text-center py-6">Carregando histórico...</p>
         ) : eventos.length === 0 ? (
           <div className="text-center py-10">
             <p className="text-4xl mb-2">📭</p>
-            <p className="text-sm text-gray-400 italic">Nenhum registro ainda.</p>
-            <p className="text-xs text-gray-400 mt-1">Comunicados enviados, renovações e anotações aparecerão aqui automaticamente.</p>
+            <p className="text-sm text-slate-400 italic">Nenhum registro ainda.</p>
+            <p className="text-xs text-slate-400 mt-1">Comunicados enviados, renovações e anotações aparecerão aqui automaticamente.</p>
           </div>
         ) : (
           <div className="relative">
@@ -167,16 +167,16 @@ export default function HistoricoEmpresa({ empresaId }: { empresaId: string }) {
                   {/* Conteúdo */}
                   <div className={`flex-1 min-w-0 p-3 rounded-xl border ${COR[ev.tipo] || 'bg-slate-50 border-slate-200'}`}>
                     <div className="flex items-start justify-between gap-2 flex-wrap">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                      <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
                         {LABEL[ev.tipo] || ev.tipo}
                         {ev.canal && <span className="ml-1 normal-case font-normal">· via {ev.canal}</span>}
                       </span>
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] text-slate-400 font-mono">{fmtData(ev.criado_em)}</span>
+                        <span className="text-xs text-slate-400 font-mono">{fmtData(ev.criado_em)}</span>
                         {ev.tipo === 'anotacao' && (
                           <button
                             onClick={() => excluirEvento(ev.id)}
-                            className="opacity-0 group-hover:opacity-100 text-[10px] text-red-400 hover:text-red-600 transition-all"
+                            className="opacity-0 group-hover:opacity-100 text-xs text-red-400 hover:text-red-600 transition-all"
                             title="Excluir anotação"
                           >
                             ✕

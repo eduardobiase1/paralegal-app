@@ -3,19 +3,9 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useOrg } from '@/lib/org-context'
+import { NAV_GROUPS } from '@/lib/navigation'
 
-const PAGES = [
-  { label: 'Briefing Diário',       href: '/briefing',          sub: 'Certidões, alvarás, licenças e certificados' },
-  { label: 'Briefing Societário',   href: '/societario/painel', sub: 'Processos em andamento, do mais parado ao mais recente' },
-  { label: 'Certidões Negativas',   href: '/certidoes',         sub: 'Federal, Estadual, Municipal, FGTS' },
-  { label: 'Alvarás',               href: '/alvaras',           sub: 'Alvarás de funcionamento' },
-  { label: 'Licenças Sanitárias',   href: '/licencas',          sub: 'VISA Municipal e ANVISA' },
-  { label: 'Empresas',              href: '/empresas',          sub: 'Cadastro de clientes' },
-  { label: 'Contratos',             href: '/contratos',         sub: 'Gestão de contratos' },
-  { label: 'Dashboard',             href: '/dashboard',         sub: 'Visão executiva' },
-  { label: 'Financeiro',            href: '/financeiro',        sub: 'Honorários e cobranças' },
-  { label: 'Relatórios PDF',        href: '/relatorios',        sub: 'Geração de relatórios' },
-]
+const PAGES = NAV_GROUPS.flatMap(g => g.pages.map(p => ({ label: p.label, href: p.href, sub: g.label })))
 
 export default function CommandPalette() {
   const [open, setOpen]       = useState(false)
@@ -106,15 +96,15 @@ export default function CommandPalette() {
             placeholder="Buscar empresa ou página..."
             className="flex-1 text-sm text-slate-900 outline-none placeholder-slate-400 bg-transparent"
           />
-          {loading && <span className="text-[10px] text-slate-400 animate-pulse">buscando...</span>}
-          <kbd className="text-[10px] text-slate-300 bg-slate-100 px-1.5 py-0.5 rounded font-mono border border-slate-200">Esc</kbd>
+          {loading && <span className="text-xs text-slate-400 animate-pulse">buscando...</span>}
+          <kbd className="text-xs text-slate-300 bg-slate-100 px-1.5 py-0.5 rounded font-mono border border-slate-200">Esc</kbd>
         </div>
 
         {/* Results */}
         <div className="max-h-80 overflow-y-auto py-1.5">
           {empresas.length > 0 && (
             <>
-              <p className="px-4 pt-2 pb-1 text-[9px] font-black uppercase tracking-widest text-slate-400">Empresas</p>
+              <p className="px-4 pt-2 pb-1 text-xs font-bold uppercase tracking-wide text-slate-400">Empresas</p>
               {empresas.map((e, i) => (
                 <button key={e.id} onClick={() => go(`/empresas/${e.id}`)}
                   onMouseEnter={() => setSelected(i)}
@@ -131,7 +121,7 @@ export default function CommandPalette() {
 
           {filteredPages.length > 0 && (
             <>
-              <p className="px-4 pt-2 pb-1 text-[9px] font-black uppercase tracking-widest text-slate-400">
+              <p className="px-4 pt-2 pb-1 text-xs font-bold uppercase tracking-wide text-slate-400">
                 {empresas.length > 0 ? 'Páginas' : (query ? 'Páginas encontradas' : 'Acesso rápido')}
               </p>
               {filteredPages.map((p, i) => {
@@ -162,7 +152,7 @@ export default function CommandPalette() {
 
         {/* Footer */}
         <div className="flex items-center gap-3 px-4 py-2.5 border-t border-slate-100 bg-slate-50">
-          <span className="text-[10px] text-slate-400 flex items-center gap-2">
+          <span className="text-xs text-slate-400 flex items-center gap-2">
             <KbdPair keys="↑↓" label="navegar" />
             <KbdPair keys="Enter" label="abrir" />
             <KbdPair keys="Esc" label="fechar" />
@@ -176,7 +166,7 @@ export default function CommandPalette() {
 function KbdPair({ keys, label }: { keys: string; label: string }) {
   return (
     <span className="flex items-center gap-1">
-      <kbd className="bg-white border border-slate-200 rounded px-1.5 py-0.5 font-mono text-[10px] text-slate-500">{keys}</kbd>
+      <kbd className="bg-white border border-slate-200 rounded px-1.5 py-0.5 font-mono text-xs text-slate-500">{keys}</kbd>
       <span className="text-slate-400">{label}</span>
     </span>
   )

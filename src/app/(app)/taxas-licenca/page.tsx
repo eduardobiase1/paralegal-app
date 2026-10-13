@@ -153,12 +153,12 @@ export default function TaxasLicencaPage() {
       <div className="bg-white border-b border-slate-200 px-6 py-5">
         <div className="max-w-5xl mx-auto">
 
-          <p className="text-[9px] font-black uppercase tracking-widest text-blue-600 mb-1">
+          <p className="text-xs font-bold uppercase tracking-wide text-blue-600 mb-1">
             CONTROLES · TAXAS
           </p>
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+              <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
                 Taxa de Licença de Funcionamento
               </h1>
               <p className="text-sm text-slate-400 mt-1">
@@ -270,7 +270,7 @@ export default function TaxasLicencaPage() {
                   {/* Cabeçalho do município */}
                   <div className="flex items-center gap-3 mb-3 pb-2 border-b border-slate-200">
                     <span className="text-base">📍</span>
-                    <span className="text-sm font-extrabold text-slate-700 uppercase tracking-wide">
+                    <span className="text-sm font-bold text-slate-700 uppercase tracking-wide">
                       {municipio}
                     </span>
                     <span className="text-xs text-slate-400">
@@ -358,7 +358,7 @@ export default function TaxasLicencaPage() {
                               </p>
                               <div className="flex flex-wrap gap-3 items-end">
                                 <div>
-                                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">
+                                  <label className="text-xs font-bold text-slate-400 uppercase block mb-1">
                                     Data do envio
                                   </label>
                                   <input type="date"
@@ -368,7 +368,7 @@ export default function TaxasLicencaPage() {
                                   />
                                 </div>
                                 <div className="flex-1 min-w-52">
-                                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">
+                                  <label className="text-xs font-bold text-slate-400 uppercase block mb-1">
                                     Observação (opcional)
                                   </label>
                                   <input type="text"
@@ -414,8 +414,8 @@ function Chip({ label, value, color }: { label: string; value: number; color: 'g
   }[color]
   return (
     <div className={`border rounded-lg px-3 py-1.5 text-center min-w-16 ${s}`}>
-      <p className="text-lg font-black leading-none tabular-nums">{value}</p>
-      <p className="text-[9px] font-bold uppercase tracking-wider mt-0.5 opacity-70">{label}</p>
+      <p className="text-lg font-bold leading-none tabular-nums">{value}</p>
+      <p className="text-xs font-bold uppercase tracking-wider mt-0.5 opacity-70">{label}</p>
     </div>
   )
 }

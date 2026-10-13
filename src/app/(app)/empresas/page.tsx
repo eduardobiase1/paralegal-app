@@ -183,16 +183,16 @@ export default function EmpresasPage() {
       {/* Cabeçalho */}
       <header className="flex flex-wrap justify-between items-start gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-black tracking-tight">Base de Clientes</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Base de Clientes</h1>
           <p className="text-sm text-slate-500 mt-0.5">
             {orgName} &nbsp;·&nbsp;
-            <span className="font-black text-slate-700">{empresas.length}</span>
+            <span className="font-bold text-slate-700">{empresas.length}</span>
             <span className="text-slate-400"> Clientes Ativos</span>
           </p>
         </div>
         <button
           onClick={() => { setFormData(initialForm); setIsModalOpen(true) }}
-          className="bg-black text-yellow-400 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wide hover:bg-slate-800 transition-all shadow-md"
+          className="bg-black text-yellow-400 px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wide hover:bg-slate-800 transition-all shadow-md"
         >
           + Importar CNPJ
         </button>
@@ -208,7 +208,7 @@ export default function EmpresasPage() {
           className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 pl-9 text-sm outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-100 transition-all"
         />
         {search && (
-          <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-black">✕</button>
+          <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold">✕</button>
         )}
       </div>
 
@@ -218,13 +218,13 @@ export default function EmpresasPage() {
           <table className="w-full min-w-[640px]">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-100">
-                <th className="text-left px-4 py-3 text-[10px] font-black uppercase text-slate-400 tracking-widest">Status</th>
-                <th className="text-left px-4 py-3 text-[10px] font-black uppercase text-slate-400 tracking-widest">Razão Social</th>
-                <th className="text-left px-4 py-3 text-[10px] font-black uppercase text-slate-400 tracking-widest hidden md:table-cell">CNPJ</th>
-                <th className="text-left px-4 py-3 text-[10px] font-black uppercase text-slate-400 tracking-widest hidden sm:table-cell">Cidade/UF</th>
-                <th className="text-left px-4 py-3 text-[10px] font-black uppercase text-slate-400 tracking-widest hidden lg:table-cell">Tags</th>
-                <th className="text-left px-4 py-3 text-[10px] font-black uppercase text-slate-400 tracking-widest hidden xl:table-cell">Última Ação</th>
-                <th className="text-right px-4 py-3 text-[10px] font-black uppercase text-slate-400 tracking-widest">Ações</th>
+                <th className="text-left px-4 py-3 text-xs font-bold uppercase text-slate-400 tracking-wide">Status</th>
+                <th className="text-left px-4 py-3 text-xs font-bold uppercase text-slate-400 tracking-wide">Razão Social</th>
+                <th className="text-left px-4 py-3 text-xs font-bold uppercase text-slate-400 tracking-wide hidden md:table-cell">CNPJ</th>
+                <th className="text-left px-4 py-3 text-xs font-bold uppercase text-slate-400 tracking-wide hidden sm:table-cell">Cidade/UF</th>
+                <th className="text-left px-4 py-3 text-xs font-bold uppercase text-slate-400 tracking-wide hidden lg:table-cell">Tags</th>
+                <th className="text-left px-4 py-3 text-xs font-bold uppercase text-slate-400 tracking-wide hidden xl:table-cell">Última Ação</th>
+                <th className="text-right px-4 py-3 text-xs font-bold uppercase text-slate-400 tracking-wide">Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -240,14 +240,14 @@ export default function EmpresasPage() {
                     className="border-b border-slate-100 hover:bg-yellow-50 cursor-pointer transition-colors"
                   >
                     <td className="px-4 py-3">
-                      <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase ${getSituacaoBadge(emp.situacao)}`}>
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full uppercase ${getSituacaoBadge(emp.situacao)}`}>
                         {emp.situacao || 'ATIVA'}
                       </span>
                     </td>
                     <td className="px-4 py-3 max-w-[180px]">
                       <p className="font-bold text-slate-800 text-sm truncate">{emp.razao_social}</p>
                       {emp.nome_fantasia && emp.nome_fantasia !== '********' && (
-                        <p className="text-[11px] text-slate-400 truncate">{emp.nome_fantasia}</p>
+                        <p className="text-xs text-slate-400 truncate">{emp.nome_fantasia}</p>
                       )}
                     </td>
                     <td className="px-4 py-3 font-mono text-xs text-slate-500 hidden md:table-cell">{emp.cnpj}</td>
@@ -256,9 +256,9 @@ export default function EmpresasPage() {
                     </td>
                     <td className="px-4 py-3 hidden lg:table-cell">
                       <div className="flex flex-wrap gap-1">
-                        {tag && <span className="text-[9px] font-black px-2 py-0.5 rounded bg-slate-100 text-slate-600 uppercase">{tag}</span>}
+                        {tag && <span className="text-xs font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600 uppercase">{tag}</span>}
                         {emp.regime_tributario && (
-                          <span className="text-[9px] font-black px-2 py-0.5 rounded bg-blue-50 text-blue-600 uppercase">{emp.regime_tributario}</span>
+                          <span className="text-xs font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-600 uppercase">{emp.regime_tributario}</span>
                         )}
                       </div>
                     </td>
@@ -271,7 +271,7 @@ export default function EmpresasPage() {
                           <button
                             onClick={() => router.push(`/societario?empresa=${emp.id}`)}
                             title="Ver processos"
-                            className="px-2 py-1 rounded-lg text-[10px] font-black uppercase bg-blue-100 text-blue-700 hover:bg-blue-200 transition-all"
+                            className="px-2 py-1 rounded-lg text-xs font-bold uppercase bg-blue-100 text-blue-700 hover:bg-blue-200 transition-all"
                           >
                             {ativos.length} proc.
                           </button>
@@ -304,7 +304,7 @@ export default function EmpresasPage() {
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 text-left">
           <div className="bg-white w-full max-w-lg rounded-2xl p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto">
-            <button onClick={() => setIsModalOpen(false)} className="absolute top-4 right-4 text-slate-400 hover:text-red-500 font-black">FECHAR ✕</button>
+            <button onClick={() => setIsModalOpen(false)} className="absolute top-4 right-4 text-slate-400 hover:text-red-500 font-bold">FECHAR ✕</button>
             <h2 className="text-xl font-bold mb-6 text-slate-800">{formData.id ? 'Atualizar Empresa' : 'Importar Empresa'}</h2>
 
             <div className="flex gap-2 mb-6">
@@ -322,13 +322,13 @@ export default function EmpresasPage() {
             {formData.razao_social && (
               <form onSubmit={handleSave} className="space-y-4">
                 <div className="bg-slate-50 p-4 rounded-xl border-l-4 border-yellow-400">
-                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Identificada</p>
+                  <p className="text-[8px] font-bold text-slate-400 uppercase tracking-wide">Identificada</p>
                   <p className="text-sm font-bold text-slate-900 uppercase truncate mt-1">{formData.razao_social}</p>
-                  <p className="text-[10px] text-slate-500 font-mono mt-0.5">{formData.cnpj}</p>
+                  <p className="text-xs text-slate-500 font-mono mt-0.5">{formData.cnpj}</p>
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Regime Tributário</label>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide block mb-1">Regime Tributário</label>
                   <select
                     value={formData.regime_tributario}
                     onChange={e => setFormData({ ...formData, regime_tributario: e.target.value })}

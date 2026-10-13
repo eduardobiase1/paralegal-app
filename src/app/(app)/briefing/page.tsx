@@ -114,7 +114,7 @@ function DocTypeBadge({ badge }: { badge: string }) {
     badge === 'Processo Societário' ? 'bg-slate-100 border-slate-200 text-slate-600'    :
     'bg-sky-50 border-sky-200 text-sky-700'
   return (
-    <span className={`text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border flex-shrink-0 whitespace-nowrap ${cls}`}>
+    <span className={`text-xs font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border flex-shrink-0 whitespace-nowrap ${cls}`}>
       {badge}
     </span>
   )
@@ -160,7 +160,7 @@ function MensalCard({ docs, expanded, onToggle }: {
   const tipoLabel = { certidao: 'Certidão', alvara: 'Alvará', licenca: 'Licença Sanitária' }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 border-l-4 border-l-violet-500 shadow-sm overflow-hidden">
+    <div className="bg-white rounded-xl border border-slate-200 border-l-4 border-l-violet-500 shadow-sm overflow-hidden">
       <button onClick={onToggle}
         className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-violet-50 transition-colors text-left">
         <div className="w-9 h-9 rounded-xl bg-violet-100 border border-violet-200 flex items-center justify-center text-base flex-shrink-0">⭐</div>
@@ -168,7 +168,7 @@ function MensalCard({ docs, expanded, onToggle }: {
           <p className="text-sm font-bold text-violet-700 leading-tight">Revisão Mensal</p>
           <p className="text-xs text-violet-500 mt-0.5">Empresas prioritárias · ciclo de 30 dias</p>
         </div>
-        <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-violet-100 text-violet-700 border border-violet-200 flex-shrink-0">
+        <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-violet-100 text-violet-700 border border-violet-200 flex-shrink-0">
           {docs.length} {docs.length === 1 ? 'item' : 'itens'}
         </span>
         <svg className={`w-4 h-4 text-violet-400 flex-shrink-0 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
@@ -180,7 +180,7 @@ function MensalCard({ docs, expanded, onToggle }: {
       {expanded && (
         <div className="border-t border-violet-100">
           {docs.map(doc => {
-            const diasCls = doc.diasRestantes === null ? 'bg-gray-100 text-gray-500'
+            const diasCls = doc.diasRestantes === null ? 'bg-slate-100 text-slate-500'
               : doc.diasRestantes < 0   ? 'bg-red-100 text-red-700'
               : doc.diasRestantes <= 15  ? 'bg-orange-100 text-orange-700'
               : 'bg-violet-50 text-violet-700'
@@ -192,18 +192,18 @@ function MensalCard({ docs, expanded, onToggle }: {
               <Link key={doc.key} href={doc.href}
                 className="flex items-center gap-2.5 px-4 py-2.5 border-b border-violet-50 last:border-0 hover:bg-violet-50 transition-colors group">
                 <span className="w-1.5 h-1.5 rounded-full bg-violet-400 flex-shrink-0" />
-                <span className={`text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border flex-shrink-0 whitespace-nowrap
+                <span className={`text-xs font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border flex-shrink-0 whitespace-nowrap
                   ${doc.tipo === 'alvara'  ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
                   : doc.tipo === 'licenca' ? 'bg-purple-50  border-purple-200  text-purple-700'
                   : 'bg-sky-50 border-sky-200 text-sky-700'}`}>
                   {tipoLabel[doc.tipo]}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-gray-900 truncate group-hover:text-violet-700 transition-colors">{doc.descricao}</p>
-                  <p className="text-[10px] text-gray-400 truncate">{doc.empresaNome}</p>
+                  <p className="text-xs font-semibold text-slate-900 truncate group-hover:text-violet-700 transition-colors">{doc.descricao}</p>
+                  <p className="text-xs text-slate-400 truncate">{doc.empresaNome}</p>
                 </div>
-                <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0 whitespace-nowrap ${diasCls}`}>{diasTxt}</span>
-                <svg className="w-3.5 h-3.5 text-gray-300 group-hover:text-violet-400 flex-shrink-0 transition-colors"
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0 whitespace-nowrap ${diasCls}`}>{diasTxt}</span>
+                <svg className="w-3.5 h-3.5 text-slate-300 group-hover:text-violet-400 flex-shrink-0 transition-colors"
                   fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
@@ -232,43 +232,43 @@ function CompanyCard({ group, expanded, onToggle, onSnooze, subListExpanded, onT
       {/* Header */}
       <button onClick={onToggle}
         className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50/60 transition-colors text-left rounded-t-2xl">
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-black flex-shrink-0 tracking-tight ${ts.av}`}>
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 tracking-tight ${ts.av}`}>
           {group.initials}
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-[13px] font-bold text-slate-900 leading-tight truncate tracking-tight">{group.empresaNome}</p>
           <div className="flex items-center gap-1.5 mt-0.5">
             {group.compType && (
-              <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+              <span className="text-xs font-bold uppercase tracking-wide text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
                 {group.compType}
               </span>
             )}
-            <span className="text-[11px] text-slate-400 font-medium">
+            <span className="text-xs text-slate-400 font-medium">
               {tot} {tot === 1 ? 'pendência' : 'pendências'}
             </span>
           </div>
         </div>
         <div className="hidden sm:flex items-center gap-1.5 flex-shrink-0">
           {crit > 0 && (
-            <span className={`flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full border ${TS.critico.chip}`}>
+            <span className={`flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full border ${TS.critico.chip}`}>
               <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
               {crit} {crit === 1 ? 'crítico' : 'críticos'}
             </span>
           )}
           {urg > 0 && (
-            <span className={`flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full border ${TS.urgente.chip}`}>
+            <span className={`flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full border ${TS.urgente.chip}`}>
               <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
               {urg} {urg === 1 ? 'urgente' : 'urgentes'}
             </span>
           )}
           {att > 0 && crit === 0 && urg === 0 && (
-            <span className={`flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full border ${TS.atencao.chip}`}>
+            <span className={`flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full border ${TS.atencao.chip}`}>
               <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
               {att} atenção
             </span>
           )}
         </div>
-        <svg className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
+        <svg className={`w-4 h-4 text-slate-400 flex-shrink-0 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
           fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
         </svg>
@@ -284,28 +284,28 @@ function CompanyCard({ group, expanded, onToggle, onSnooze, subListExpanded, onT
           </div>
 
           {/* Doc rows */}
-          <div className="border-t border-gray-50">
+          <div className="border-t border-slate-50">
             {group.items.map(item => {
               const its    = TS[item.tier]
               const hasSub = (item.subList?.length ?? 0) > 0
               const subOpen = subListExpanded[item.key]
               return (
-                <div key={item.key} className="border-b border-gray-50 last:border-0">
-                  <div className="flex items-center gap-2.5 px-4 py-2.5 hover:bg-gray-50 transition-colors group/row">
+                <div key={item.key} className="border-b border-slate-50 last:border-0">
+                  <div className="flex items-center gap-2.5 px-4 py-2.5 hover:bg-slate-50 transition-colors group/row">
                     <span className="w-2 h-2 rounded-full flex-shrink-0"
                       style={{ background: its.led, boxShadow: `0 0 6px ${its.glow}` }} />
                     <DocTypeBadge badge={item.badge} />
                     <Link href={item.href} className="flex-1 min-w-0">
-                      <span className="text-[13px] font-medium text-gray-900 truncate block hover:text-blue-700 transition-colors">
+                      <span className="text-[13px] font-medium text-slate-900 truncate block hover:text-blue-700 transition-colors">
                         {item.descricao}
                       </span>
                     </Link>
-                    <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full flex-shrink-0 whitespace-nowrap ${its.days}`}>
+                    <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full flex-shrink-0 whitespace-nowrap ${its.days}`}>
                       {item.detalhe}
                     </span>
                     {!hasSub ? (
                       <Link href={item.href}
-                        className="opacity-0 group-hover/row:opacity-100 transition-opacity text-[11px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-2.5 py-0.5 rounded-full flex-shrink-0 whitespace-nowrap">
+                        className="opacity-0 group-hover/row:opacity-100 transition-opacity text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-2.5 py-0.5 rounded-full flex-shrink-0 whitespace-nowrap">
                         Renovar →
                       </Link>
                     ) : (
@@ -320,12 +320,12 @@ function CompanyCard({ group, expanded, onToggle, onSnooze, subListExpanded, onT
                     )}
                   </div>
                   {hasSub && subOpen && (
-                    <div className="px-12 pb-3 border-t border-gray-50">
-                      <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide mt-3 mb-2">Empresas</p>
+                    <div className="px-12 pb-3 border-t border-slate-50">
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mt-3 mb-2">Empresas</p>
                       <div className="space-y-1 max-h-40 overflow-y-auto">
                         {item.subList!.map((nome, i) => (
-                          <p key={i} className="text-xs text-gray-600 flex items-center gap-1.5">
-                            <span className="w-1 h-1 rounded-full bg-gray-300 flex-shrink-0" />{nome}
+                          <p key={i} className="text-xs text-slate-600 flex items-center gap-1.5">
+                            <span className="w-1 h-1 rounded-full bg-slate-300 flex-shrink-0" />{nome}
                           </p>
                         ))}
                       </div>
@@ -337,7 +337,7 @@ function CompanyCard({ group, expanded, onToggle, onSnooze, subListExpanded, onT
           </div>
 
           {/* Footer */}
-          <div className="flex items-center gap-1 px-4 py-2 bg-gray-50 border-t border-gray-100">
+          <div className="flex items-center gap-1 px-4 py-2 bg-slate-50 border-t border-slate-100">
             <Link href={`/certidoes?empresa=${group.empresaId}`}
               className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg transition-colors">
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -345,9 +345,9 @@ function CompanyCard({ group, expanded, onToggle, onSnooze, subListExpanded, onT
               </svg>
               Ver empresa
             </Link>
-            <div className="w-px h-3.5 bg-gray-200 mx-0.5" />
+            <div className="w-px h-3.5 bg-slate-200 mx-0.5" />
             <button onClick={onSnooze}
-              className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-gray-800 hover:bg-gray-100 px-2.5 py-1.5 rounded-lg transition-colors">
+              className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 hover:bg-slate-100 px-2.5 py-1.5 rounded-lg transition-colors">
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
@@ -366,18 +366,18 @@ function ControleCard({ item, subListExpanded, onToggleSubList }: {
 }) {
   const subOpen = subListExpanded[item.key]
   return (
-    <div className="bg-white rounded-xl border border-gray-200 border-l-4 border-l-blue-400 shadow-sm hover:shadow-md transition-shadow">
+    <div className="bg-white rounded-xl border border-slate-200 border-l-4 border-l-blue-400 shadow-sm hover:shadow-md transition-shadow">
       <div className="flex items-center gap-3 px-4 py-3.5">
         <div className="w-9 h-9 rounded-xl bg-blue-100 border border-blue-200 flex items-center justify-center flex-shrink-0 text-blue-600">
           <IcoWarning />
         </div>
         <div className="flex-1 min-w-0">
           <Link href={item.href} className="group">
-            <p className="text-sm font-bold text-gray-900 leading-tight group-hover:text-blue-700 transition-colors">{item.empresaNome}</p>
-            <p className="text-xs text-gray-500 mt-0.5">{item.descricao}</p>
+            <p className="text-sm font-bold text-slate-900 leading-tight group-hover:text-blue-700 transition-colors">{item.empresaNome}</p>
+            <p className="text-xs text-slate-500 mt-0.5">{item.descricao}</p>
           </Link>
         </div>
-        <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 flex-shrink-0 whitespace-nowrap">
+        <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 flex-shrink-0 whitespace-nowrap">
           {item.detalhe}
         </span>
         {(item.subList?.length ?? 0) > 0 && (
@@ -392,12 +392,12 @@ function ControleCard({ item, subListExpanded, onToggleSubList }: {
         )}
       </div>
       {subOpen && item.subList && (
-        <div className="px-14 pb-3 border-t border-gray-50">
-          <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide mt-3 mb-2">Empresas</p>
+        <div className="px-14 pb-3 border-t border-slate-50">
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mt-3 mb-2">Empresas</p>
           <div className="space-y-1 max-h-40 overflow-y-auto">
             {item.subList.map((nome, i) => (
-              <p key={i} className="text-xs text-gray-600 flex items-center gap-1.5">
-                <span className="w-1 h-1 rounded-full bg-gray-300 flex-shrink-0" />{nome}
+              <p key={i} className="text-xs text-slate-600 flex items-center gap-1.5">
+                <span className="w-1 h-1 rounded-full bg-slate-300 flex-shrink-0" />{nome}
               </p>
             ))}
           </div>
@@ -820,7 +820,7 @@ export default function BriefingPage() {
             <button onClick={abrirFoco}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-700 transition-all shadow-sm">
               ⚡ Modo Foco
-              <span className="bg-white/20 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full leading-none">
+              <span className="bg-white/20 text-white text-xs font-bold px-1.5 py-0.5 rounded-full leading-none">
                 {focoItems.length}
               </span>
             </button>
@@ -867,7 +867,7 @@ export default function BriefingPage() {
                   {/* Badge contador */}
                   {tab.count > 0 && (
                     <span
-                      className="text-[10px] font-black px-2 py-0.5 rounded-full leading-none transition-all duration-200"
+                      className="text-xs font-bold px-2 py-0.5 rounded-full leading-none transition-all duration-200"
                       style={isActive
                         ? { background: 'rgba(255,255,255,0.25)', color: 'white' }
                         : { background: '#F1F5F9', color: '#64748B' }
@@ -888,14 +888,14 @@ export default function BriefingPage() {
         {loading ? (
           <div className="space-y-2">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-16 bg-white rounded-xl animate-pulse border border-gray-200" />
+              <div key={i} className="h-16 bg-white rounded-xl animate-pulse border border-slate-200" />
             ))}
           </div>
         ) : tudoEmDia ? (
           <div className="text-center py-24 bg-white rounded-2xl border border-slate-200 shadow-sm">
             <p className="text-5xl mb-4">🎉</p>
-            <p className="text-lg font-bold text-gray-900">100% sob controle!</p>
-            <p className="text-sm text-gray-500 mt-1">Nenhuma pendência encontrada. Continue assim!</p>
+            <p className="text-lg font-bold text-slate-900">100% sob controle!</p>
+            <p className="text-sm text-slate-500 mt-1">Nenhuma pendência encontrada. Continue assim!</p>
           </div>
         ) : (
           <>
@@ -905,22 +905,22 @@ export default function BriefingPage() {
                 {/* Barra de busca + expandir/recolher */}
                 <div className="flex flex-wrap gap-2 items-center bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
                   <div className="relative flex-1 min-w-[160px]">
-                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"
                       fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
                     <input type="text" value={searchQ} onChange={e => setSearchQ(e.target.value)}
                       placeholder="Buscar empresa…"
-                      className="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-primary-400 transition-all placeholder:text-gray-400" />
+                      className="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-primary-400 transition-all placeholder:text-slate-400" />
                   </div>
                   <div className="flex gap-1.5 ml-auto">
                     <button onClick={expandAll}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">
                       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 8h16M4 16h16"/></svg>
                       Expandir tudo
                     </button>
                     <button onClick={collapseAll}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">
                       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7"/></svg>
                       Recolher tudo
                     </button>
@@ -934,7 +934,7 @@ export default function BriefingPage() {
                   if (list.length === 0) return (
                     <div className="text-center py-16 bg-white rounded-2xl border border-slate-200">
                       <p className="text-3xl mb-2">✓</p>
-                      <p className="text-sm font-medium text-gray-500">
+                      <p className="text-sm font-medium text-slate-500">
                         {searchQ ? 'Nenhuma empresa encontrada.' : `Nenhuma pendência ${activeTab === 'critico' ? 'crítica' : activeTab === 'urgente' ? 'urgente' : 'de atenção'}.`}
                       </p>
                     </div>
@@ -963,7 +963,7 @@ export default function BriefingPage() {
               naoComunicados.length === 0 ? (
                 <div className="text-center py-16 bg-white rounded-2xl border border-slate-200">
                   <p className="text-3xl mb-2">✓</p>
-                  <p className="text-sm font-medium text-gray-500">Todos os clientes já foram comunicados.</p>
+                  <p className="text-sm font-medium text-slate-500">Todos os clientes já foram comunicados.</p>
                 </div>
               ) : (
                 <div className="bg-white border border-fuchsia-200 rounded-2xl overflow-hidden shadow-sm">
@@ -974,13 +974,13 @@ export default function BriefingPage() {
                   {naoComunicados.map((c: any) => (
                     <Link key={c.id} href={`/certidoes?empresa=${c.empresa_id}`}
                       className="flex items-center gap-2.5 px-4 py-3 border-b border-fuchsia-50 last:border-0 hover:bg-fuchsia-50 transition-colors group">
-                      <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border bg-fuchsia-100 border-fuchsia-200 text-fuchsia-700 flex-shrink-0 whitespace-nowrap">
+                      <span className="text-xs font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border bg-fuchsia-100 border-fuchsia-200 text-fuchsia-700 flex-shrink-0 whitespace-nowrap">
                         {c.tipo}
                       </span>
-                      <span className="text-sm font-semibold text-gray-900 flex-1 min-w-0 truncate">
+                      <span className="text-sm font-semibold text-slate-900 flex-1 min-w-0 truncate">
                         {(c as any).empresa?.razao_social || '—'}
                       </span>
-                      <span className="text-xs text-gray-500 hidden sm:block flex-shrink-0">{c.orgao_emissor}</span>
+                      <span className="text-xs text-slate-500 hidden sm:block flex-shrink-0">{c.orgao_emissor}</span>
                       <span className="text-xs font-bold text-fuchsia-600 flex-shrink-0 whitespace-nowrap group-hover:underline">Comunicar →</span>
                     </Link>
                   ))}
@@ -993,7 +993,7 @@ export default function BriefingPage() {
               priorityDocs.length === 0 ? (
                 <div className="text-center py-16 bg-white rounded-2xl border border-slate-200">
                   <p className="text-3xl mb-2">✓</p>
-                  <p className="text-sm font-medium text-gray-500">Nenhuma revisão pendente para empresas prioritárias.</p>
+                  <p className="text-sm font-medium text-slate-500">Nenhuma revisão pendente para empresas prioritárias.</p>
                 </div>
               ) : (
                 <MensalCard docs={priorityDocs} expanded={true} onToggle={() => {}} />
@@ -1005,7 +1005,7 @@ export default function BriefingPage() {
               groups.controle.length === 0 ? (
                 <div className="text-center py-16 bg-white rounded-2xl border border-slate-200">
                   <p className="text-3xl mb-2">✓</p>
-                  <p className="text-sm font-medium text-gray-500">Nenhum item de controle de cadastro.</p>
+                  <p className="text-sm font-medium text-slate-500">Nenhum item de controle de cadastro.</p>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -1018,7 +1018,7 @@ export default function BriefingPage() {
             )}
 
             {updatedAt && (
-              <p className="text-[11px] text-gray-400 text-center mt-4">
+              <p className="text-xs text-slate-400 text-center mt-4">
                 Atualizado às {updatedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
               </p>
             )}
@@ -1035,7 +1035,7 @@ export default function BriefingPage() {
               /* Concluído */
               <div className="p-10 text-center">
                 <p className="text-5xl mb-4">🎉</p>
-                <p className="text-lg font-black text-slate-900">Triagem concluída!</p>
+                <p className="text-lg font-bold text-slate-900">Triagem concluída!</p>
                 <p className="text-sm text-slate-500 mt-1">Você revisou todos os {focoItems.length} itens.</p>
                 <button onClick={() => setModoFoco(false)}
                   className="mt-6 px-6 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-bold hover:bg-slate-700 transition-all">
@@ -1057,7 +1057,7 @@ export default function BriefingPage() {
                   {/* Header */}
                   <div className="flex items-center justify-between px-5 pt-5 pb-3">
                     <div className="flex-1 mr-4">
-                      <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-2">
+                      <p className="text-xs font-bold uppercase tracking-wide text-slate-400 mb-2">
                         ⚡ Modo Foco · {focoIdx + 1} / {focoItems.length}
                       </p>
                       <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
@@ -1066,7 +1066,7 @@ export default function BriefingPage() {
                       </div>
                     </div>
                     <button onClick={() => setModoFoco(false)}
-                      className="text-slate-300 hover:text-slate-700 text-xl font-black leading-none transition-colors flex-shrink-0">
+                      className="text-slate-300 hover:text-slate-700 text-xl font-bold leading-none transition-colors flex-shrink-0">
                       ✕
                     </button>
                   </div>
@@ -1075,14 +1075,14 @@ export default function BriefingPage() {
                   <div className="px-5 pb-5">
                     {/* Tier + tipo */}
                     <div className="flex items-center gap-2 mb-3">
-                      <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border ${ts.chip}`}>
+                      <span className={`text-xs font-bold uppercase tracking-wide px-2.5 py-1 rounded-full border ${ts.chip}`}>
                         {tierLabel}
                       </span>
                       <DocTypeBadge badge={item.badge} />
                     </div>
 
                     {/* Empresa */}
-                    <h2 className="text-[18px] font-black text-slate-900 leading-snug">{item.empresaNome}</h2>
+                    <h2 className="text-[18px] font-bold text-slate-900 leading-snug">{item.empresaNome}</h2>
 
                     {/* Documento */}
                     <p className="text-sm text-slate-600 mt-1">{item.descricao}</p>

@@ -552,16 +552,16 @@ function SocietarioPageInner() {
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="flex-1 min-w-0">
               <div className="flex flex-wrap items-center gap-2 mb-2">
-                <span className={`text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wide ${TIPO_COLORS[p.tipo] ?? 'bg-slate-100 text-slate-600'}`}>
+                <span className={`text-xs font-bold px-2.5 py-1 rounded-full uppercase tracking-wide ${TIPO_COLORS[p.tipo] ?? 'bg-slate-100 text-slate-600'}`}>
                   {TIPO_LABELS[p.tipo] ?? p.tipo}
                 </span>
-                <span className={`text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wide ${
+                <span className={`text-xs font-bold px-2.5 py-1 rounded-full uppercase tracking-wide ${
                   p.status === 'Finalizado' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
                 }`}>
                   {p.status === 'Finalizado' ? 'Finalizado' : 'Em Andamento'}
                 </span>
               </div>
-              <h2 className="text-xl font-black text-slate-900">{nomeExibido}</h2>
+              <h2 className="text-xl font-bold text-slate-900">{nomeExibido}</h2>
 
               {/* O.S. / Título editável */}
               <div className="mt-2">
@@ -573,8 +573,8 @@ function SocietarioPageInner() {
                       onBlur={() => saveTitulo(p.id)} onKeyDown={e => { if (e.key === 'Enter') saveTitulo(p.id); if (e.key === 'Escape') setEditingTituloId(null) }}
                       placeholder="Ex: O.S. 001/2026 — Abertura Padaria Central"
                       className="w-72 text-xs border-2 border-yellow-400 rounded-lg px-3 py-1.5 outline-none bg-yellow-50 font-medium" />
-                    <button onClick={() => saveTitulo(p.id)} className="bg-yellow-400 text-black text-[10px] font-black px-3 py-1.5 rounded-lg">OK</button>
-                    <button onClick={() => setEditingTituloId(null)} className="text-slate-400 text-[10px]">✕</button>
+                    <button onClick={() => saveTitulo(p.id)} className="bg-yellow-400 text-black text-xs font-bold px-3 py-1.5 rounded-lg">OK</button>
+                    <button onClick={() => setEditingTituloId(null)} className="text-slate-400 text-xs">✕</button>
                   </div>
                 ) : (
                   <button onClick={() => { setTituloText(p.titulo || ''); setEditingTituloId(p.id) }}
@@ -588,8 +588,8 @@ function SocietarioPageInner() {
             {/* Progresso circular compacto */}
             <div className="flex items-center gap-4 flex-shrink-0">
               <div className="text-right">
-                <div className="text-2xl font-black text-slate-900">{porc}%</div>
-                <div className="text-[10px] text-slate-400 font-bold uppercase">{concluido}/{total} etapas</div>
+                <div className="text-2xl font-bold text-slate-900">{porc}%</div>
+                <div className="text-xs text-slate-400 font-bold uppercase">{concluido}/{total} etapas</div>
               </div>
               <div className="relative w-14 h-14">
                 <svg viewBox="0 0 36 36" className="w-14 h-14 -rotate-90">
@@ -630,7 +630,7 @@ function SocietarioPageInner() {
                 ].join(' ')}>
                 {t.label}
                 <span
-                  className="text-[10px] font-black px-1.5 py-0.5 rounded-full leading-none"
+                  className="text-xs font-bold px-1.5 py-0.5 rounded-full leading-none"
                   style={isActive ? { background: 'rgba(255,255,255,0.25)', color: 'white' } : { background: '#F1F5F9', color: '#64748B' }}>
                   {t.count}
                 </span>
@@ -653,7 +653,7 @@ function SocietarioPageInner() {
                       toast.success(`Modelo restaurado com ${novas.length} etapas.`)
                     })
                   }}
-                  className="text-[10px] font-black text-slate-400 hover:text-yellow-600 border border-dashed border-slate-200 hover:border-yellow-400 px-2.5 py-1 rounded-lg transition-all"
+                  className="text-xs font-bold text-slate-400 hover:text-yellow-600 border border-dashed border-slate-200 hover:border-yellow-400 px-2.5 py-1 rounded-lg transition-all"
                 >
                   ↺ Restaurar modelo
                 </button>
@@ -670,7 +670,7 @@ function SocietarioPageInner() {
                   className={`group flex items-center gap-3 py-2.5 px-2 rounded-xl transition-colors hover:bg-slate-50 ${!isViewer ? 'cursor-grab active:cursor-grabbing' : ''} ${i < checklist.length - 1 ? 'border-b border-slate-100' : ''}`}>
                   {!isViewer
                     ? <span className="text-slate-300 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity select-none cursor-grab" title="Arrastar">⠿</span>
-                    : <span className="text-[10px] font-bold text-slate-300 w-5 text-right flex-shrink-0 select-none">{i + 1}</span>
+                    : <span className="text-xs font-bold text-slate-300 w-5 text-right flex-shrink-0 select-none">{i + 1}</span>
                   }
                   <button
                     onClick={() => !isViewer && updateEtapa(p.id, checklist, i)}
@@ -686,7 +686,7 @@ function SocietarioPageInner() {
                       <input autoFocus value={editText} onChange={e => setEditText(e.target.value)}
                         onKeyDown={e => { if (e.key === 'Enter') saveEditItem(p.id, checklist); if (e.key === 'Escape') setEditingItem(null) }}
                         className="flex-1 border-2 border-yellow-400 rounded-lg px-2 py-1 text-sm outline-none" />
-                      <button onClick={() => saveEditItem(p.id, checklist)} className="bg-yellow-400 text-black text-xs font-black px-3 py-1 rounded-lg">OK</button>
+                      <button onClick={() => saveEditItem(p.id, checklist)} className="bg-yellow-400 text-black text-xs font-bold px-3 py-1 rounded-lg">OK</button>
                       <button onClick={() => setEditingItem(null)} className="bg-slate-100 text-slate-500 text-xs px-2 py-1 rounded-lg">✕</button>
                     </div>
                   ) : (
@@ -695,13 +695,13 @@ function SocietarioPageInner() {
                         item.status === 'Concluido' ? 'line-through text-slate-400' : item.status === 'Andamento' ? 'text-yellow-700 font-medium' : 'text-slate-700'
                       }`}>{item.etapa}</span>
                   )}
-                  <span className={`hidden group-hover:inline-flex text-[9px] font-black px-2 py-0.5 rounded-full flex-shrink-0 ${
+                  <span className={`hidden group-hover:inline-flex text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${
                     item.status === 'Concluido' ? 'bg-emerald-100 text-emerald-700' : item.status === 'Andamento' ? 'bg-yellow-100 text-yellow-700' : 'bg-slate-100 text-slate-400'
                   }`}>{item.status}</span>
                   {!isViewer && editingItem === null && (
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                      <button onClick={() => { setEditingItem({ procId: p.id, index: i }); setEditText(item.etapa) }} className="w-6 h-6 bg-yellow-100 hover:bg-yellow-400 text-yellow-600 hover:text-black rounded-full text-[10px] font-black flex items-center justify-center transition-all">✎</button>
-                      <button onClick={() => deleteItem(p.id, checklist, i)} className="w-6 h-6 bg-red-50 hover:bg-red-400 text-red-400 hover:text-white rounded-full text-[10px] font-black flex items-center justify-center transition-all">✕</button>
+                      <button onClick={() => { setEditingItem({ procId: p.id, index: i }); setEditText(item.etapa) }} className="w-6 h-6 bg-yellow-100 hover:bg-yellow-400 text-yellow-600 hover:text-black rounded-full text-xs font-bold flex items-center justify-center transition-all">✎</button>
+                      <button onClick={() => deleteItem(p.id, checklist, i)} className="w-6 h-6 bg-red-50 hover:bg-red-400 text-red-400 hover:text-white rounded-full text-xs font-bold flex items-center justify-center transition-all">✕</button>
                     </div>
                   )}
                 </div>
@@ -712,7 +712,7 @@ function SocietarioPageInner() {
                   <input autoFocus value={newItemText} onChange={e => setNewItemText(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') addItem(p.id, checklist); if (e.key === 'Escape') { setAddingTo(null); setNewItemText('') } }}
                     placeholder="Nome da nova etapa..." className="flex-1 border-2 border-yellow-400 rounded-lg px-3 py-2 text-sm outline-none" />
-                  <button onClick={() => addItem(p.id, checklist)} className="bg-yellow-400 text-black text-xs font-black px-3 py-2 rounded-lg">Adicionar</button>
+                  <button onClick={() => addItem(p.id, checklist)} className="bg-yellow-400 text-black text-xs font-bold px-3 py-2 rounded-lg">Adicionar</button>
                   <button onClick={() => { setAddingTo(null); setNewItemText('') }} className="bg-slate-100 text-slate-500 text-xs px-2 py-2 rounded-lg">✕</button>
                 </div>
               ) : (
@@ -727,7 +727,7 @@ function SocietarioPageInner() {
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Documentos Solicitados ao Cliente</p>
+                <p className="text-xs font-bold uppercase text-slate-400 tracking-wide">Documentos Solicitados ao Cliente</p>
                 <p className="text-xs text-slate-400 mt-0.5">{docsRecebidos} de {docs.length} recebidos</p>
               </div>
               <div className="flex items-center gap-3">
@@ -737,7 +737,7 @@ function SocietarioPageInner() {
                       if (!confirm(`Restaurar os ${DOCS_MODELOS[p.tipo].length} documentos do modelo padrão? Os documentos atuais serão substituídos.`)) return
                       initDocs(p, true)
                     }}
-                    className="text-[10px] font-black text-slate-400 hover:text-yellow-600 border border-dashed border-slate-200 hover:border-yellow-400 px-2.5 py-1 rounded-lg transition-all whitespace-nowrap"
+                    className="text-xs font-bold text-slate-400 hover:text-yellow-600 border border-dashed border-slate-200 hover:border-yellow-400 px-2.5 py-1 rounded-lg transition-all whitespace-nowrap"
                     title="Substituir lista pelo modelo padrão deste tipo de processo"
                   >
                     ↺ Restaurar modelo
@@ -747,7 +747,7 @@ function SocietarioPageInner() {
                   <div className="h-2 w-24 bg-slate-100 rounded-full overflow-hidden">
                     <div className={`h-full rounded-full transition-all ${docsRecebidos === docs.length ? 'bg-emerald-400' : 'bg-yellow-400'}`} style={{ width: `${docs.length ? Math.round((docsRecebidos / docs.length) * 100) : 0}%` }} />
                   </div>
-                  <span className="text-xs font-black text-slate-500">{docs.length ? Math.round((docsRecebidos / docs.length) * 100) : 0}%</span>
+                  <span className="text-xs font-bold text-slate-500">{docs.length ? Math.round((docsRecebidos / docs.length) * 100) : 0}%</span>
                 </div>
               </div>
             </div>
@@ -767,21 +767,21 @@ function SocietarioPageInner() {
                       <input autoFocus value={editDocText} onChange={e => setEditDocText(e.target.value)}
                         onKeyDown={e => { if (e.key === 'Enter') saveEditDoc(p.id, docs, i); if (e.key === 'Escape') setEditingDocIndex(null) }}
                         className="flex-1 border-2 border-yellow-400 rounded-lg px-2 py-1 text-sm outline-none bg-yellow-50" />
-                      <button onClick={() => saveEditDoc(p.id, docs, i)} className="bg-yellow-400 text-black text-xs font-black px-3 py-1 rounded-lg">OK</button>
+                      <button onClick={() => saveEditDoc(p.id, docs, i)} className="bg-yellow-400 text-black text-xs font-bold px-3 py-1 rounded-lg">OK</button>
                       <button onClick={() => setEditingDocIndex(null)} className="bg-slate-100 text-slate-500 text-xs px-2 py-1 rounded-lg">✕</button>
                     </div>
                   ) : (
                     <span className={`flex-1 text-sm transition-colors ${d.recebido ? 'line-through text-slate-400' : 'text-slate-700'}`}>{d.doc}</span>
                   )}
                   {!(role === 'admin' && editingDocIndex === i) && (
-                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-full flex-shrink-0 ${d.recebido ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-50 text-amber-600'}`}>
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${d.recebido ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-50 text-amber-600'}`}>
                       {d.recebido ? 'Recebido' : 'Pendente'}
                     </span>
                   )}
                   {role === 'admin' && editingDocIndex !== i && (
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                      <button onClick={() => { setEditingDocIndex(i); setEditDocText(d.doc) }} className="w-6 h-6 bg-yellow-100 hover:bg-yellow-400 text-yellow-600 hover:text-black rounded-full text-[10px] font-black flex items-center justify-center transition-all" title="Editar">✎</button>
-                      <button onClick={() => deleteDoc(p.id, docs, i)} className="w-6 h-6 bg-red-50 hover:bg-red-400 text-red-400 hover:text-white rounded-full text-[10px] font-black flex items-center justify-center transition-all" title="Excluir">✕</button>
+                      <button onClick={() => { setEditingDocIndex(i); setEditDocText(d.doc) }} className="w-6 h-6 bg-yellow-100 hover:bg-yellow-400 text-yellow-600 hover:text-black rounded-full text-xs font-bold flex items-center justify-center transition-all" title="Editar">✎</button>
+                      <button onClick={() => deleteDoc(p.id, docs, i)} className="w-6 h-6 bg-red-50 hover:bg-red-400 text-red-400 hover:text-white rounded-full text-xs font-bold flex items-center justify-center transition-all" title="Excluir">✕</button>
                     </div>
                   )}
                 </div>
@@ -798,11 +798,11 @@ function SocietarioPageInner() {
                       onKeyDown={e => { if (e.key === 'Enter') addDoc(p.id, docs); if (e.key === 'Escape') { setAddingDoc(false); setNewDocText('') } }}
                       placeholder="Nome do documento..."
                       className="flex-1 border-2 border-yellow-400 rounded-xl px-3 py-2 text-sm outline-none bg-yellow-50" />
-                    <button onClick={() => addDoc(p.id, docs)} className="bg-black text-yellow-400 text-xs font-black px-4 py-2 rounded-xl hover:bg-slate-800 transition-all">Adicionar</button>
+                    <button onClick={() => addDoc(p.id, docs)} className="bg-black text-yellow-400 text-xs font-bold px-4 py-2 rounded-xl hover:bg-slate-800 transition-all">Adicionar</button>
                     <button onClick={() => { setAddingDoc(false); setNewDocText('') }} className="bg-slate-100 text-slate-500 text-xs px-3 py-2 rounded-xl">Cancelar</button>
                   </div>
                 ) : (
-                  <button onClick={() => setAddingDoc(true)} className="flex items-center gap-2 text-xs font-black text-slate-400 hover:text-yellow-600 transition-colors px-2 py-1 rounded-lg hover:bg-yellow-50">
+                  <button onClick={() => setAddingDoc(true)} className="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-yellow-600 transition-colors px-2 py-1 rounded-lg hover:bg-yellow-50">
                     <span className="w-5 h-5 bg-slate-100 hover:bg-yellow-100 rounded-full flex items-center justify-center text-base leading-none">+</span>
                     Adicionar documento
                   </button>
@@ -822,7 +822,7 @@ function SocietarioPageInner() {
                   placeholder="Registre o que aconteceu, o que foi feito, próximos passos... (Ctrl+Enter para salvar)"
                   className="flex-1 border-2 border-slate-200 focus:border-yellow-400 rounded-xl px-3 py-2 text-sm outline-none resize-none" />
                 <button onClick={() => addNota(p.id)} disabled={savingNota || !notaInput.trim()}
-                  className="bg-black text-yellow-400 px-5 py-2 rounded-xl text-xs font-black uppercase tracking-wide disabled:opacity-40 hover:bg-slate-800 transition-all sm:self-start whitespace-nowrap">
+                  className="bg-black text-yellow-400 px-5 py-2 rounded-xl text-xs font-bold uppercase tracking-wide disabled:opacity-40 hover:bg-slate-800 transition-all sm:self-start whitespace-nowrap">
                   Registrar
                 </button>
               </div>
@@ -841,14 +841,14 @@ function SocietarioPageInner() {
                           onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) updateNota(nota.id, p.id); if (e.key === 'Escape') setEditingNotaId(null) }}
                           className="w-full border-2 border-yellow-400 rounded-xl px-3 py-2 text-sm outline-none resize-none bg-yellow-50" />
                         <div className="flex gap-2">
-                          <button onClick={() => updateNota(nota.id, p.id)} className="bg-black text-yellow-400 text-xs font-black px-4 py-1.5 rounded-lg hover:bg-slate-800 transition-all">Salvar</button>
+                          <button onClick={() => updateNota(nota.id, p.id)} className="bg-black text-yellow-400 text-xs font-bold px-4 py-1.5 rounded-lg hover:bg-slate-800 transition-all">Salvar</button>
                           <button onClick={() => setEditingNotaId(null)} className="bg-slate-100 text-slate-500 text-xs px-3 py-1.5 rounded-lg">Cancelar</button>
                         </div>
                       </div>
                     ) : (
                       <>
                         <p className="text-sm text-slate-700 whitespace-pre-wrap break-words">{nota.texto}</p>
-                        <p className="text-[10px] text-slate-400 font-mono mt-1">
+                        <p className="text-xs text-slate-400 font-mono mt-1">
                           {new Date(nota.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                         </p>
                       </>
@@ -856,8 +856,8 @@ function SocietarioPageInner() {
                   </div>
                   {!isViewer && editingNotaId !== nota.id && (
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0 self-start">
-                      <button onClick={() => { setEditingNotaId(nota.id); setEditNotaText(nota.texto) }} className="w-6 h-6 bg-yellow-100 hover:bg-yellow-400 text-yellow-600 hover:text-black rounded-full text-[10px] font-black flex items-center justify-center transition-all" title="Editar">✎</button>
-                      <button onClick={() => deleteNota(nota.id, p.id)} className="w-6 h-6 bg-red-50 hover:bg-red-400 text-red-400 hover:text-white rounded-full text-[10px] font-black flex items-center justify-center transition-all" title="Excluir">✕</button>
+                      <button onClick={() => { setEditingNotaId(nota.id); setEditNotaText(nota.texto) }} className="w-6 h-6 bg-yellow-100 hover:bg-yellow-400 text-yellow-600 hover:text-black rounded-full text-xs font-bold flex items-center justify-center transition-all" title="Editar">✎</button>
+                      <button onClick={() => deleteNota(nota.id, p.id)} className="w-6 h-6 bg-red-50 hover:bg-red-400 text-red-400 hover:text-white rounded-full text-xs font-bold flex items-center justify-center transition-all" title="Excluir">✕</button>
                     </div>
                   )}
                 </div>
@@ -899,13 +899,13 @@ function SocietarioPageInner() {
       {/* Cabeçalho */}
       <header className="flex flex-wrap justify-between items-center gap-3 mb-6">
         <div>
-          <h1 className="text-2xl font-black italic tracking-tighter uppercase">
+          <h1 className="text-2xl font-bold italic tracking-tighter uppercase">
             PARALEGAL PRO <span className="text-yellow-500">| SOCIETÁRIO</span>
           </h1>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{empresaNomeSoc || orgName}</p>
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">{empresaNomeSoc || orgName}</p>
         </div>
         {isViewer ? (
-          <span className="flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-700 px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wide">
+          <span className="flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-700 px-5 py-2.5 rounded-2xl text-xs font-bold uppercase tracking-wide">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
@@ -929,8 +929,8 @@ function SocietarioPageInner() {
           <div key={k.label} className={`flex-1 flex items-center gap-3 px-5 py-4 ${idx < 2 ? 'border-r border-slate-100' : ''}`}>
             <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${k.dot}`} />
             <div>
-              <div className={`text-2xl font-black leading-none ${k.accent}`}>{k.value}</div>
-              <div className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mt-0.5">{k.label}</div>
+              <div className={`text-2xl font-bold leading-none ${k.accent}`}>{k.value}</div>
+              <div className="text-xs font-bold uppercase tracking-wide text-slate-400 mt-0.5">{k.label}</div>
             </div>
           </div>
         ))}
@@ -957,7 +957,7 @@ function SocietarioPageInner() {
               ].join(' ')}>
               {label}
               <span
-                className="text-[10px] font-black px-1.5 py-0.5 rounded-full leading-none"
+                className="text-xs font-bold px-1.5 py-0.5 rounded-full leading-none"
                 style={isActive ? { background: 'rgba(255,255,255,0.25)', color: 'white' } : { background: '#F1F5F9', color: '#64748B' }}>
                 {count}
               </span>
@@ -975,7 +975,7 @@ function SocietarioPageInner() {
           <div className="hidden md:grid grid-cols-[2.5fr_2fr_2.5fr_1.2fr_auto] gap-0 border-b border-slate-100">
             {['Empresa', 'O.S. / Título', 'Próxima Etapa', 'Progresso', ''].map((h, i) => (
               <div key={i} className={`px-5 py-3 bg-slate-50 ${i < 4 ? 'border-r border-slate-100' : ''}`}>
-                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">{h}</span>
+                <span className="text-xs font-bold uppercase tracking-wide text-slate-400">{h}</span>
               </div>
             ))}
           </div>
@@ -1000,7 +1000,7 @@ function SocietarioPageInner() {
                   {/* Empresa */}
                   <div className="px-5 py-4 border-r border-slate-100 flex flex-col justify-center gap-1 min-w-0">
                     <span className="font-bold text-slate-900 text-sm leading-tight truncate">{nomeExibido}</span>
-                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-full w-fit uppercase tracking-wide ${TIPO_COLORS[p.tipo] ?? 'bg-slate-100 text-slate-500'}`}>
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full w-fit uppercase tracking-wide ${TIPO_COLORS[p.tipo] ?? 'bg-slate-100 text-slate-500'}`}>
                       {TIPO_LABELS[p.tipo] ?? p.tipo}
                     </span>
                   </div>
@@ -1023,10 +1023,10 @@ function SocietarioPageInner() {
                       <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                         <div className={`h-full rounded-full transition-all ${porc === 100 ? 'bg-emerald-400' : 'bg-yellow-400'}`} style={{ width: `${porc}%` }} />
                       </div>
-                      <span className="text-[10px] font-black text-slate-400 flex-shrink-0 w-7 text-right">{porc}%</span>
+                      <span className="text-xs font-bold text-slate-400 flex-shrink-0 w-7 text-right">{porc}%</span>
                     </div>
                     {docs.length > 0 && (
-                      <span className={`text-[9px] font-semibold ${docsRec === docs.length ? 'text-emerald-600' : 'text-amber-600'}`}>
+                      <span className={`text-xs font-semibold ${docsRec === docs.length ? 'text-emerald-600' : 'text-amber-600'}`}>
                         📁 {docsRec}/{docs.length} docs
                       </span>
                     )}
@@ -1059,16 +1059,16 @@ function SocietarioPageInner() {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4">
           <div className="bg-white p-6 md:p-10 rounded-[40px] w-full max-w-md border-t-8 border-yellow-400 shadow-2xl relative max-h-[90vh] overflow-y-auto">
             <button onClick={() => { setIsModalOpen(false); setFormData({ empresa_id: '', cliente_nome: '', tipo: 'abertura', titulo: '' }) }} className="absolute top-6 right-6 font-bold text-slate-300 hover:text-red-500">FECHAR ✕</button>
-            <h2 className="text-2xl font-black mb-8 tracking-tighter text-slate-900">Iniciar Novo Processo</h2>
+            <h2 className="text-2xl font-bold mb-8 tracking-tighter text-slate-900">Iniciar Novo Processo</h2>
             <form onSubmit={handleIniciar} className="space-y-5">
               <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Título / Nº O.S.</label>
+                <label className="text-xs font-bold text-slate-400 uppercase ml-1">Título / Nº O.S.</label>
                 <input type="text" placeholder="Ex: O.S. 001/2026 — Abertura Padaria Central"
                   className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl mt-1 text-sm font-bold outline-none focus:border-yellow-400"
                   value={formData.titulo} onChange={e => setFormData({ ...formData, titulo: e.target.value })} />
               </div>
               <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Tipo de Serviço</label>
+                <label className="text-xs font-bold text-slate-400 uppercase ml-1">Tipo de Serviço</label>
                 <select className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl mt-1 text-sm font-bold outline-none focus:border-yellow-400 text-slate-800"
                   value={formData.tipo} onChange={e => setFormData({ ...formData, tipo: e.target.value })}>
                   {Object.keys(MODELOS_PROCESSOS).map(tipo => (
@@ -1077,7 +1077,7 @@ function SocietarioPageInner() {
                 </select>
               </div>
               <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Empresa <span className="text-slate-300 font-normal">(opcional)</span></label>
+                <label className="text-xs font-bold text-slate-400 uppercase ml-1">Empresa <span className="text-slate-300 font-normal">(opcional)</span></label>
                 <select className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl mt-1 text-sm font-bold outline-none focus:border-yellow-400 text-slate-800"
                   value={formData.empresa_id} onChange={e => setFormData({ ...formData, empresa_id: e.target.value, cliente_nome: '' })}>
                   <option value="">— Sem empresa cadastrada —</option>
@@ -1086,13 +1086,13 @@ function SocietarioPageInner() {
               </div>
               {!formData.empresa_id && (
                 <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Nome do Cliente <span className="text-red-400">*</span></label>
+                  <label className="text-xs font-bold text-slate-400 uppercase ml-1">Nome do Cliente <span className="text-red-400">*</span></label>
                   <input type="text" placeholder="Ex: João da Silva"
                     className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl mt-1 text-sm font-bold outline-none focus:border-yellow-400"
                     value={formData.cliente_nome} onChange={e => setFormData({ ...formData, cliente_nome: e.target.value })} />
                 </div>
               )}
-              <button type="submit" className="w-full bg-black text-yellow-400 p-4 rounded-2xl font-black text-sm uppercase tracking-wide hover:bg-slate-900 transition-all mt-2">
+              <button type="submit" className="w-full bg-black text-yellow-400 p-4 rounded-2xl font-bold text-sm uppercase tracking-wide hover:bg-slate-900 transition-all mt-2">
                 Iniciar Processo →
               </button>
             </form>

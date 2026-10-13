@@ -68,7 +68,7 @@ export default function EmpresaDetail({ empresa: emp }: Props) {
       <div className="flex items-start justify-between">
         <div>
           <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-2xl font-bold text-gray-900">{emp.razao_social}</h1>
+            <h1 className="text-2xl font-bold text-slate-900">{emp.razao_social}</h1>
             <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
               emp.status === 'ativa'        ? 'bg-green-100 text-green-700' :
               emp.status === 'em_abertura'  ? 'bg-yellow-100 text-yellow-700' :
@@ -77,7 +77,7 @@ export default function EmpresaDetail({ empresa: emp }: Props) {
               {emp.status === 'ativa' ? 'Ativa' : emp.status === 'em_abertura' ? 'Em Abertura' : 'Inativa'}
             </span>
           </div>
-          {emp.nome_fantasia && <p className="text-gray-500 mt-0.5">{emp.nome_fantasia}</p>}
+          {emp.nome_fantasia && <p className="text-slate-500 mt-0.5">{emp.nome_fantasia}</p>}
         </div>
         <div className="flex gap-2 flex-shrink-0">
           <Link href={`/empresas/${emp.id}?edit=1`} className="btn-secondary">
@@ -103,7 +103,7 @@ export default function EmpresaDetail({ empresa: emp }: Props) {
 
         {/* ── Dados Cadastrais ── */}
         <div className="card">
-          <div className="card-header"><h2 className="font-semibold text-gray-900">Dados Cadastrais</h2></div>
+          <div className="card-header"><h2 className="font-semibold text-slate-900">Dados Cadastrais</h2></div>
           <div className="card-body space-y-3 text-sm">
             <Row label="Código" value={`#${emp.codigo}`} mono />
             {emp.cnpj
@@ -124,7 +124,7 @@ export default function EmpresaDetail({ empresa: emp }: Props) {
 
         {/* ── Endereço ── */}
         <div className="card">
-          <div className="card-header"><h2 className="font-semibold text-gray-900">Endereço da Sede</h2></div>
+          <div className="card-header"><h2 className="font-semibold text-slate-900">Endereço da Sede</h2></div>
           <div className="card-body space-y-3 text-sm">
             {emp.cep       && <Row label="CEP"        value={formatCEP(emp.cep)} mono />}
             {emp.logradouro && <Row label="Logradouro" value={[emp.logradouro, emp.numero].filter(Boolean).join(', ')} />}
@@ -137,20 +137,20 @@ export default function EmpresaDetail({ empresa: emp }: Props) {
         {/* ── CNAE ── */}
         {((emp as any).cnae_principal || cnaesSecundarios.length > 0) && (
           <div className="card lg:col-span-2">
-            <div className="card-header"><h2 className="font-semibold text-gray-900">Atividades (CNAE)</h2></div>
+            <div className="card-header"><h2 className="font-semibold text-slate-900">Atividades (CNAE)</h2></div>
             <div className="card-body space-y-3 text-sm">
               {(emp as any).cnae_principal && (
                 <div className="flex items-start gap-2">
                   <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full flex-shrink-0 mt-0.5">Principal</span>
-                  <span className="text-gray-900">{cnaeStr((emp as any).cnae_principal)}</span>
+                  <span className="text-slate-900">{cnaeStr((emp as any).cnae_principal)}</span>
                 </div>
               )}
               {cnaesSecundarios.length > 0 && (
                 <div className="space-y-1.5">
                   {cnaesSecundarios.map((c: unknown, i: number) => (
                     <div key={i} className="flex items-start gap-2">
-                      <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full flex-shrink-0 mt-0.5">Secundário</span>
-                      <span className="text-gray-700">{cnaeStr(c)}</span>
+                      <span className="text-xs px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full flex-shrink-0 mt-0.5">Secundário</span>
+                      <span className="text-slate-700">{cnaeStr(c)}</span>
                     </div>
                   ))}
                 </div>
@@ -162,20 +162,20 @@ export default function EmpresaDetail({ empresa: emp }: Props) {
         {/* ── Capital Social ── */}
         {capFormatado && (
           <div className="card">
-            <div className="card-header"><h2 className="font-semibold text-gray-900">Capital Social</h2></div>
+            <div className="card-header"><h2 className="font-semibold text-slate-900">Capital Social</h2></div>
             <div className="card-body space-y-3 text-sm">
               <div className="flex items-center gap-3">
                 <div className="flex-1">
-                  <p className="text-2xl font-bold text-gray-900">{capFormatado}</p>
-                  {capExtenso && <p className="text-xs text-gray-500 mt-0.5 italic">{capExtenso}</p>}
+                  <p className="text-2xl font-bold text-slate-900">{capFormatado}</p>
+                  {capExtenso && <p className="text-xs text-slate-500 mt-0.5 italic">{capExtenso}</p>}
                 </div>
               </div>
               {quotasInfo && (
                 <>
-                  <div className="h-px bg-gray-100" />
+                  <div className="h-px bg-slate-100" />
                   <Row label="Qtd. de Quotas"  value={quotasInfo.quantidade_str} />
                   <Row label="Valor por Quota" value={quotasInfo.valor_quota_str} mono />
-                  <p className="text-xs text-gray-400 italic">{quotasInfo.quantidade_extenso} de {quotasInfo.valor_quota_extenso} cada</p>
+                  <p className="text-xs text-slate-400 italic">{quotasInfo.quantidade_extenso} de {quotasInfo.valor_quota_extenso} cada</p>
                 </>
               )}
             </div>
@@ -185,11 +185,11 @@ export default function EmpresaDetail({ empresa: emp }: Props) {
         {/* ── Contatos ── */}
         {((emp as any).email || (emp as any).telefone || (emp as any).telefone2) && (
           <div className="card">
-            <div className="card-header"><h2 className="font-semibold text-gray-900">Contatos</h2></div>
+            <div className="card-header"><h2 className="font-semibold text-slate-900">Contatos</h2></div>
             <div className="card-body space-y-3 text-sm">
               {(emp as any).email && (
                 <div className="flex items-center gap-2">
-                  <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                       d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
@@ -199,18 +199,18 @@ export default function EmpresaDetail({ empresa: emp }: Props) {
               )}
               {(emp as any).telefone && (
                 <div className="flex items-center gap-2">
-                  <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                       d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                   </svg>
                   <a href={`tel:${(emp as any).telefone}`}
-                    className="text-gray-900">{(emp as any).telefone}</a>
+                    className="text-slate-900">{(emp as any).telefone}</a>
                   {(emp as any).telefone2 && (
-                    <span className="text-gray-400 mx-1">·</span>
+                    <span className="text-slate-400 mx-1">·</span>
                   )}
                   {(emp as any).telefone2 && (
                     <a href={`tel:${(emp as any).telefone2}`}
-                      className="text-gray-900">{(emp as any).telefone2}</a>
+                      className="text-slate-900">{(emp as any).telefone2}</a>
                   )}
                 </div>
               )}
@@ -237,7 +237,7 @@ export default function EmpresaDetail({ empresa: emp }: Props) {
       {/* ── Acesso rápido ── */}
       <div className="card">
         <div className="card-header">
-          <h2 className="font-semibold text-gray-900">Acesso Rápido — Portais</h2>
+          <h2 className="font-semibold text-slate-900">Acesso Rápido — Portais</h2>
         </div>
         <div className="card-body">
           <div className="flex flex-wrap gap-2">
@@ -278,7 +278,7 @@ export default function EmpresaDetail({ empresa: emp }: Props) {
             className="card p-4 text-center hover:border-primary-300 hover:shadow-md transition-all group"
           >
             <div className="text-2xl mb-2">{item.icon}</div>
-            <p className="text-sm font-medium text-gray-700 group-hover:text-primary-600">{item.label}</p>
+            <p className="text-sm font-medium text-slate-700 group-hover:text-primary-600">{item.label}</p>
           </Link>
         ))}
       </div>
@@ -292,8 +292,8 @@ export default function EmpresaDetail({ empresa: emp }: Props) {
 function Row({ label, value, mono, muted }: { label: string; value: string; mono?: boolean; muted?: boolean }) {
   return (
     <div className="flex justify-between gap-4">
-      <span className="text-gray-500 flex-shrink-0">{label}</span>
-      <span className={`text-right ${mono ? 'font-mono' : ''} ${muted ? 'text-gray-400 italic text-xs' : 'text-gray-900'}`}>{value}</span>
+      <span className="text-slate-500 flex-shrink-0">{label}</span>
+      <span className={`text-right ${mono ? 'font-mono' : ''} ${muted ? 'text-slate-400 italic text-xs' : 'text-slate-900'}`}>{value}</span>
     </div>
   )
 }

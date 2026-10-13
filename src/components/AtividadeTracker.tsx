@@ -240,7 +240,7 @@ export default function AtividadeTracker() {
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-        <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-2">Produtividade</p>
+        <p className="text-xs font-bold uppercase tracking-wide text-slate-400 mb-2">Produtividade</p>
         <h2 className="text-base font-bold text-slate-900 leading-snug">
           Você ficou {fmtMin(pergunta.segundos)} fora do sistema.
         </h2>

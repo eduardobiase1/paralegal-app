@@ -391,7 +391,7 @@ function StepIndicator({ step, total }: { step: number; total: number }) {
             }`}>
               {i + 1 < step ? '✓' : i + 1}
             </div>
-            <span className={`text-[10px] font-medium ${i + 1 === step ? 'text-slate-900' : 'text-slate-400'}`}>{label}</span>
+            <span className={`text-xs font-medium ${i + 1 === step ? 'text-slate-900' : 'text-slate-400'}`}>{label}</span>
           </div>
           {i < total - 1 && <div className={`h-0.5 w-8 md:w-16 mx-1 mb-4 flex-shrink-0 ${i + 1 < step ? 'bg-green-500' : 'bg-slate-100'}`} />}
         </div>

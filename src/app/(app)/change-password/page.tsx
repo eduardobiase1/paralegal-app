@@ -74,11 +74,11 @@ export default function ChangePasswordPage() {
               </div>
               <div>
                 <p className="font-bold text-white text-sm tracking-wide">PARALEGAL <span className="text-amber-400">PRO</span></p>
-                <p className="text-[10px] text-gray-500 uppercase tracking-widest">Gestão para Escritórios</p>
+                <p className="text-xs text-slate-500 uppercase tracking-wide">Gestão para Escritórios</p>
               </div>
             </div>
-            <h1 className="text-xl font-black text-white mt-4">Defina sua nova senha</h1>
-            <p className="text-sm text-gray-400 mt-1">
+            <h1 className="text-xl font-bold text-white mt-4">Defina sua nova senha</h1>
+            <p className="text-sm text-slate-400 mt-1">
               Por segurança, você precisa criar uma senha pessoal antes de continuar.
             </p>
           </div>
@@ -132,7 +132,7 @@ export default function ChangePasswordPage() {
                       }`}
                     />
                   ))}
-                  <span className="text-[10px] text-slate-400 ml-1 whitespace-nowrap">
+                  <span className="text-xs text-slate-400 ml-1 whitespace-nowrap">
                     {password.length >= 12 ? 'Forte' : password.length >= 8 ? 'Média' : 'Fraca'}
                   </span>
                 </div>
@@ -166,7 +166,7 @@ export default function ChangePasswordPage() {
             <button
               type="submit"
               disabled={saving || password.length < 8 || password !== confirm}
-              className="w-full bg-black hover:bg-slate-800 disabled:opacity-50 text-amber-400 font-black text-sm py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 uppercase tracking-wide mt-2"
+              className="w-full bg-black hover:bg-slate-800 disabled:opacity-50 text-amber-400 font-bold text-sm py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 uppercase tracking-wide mt-2"
             >
               {saving ? (
                 <>

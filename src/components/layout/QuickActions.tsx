@@ -37,26 +37,26 @@ export default function QuickActions() {
         <>
           <div className="fixed inset-0" onClick={() => setOpen(false)} />
           <div className="absolute bottom-14 right-0 bg-white rounded-2xl border border-slate-200 shadow-2xl overflow-hidden w-60 py-1.5">
-            <p className="px-4 pt-2 pb-1 text-[9px] font-black uppercase tracking-widest text-slate-400">Novo cadastro</p>
+            <p className="px-4 pt-2 pb-1 text-xs font-bold uppercase tracking-wide text-slate-400">Novo cadastro</p>
             {ACTIONS.map(a => (
               <button key={a.href} onClick={() => { router.push(a.href); setOpen(false) }}
                 className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 transition-colors text-left">
                 <PlusIcon />
                 <span className="flex-1 text-sm font-medium text-slate-700">{a.label}</span>
-                {a.hint && <span className="text-[10px] text-slate-300 font-mono">{a.hint}</span>}
+                {a.hint && <span className="text-xs text-slate-300 font-mono">{a.hint}</span>}
               </button>
             ))}
             <div className="my-1 border-t border-slate-100" />
-            <p className="px-4 pt-2 pb-1 text-[9px] font-black uppercase tracking-widest text-slate-400">Acesso rápido</p>
+            <p className="px-4 pt-2 pb-1 text-xs font-bold uppercase tracking-wide text-slate-400">Acesso rápido</p>
             {NAV.map(a => (
               <button key={a.href} onClick={() => { router.push(a.href); setOpen(false) }}
                 className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 transition-colors text-left">
                 <ArrowIcon />
                 <span className="flex-1 text-sm font-medium text-slate-700">{a.label}</span>
-                {a.hint && <span className="text-[10px] text-slate-300 font-mono">{a.hint}</span>}
+                {a.hint && <span className="text-xs text-slate-300 font-mono">{a.hint}</span>}
               </button>
             ))}
-            <p className="px-4 pb-2 pt-1.5 text-[10px] text-slate-300 text-right">Ctrl+K para buscar</p>
+            <p className="px-4 pb-2 pt-1.5 text-xs text-slate-300 text-right">Ctrl+K para buscar</p>
           </div>
         </>
       )}

@@ -222,8 +222,8 @@ function AlvarasPage() {
 
           <div className="flex flex-wrap justify-between items-start gap-4">
             <div>
-              <p className="text-[9px] font-black uppercase tracking-widest text-blue-600 mb-1">CONTROLES</p>
-              <h1 className="text-2xl font-black text-slate-900 tracking-tight">Alvarás de Funcionamento</h1>
+              <p className="text-xs font-bold uppercase tracking-wide text-blue-600 mb-1">CONTROLES</p>
+              <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Alvarás de Funcionamento</h1>
               <p className="text-sm text-slate-400 mt-1">{empresaNome || orgName}</p>
             </div>
             <button
@@ -238,25 +238,25 @@ function AlvarasPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5">
               <button onClick={() => setFiltroStatus('todos')}
                 className={`text-left p-4 rounded-xl border transition-all ${filtroStatus === 'todos' ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-200 hover:border-slate-300'}`}>
-                <p className="text-[10px] font-black uppercase tracking-widest mb-1 text-slate-400">Total</p>
+                <p className="text-xs font-bold uppercase tracking-wide mb-1 text-slate-400">Total</p>
                 <p className={`text-2xl font-bold ${filtroStatus === 'todos' ? 'text-white' : 'text-slate-800'}`}>{dados.length}</p>
                 <p className="text-xs mt-0.5 text-slate-400">alvarás cadastrados</p>
               </button>
               <button onClick={() => setFiltroStatus(filtroStatus === 'vencido' ? 'todos' : 'vencido')}
                 className={`text-left p-4 rounded-xl border transition-all ${filtroStatus === 'vencido' ? 'bg-red-600 border-red-600' : 'bg-white border-slate-200 hover:border-red-200'}`}>
-                <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${filtroStatus === 'vencido' ? 'text-red-200' : 'text-slate-400'}`}>Vencidos</p>
+                <p className={`text-xs font-bold uppercase tracking-wide mb-1 ${filtroStatus === 'vencido' ? 'text-red-200' : 'text-slate-400'}`}>Vencidos</p>
                 <p className={`text-2xl font-bold ${filtroStatus === 'vencido' ? 'text-white' : totalVencido > 0 ? 'text-red-600' : 'text-slate-800'}`}>{totalVencido}</p>
                 <p className={`text-xs mt-0.5 ${filtroStatus === 'vencido' ? 'text-red-200' : 'text-slate-400'}`}>exigem ação imediata</p>
               </button>
               <button onClick={() => setFiltroStatus(filtroStatus === 'alerta' ? 'todos' : 'alerta')}
                 className={`text-left p-4 rounded-xl border transition-all ${filtroStatus === 'alerta' ? 'bg-orange-500 border-orange-500' : 'bg-white border-slate-200 hover:border-orange-200'}`}>
-                <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${filtroStatus === 'alerta' ? 'text-orange-100' : 'text-slate-400'}`}>Alertas (90d)</p>
+                <p className={`text-xs font-bold uppercase tracking-wide mb-1 ${filtroStatus === 'alerta' ? 'text-orange-100' : 'text-slate-400'}`}>Alertas (90d)</p>
                 <p className={`text-2xl font-bold ${filtroStatus === 'alerta' ? 'text-white' : totalAlerta > 0 ? 'text-orange-500' : 'text-slate-800'}`}>{totalAlerta}</p>
                 <p className={`text-xs mt-0.5 ${filtroStatus === 'alerta' ? 'text-orange-100' : 'text-slate-400'}`}>vencem em até 90 dias</p>
               </button>
               <button onClick={() => setFiltroStatus(filtroStatus === 'ok' ? 'todos' : 'ok')}
                 className={`text-left p-4 rounded-xl border transition-all ${filtroStatus === 'ok' ? 'bg-emerald-600 border-emerald-600' : 'bg-white border-slate-200 hover:border-emerald-200'}`}>
-                <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${filtroStatus === 'ok' ? 'text-emerald-100' : 'text-slate-400'}`}>Em dia</p>
+                <p className={`text-xs font-bold uppercase tracking-wide mb-1 ${filtroStatus === 'ok' ? 'text-emerald-100' : 'text-slate-400'}`}>Em dia</p>
                 <p className={`text-2xl font-bold ${filtroStatus === 'ok' ? 'text-white' : 'text-emerald-600'}`}>{totalOk}</p>
                 <p className={`text-xs mt-0.5 ${filtroStatus === 'ok' ? 'text-emerald-100' : 'text-slate-400'}`}>dentro do prazo</p>
               </button>
@@ -310,7 +310,7 @@ function AlvarasPage() {
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left min-w-[780px]">
-              <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-black uppercase text-slate-400 tracking-wider">
+              <thead className="bg-slate-50 border-b border-slate-200 text-xs font-bold uppercase text-slate-400 tracking-wider">
                 <tr>
                   <th className="px-5 py-3.5">Empresa / Cidade</th>
                   <th className="px-5 py-3.5">Tipo</th>
@@ -353,7 +353,7 @@ function AlvarasPage() {
 
                       {/* Tipo */}
                       <td className="px-5 py-3.5">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 bg-slate-100 px-2 py-1 rounded-md">
+                        <span className="text-xs font-bold uppercase tracking-wider text-slate-500 bg-slate-100 px-2 py-1 rounded-md">
                           {item.tipo}
                         </span>
                       </td>
@@ -374,12 +374,12 @@ function AlvarasPage() {
                       {/* Situação badge */}
                       <td className="px-5 py-3.5">
                         {urg ? (
-                          <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full border ${urg.cls}`}>
+                          <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full border ${urg.cls}`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${urg.dot}`} />
                             {urg.label}
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full border bg-green-50 text-green-700 border-green-200">
+                          <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full border bg-green-50 text-green-700 border-green-200">
                             <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
                             Em dia
                           </span>
@@ -514,7 +514,7 @@ function AlvarasPage() {
           <div className="w-full max-w-md bg-white shadow-2xl flex flex-col">
             <div className="flex items-start justify-between px-6 py-5 border-b border-slate-100">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-blue-600 mb-1">Histórico de Renovações</p>
+                <p className="text-xs font-bold uppercase tracking-wide text-blue-600 mb-1">Histórico de Renovações</p>
                 <p className="text-base font-bold text-slate-900 leading-tight">{historicoItem.empresas?.razao_social}</p>
                 <p className="text-xs text-slate-400 mt-1">{historicoItem.orgao_emissor}</p>
               </div>
@@ -546,7 +546,7 @@ function AlvarasPage() {
                           <div className={`flex-1 rounded-xl border p-4 ${isLatest ? 'bg-blue-50 border-blue-200' : 'bg-white border-slate-200'}`}>
                             <div className="flex justify-between items-start gap-2">
                               <div>
-                                {isLatest && <span className="text-[9px] font-black uppercase tracking-wider text-blue-600 mb-1 block">Atual</span>}
+                                {isLatest && <span className="text-xs font-bold uppercase tracking-wider text-blue-600 mb-1 block">Atual</span>}
                                 <p className="text-sm font-semibold text-slate-800">
                                   Vence: {fmtDate(h.data_vencimento)}
                                 </p>
@@ -555,7 +555,7 @@ function AlvarasPage() {
                                 )}
                               </div>
                               {urg && (
-                                <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${urg.cls}`}>
+                                <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${urg.cls}`}>
                                   {urg.label}
                                 </span>
                               )}
@@ -590,7 +590,7 @@ const inputCls = 'w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text
 function FormField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{label}</label>
+      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">{label}</label>
       {children}
     </div>
   )

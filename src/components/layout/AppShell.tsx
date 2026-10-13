@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Sidebar from '@/components/layout/Sidebar'
 import CommandPalette from '@/components/layout/CommandPalette'
 import KeyboardHelpButton from '@/components/layout/KeyboardHelpButton'
+import SectionTabs from '@/components/layout/SectionTabs'
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(true)
@@ -35,7 +36,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-gray-950">
+    <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-950">
       {open && (
         <div
           className="fixed inset-0 bg-black/60 z-20 md:hidden"
@@ -47,7 +48,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       <div
         className={`flex-1 flex flex-col min-w-0 transition-all duration-300 overflow-hidden ${
-          open ? 'md:ml-64' : 'ml-0'
+          open ? 'md:ml-60' : 'ml-0'
         }`}
       >
         <div className="flex md:hidden items-center gap-3 px-4 py-3 bg-[#0d0d0d] border-b border-white/[0.06] sticky top-0 z-10">
@@ -66,6 +67,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
 
         <main className="flex-1 overflow-y-auto">
+          <SectionTabs />
           {children}
         </main>
       </div>

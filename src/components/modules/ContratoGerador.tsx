@@ -249,16 +249,16 @@ export default function ContratoGerador({ template, empresas, defaultEmpresaId, 
       {/* Dados da Empresa */}
       {empresaId && empresa && (
         <div className="border rounded-xl p-4 space-y-3">
-          <h3 className="font-semibold text-gray-900">Dados da Empresa</h3>
+          <h3 className="font-semibold text-slate-900">Dados da Empresa</h3>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="label text-xs">Razão Social</label>
-              <input className="input bg-gray-50" readOnly value={empresa.razao_social} />
+              <input className="input bg-slate-50" readOnly value={empresa.razao_social} />
             </div>
             <div>
               <label className="label text-xs">CNPJ</label>
-              <input className="input bg-gray-50 font-mono" readOnly value={formatCNPJ(empresa.cnpj)} />
+              <input className="input bg-slate-50 font-mono" readOnly value={formatCNPJ(empresa.cnpj)} />
             </div>
             <div>
               <label className="label text-xs">NIRE</label>
@@ -313,7 +313,7 @@ export default function ContratoGerador({ template, empresas, defaultEmpresaId, 
       {/* Sócios */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-semibold text-gray-900">Sócios</h3>
+          <h3 className="font-semibold text-slate-900">Sócios</h3>
           <button type="button" onClick={addSocio} className="btn-secondary text-xs py-1.5 px-3">
             + Adicionar Sócio
           </button>
@@ -323,7 +323,7 @@ export default function ContratoGerador({ template, empresas, defaultEmpresaId, 
           {socios.map((socio, i) => (
             <div key={i} className="border rounded-xl p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <h4 className="font-medium text-gray-700">Sócio {i + 1}</h4>
+                <h4 className="font-medium text-slate-700">Sócio {i + 1}</h4>
                 {socios.length > 1 && (
                   <button type="button" onClick={() => removeSocio(i)}
                     className="text-xs text-red-500 hover:text-red-700">Remover</button>

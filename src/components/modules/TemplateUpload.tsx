@@ -83,20 +83,20 @@ export default function TemplateUpload({ onSuccess }: Props) {
         <div className="border-2 border-dashed rounded-xl p-6 text-center hover:border-primary-400 transition-colors">
           {file ? (
             <div>
-              <p className="font-medium text-gray-900">{file.name}</p>
-              <p className="text-sm text-gray-500">{(file.size / 1024).toFixed(0)} KB</p>
+              <p className="font-medium text-slate-900">{file.name}</p>
+              <p className="text-sm text-slate-500">{(file.size / 1024).toFixed(0)} KB</p>
               <button type="button" onClick={() => setFile(null)} className="text-sm text-red-500 mt-2">
                 Remover
               </button>
             </div>
           ) : (
             <label className="cursor-pointer">
-              <svg className="w-10 h-10 mx-auto mb-2 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-10 h-10 mx-auto mb-2 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                   d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
               </svg>
-              <p className="text-sm text-gray-600">Arraste ou clique para selecionar</p>
-              <p className="text-xs text-gray-400 mt-1">Use marcadores {"{{variavel}}"} no texto do Word</p>
+              <p className="text-sm text-slate-600">Arraste ou clique para selecionar</p>
+              <p className="text-xs text-slate-400 mt-1">Use marcadores {"{{variavel}}"} no texto do Word</p>
               <input type="file" accept=".docx" className="hidden"
                 onChange={e => setFile(e.target.files?.[0] ?? null)} />
             </label>

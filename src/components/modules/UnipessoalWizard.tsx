@@ -373,12 +373,12 @@ async function gerarDocx(f: F): Promise<Blob> {
 function Lbl({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
+      <label className="block text-xs font-medium text-slate-600 mb-1">{label}</label>
       {children}
     </div>
   )
 }
-const inp = 'w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500'
+const inp = 'w-full border border-slate-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500'
 const sel = inp + ' bg-white'
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -465,13 +465,13 @@ export default function UnipessoalWizard() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-lg font-bold text-gray-900">Contrato Social – Unipessoal</h2>
-          <p className="text-xs text-gray-500 mt-0.5">Preencha os dados e exporte em Word ou PDF</p>
+          <h2 className="text-lg font-bold text-slate-900">Contrato Social – Unipessoal</h2>
+          <p className="text-xs text-slate-500 mt-0.5">Preencha os dados e exporte em Word ou PDF</p>
         </div>
         <label className="flex items-center gap-2 cursor-pointer select-none">
-          <span className="text-sm font-medium text-gray-700">Com Timbrado</span>
+          <span className="text-sm font-medium text-slate-700">Com Timbrado</span>
           <div onClick={() => set('comTimbrado', !f.comTimbrado)}
-            className={`relative w-10 h-6 rounded-full transition-colors ${f.comTimbrado ? 'bg-primary-600' : 'bg-gray-300'}`}>
+            className={`relative w-10 h-6 rounded-full transition-colors ${f.comTimbrado ? 'bg-primary-600' : 'bg-slate-300'}`}>
             <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${f.comTimbrado ? 'left-5' : 'left-1'}`} />
           </div>
         </label>
@@ -482,7 +482,7 @@ export default function UnipessoalWizard() {
         {['1. Dados', '2. Capital & Config', '3. Prévia & Exportar'].map((label, i) => (
           <button key={i} onClick={() => setStep((i+1) as 1|2|3)}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              step === i+1 ? 'border-primary-600 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>
+              step === i+1 ? 'border-primary-600 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>
             {label}
           </button>
         ))}
@@ -492,7 +492,7 @@ export default function UnipessoalWizard() {
       {step === 1 && (
         <div className="space-y-6">
           <div>
-            <h3 className="text-sm font-semibold text-gray-800 mb-3 pb-1 border-b">Dados da Empresa</h3>
+            <h3 className="text-sm font-semibold text-slate-800 mb-3 pb-1 border-b">Dados da Empresa</h3>
             <div className="grid grid-cols-1 gap-3">
               <Lbl label="Razão Social *">
                 <input className={inp} value={f.razaoSocial} onChange={e => set('razaoSocial', e.target.value)} placeholder="EMPRESA EXEMPLO LTDA" />
@@ -504,8 +504,8 @@ export default function UnipessoalWizard() {
               <div className="flex items-center gap-2">
                 <input type="checkbox" id="enderecoCorr" checked={f.enderecoCorrespondencia}
                   onChange={e => set('enderecoCorrespondencia', e.target.checked)}
-                  className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 cursor-pointer" />
-                <label htmlFor="enderecoCorr" className="text-sm text-gray-700 cursor-pointer">
+                  className="w-4 h-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500 cursor-pointer" />
+                <label htmlFor="enderecoCorr" className="text-sm text-slate-700 cursor-pointer">
                   Endereço da sede será usado exclusivamente para correspondência (insere Parágrafo Único na Cláusula 1)
                 </label>
               </div>
@@ -513,7 +513,7 @@ export default function UnipessoalWizard() {
           </div>
 
           <div>
-            <h3 className="text-sm font-semibold text-gray-800 mb-3 pb-1 border-b">Dados do Sócio Único</h3>
+            <h3 className="text-sm font-semibold text-slate-800 mb-3 pb-1 border-b">Dados do Sócio Único</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <Lbl label="Nome Completo *">
                 <input className={inp} value={f.socioNome} onChange={e => set('socioNome', e.target.value)} placeholder="NOME DO SÓCIO" />
@@ -577,8 +577,8 @@ export default function UnipessoalWizard() {
                 <div className="flex items-center gap-2 mb-2">
                   <input type="checkbox" id="enderecoIgual" checked={f.enderecoIgual}
                     onChange={e => set('enderecoIgual', e.target.checked)}
-                    className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 cursor-pointer" />
-                  <label htmlFor="enderecoIgual" className="text-sm text-gray-700 cursor-pointer">
+                    className="w-4 h-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500 cursor-pointer" />
+                  <label htmlFor="enderecoIgual" className="text-sm text-slate-700 cursor-pointer">
                     Endereço residencial é o mesmo do da empresa
                   </label>
                 </div>
@@ -589,7 +589,7 @@ export default function UnipessoalWizard() {
                   </Lbl>
                 )}
                 {f.enderecoIgual && f.enderecoSede && (
-                  <p className="text-xs text-gray-500 mt-1 pl-6">Será usado: {f.enderecoSede}</p>
+                  <p className="text-xs text-slate-500 mt-1 pl-6">Será usado: {f.enderecoSede}</p>
                 )}
               </div>
             </div>
@@ -605,42 +605,42 @@ export default function UnipessoalWizard() {
       {step === 2 && (
         <div className="space-y-6">
           <div>
-            <h3 className="text-sm font-semibold text-gray-800 mb-3 pb-1 border-b">Capital Social</h3>
+            <h3 className="text-sm font-semibold text-slate-800 mb-3 pb-1 border-b">Capital Social</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <Lbl label="Valor do Capital (R$) *">
                 <input className={inp} value={f.capitalValor} onChange={e => handleCapital(e.target.value)}
                   placeholder="15.000,00" />
               </Lbl>
               <Lbl label="Extenso (auto-preenchido)">
-                <input className={inp + ' bg-gray-50'} value={f.capitalExtenso}
+                <input className={inp + ' bg-slate-50'} value={f.capitalExtenso}
                   onChange={e => set('capitalExtenso', e.target.value)}
                   placeholder="Quinze mil reais" />
               </Lbl>
               <Lbl label="Número de Quotas (auto-preenchido)">
-                <input className={inp + ' bg-gray-50'} value={f.quotasNumero}
+                <input className={inp + ' bg-slate-50'} value={f.quotasNumero}
                   onChange={e => set('quotasNumero', e.target.value)}
                   placeholder="15.000" />
               </Lbl>
               <Lbl label="Quotas por Extenso (auto-preenchido)">
-                <input className={inp + ' bg-gray-50'} value={f.quotasExtenso}
+                <input className={inp + ' bg-slate-50'} value={f.quotasExtenso}
                   onChange={e => set('quotasExtenso', e.target.value)}
                   placeholder="Quinze mil" />
               </Lbl>
               <div className="md:col-span-2">
-                <p className="text-xs text-gray-500">Valor unitário da quota: <strong>R$ 1,00 (Um real)</strong> — fixo conforme modelo</p>
+                <p className="text-xs text-slate-500">Valor unitário da quota: <strong>R$ 1,00 (Um real)</strong> — fixo conforme modelo</p>
               </div>
             </div>
           </div>
 
           <div>
-            <h3 className="text-sm font-semibold text-gray-800 mb-3 pb-1 border-b">Objeto Social</h3>
+            <h3 className="text-sm font-semibold text-slate-800 mb-3 pb-1 border-b">Objeto Social</h3>
             <textarea className={inp + ' resize-none'} rows={4} value={f.objetoSocial}
               onChange={e => set('objetoSocial', e.target.value)}
               placeholder="Serviços combinados de escritório e apoio administrativo;" />
           </div>
 
           <div>
-            <h3 className="text-sm font-semibold text-gray-800 mb-3 pb-1 border-b">Configurações</h3>
+            <h3 className="text-sm font-semibold text-slate-800 mb-3 pb-1 border-b">Configurações</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <Lbl label="Enquadramento">
                 <select className={sel} value={f.enquadramento} onChange={e => set('enquadramento', e.target.value as 'ME'|'EPP')}>
@@ -661,7 +661,7 @@ export default function UnipessoalWizard() {
           </div>
 
           <div className="flex justify-between">
-            <button onClick={() => setStep(1)} className="px-6 py-2 text-sm border border-gray-300 rounded hover:bg-gray-50">← Voltar</button>
+            <button onClick={() => setStep(1)} className="px-6 py-2 text-sm border border-slate-300 rounded hover:bg-slate-50">← Voltar</button>
             <button onClick={() => setStep(3)} className="btn-primary px-6 py-2 text-sm">Próximo →</button>
           </div>
         </div>
@@ -671,7 +671,7 @@ export default function UnipessoalWizard() {
       {step === 3 && (
         <div>
           <div className="flex items-center gap-3 mb-5">
-            <button onClick={() => setStep(2)} className="px-4 py-2 text-sm border border-gray-300 rounded hover:bg-gray-50">← Voltar</button>
+            <button onClick={() => setStep(2)} className="px-4 py-2 text-sm border border-slate-300 rounded hover:bg-slate-50">← Voltar</button>
             <button onClick={exportarDocx} disabled={exporting}
               className="btn-primary px-5 py-2 text-sm flex items-center gap-2 disabled:opacity-60">
               {exporting && <span className="animate-spin inline-block">⟳</span>}
@@ -681,7 +681,7 @@ export default function UnipessoalWizard() {
               className="px-5 py-2 text-sm border-2 border-primary-600 text-primary-600 rounded hover:bg-primary-50 font-medium">
               Imprimir / Gerar PDF
             </button>
-            <span className="text-xs text-gray-400">{f.comTimbrado ? '✓ Com timbrado' : '○ Sem timbrado'}</span>
+            <span className="text-xs text-slate-400">{f.comTimbrado ? '✓ Com timbrado' : '○ Sem timbrado'}</span>
           </div>
 
           <div className="border rounded-lg bg-white shadow-sm overflow-auto"
