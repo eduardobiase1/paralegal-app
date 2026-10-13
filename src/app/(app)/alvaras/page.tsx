@@ -203,7 +203,7 @@ function AlvarasPage() {
   if (loading) return <div className="p-10 font-sans text-slate-400">Carregando...</div>
 
   return (
-    <div className="bg-slate-50 min-h-screen font-sans">
+    <div className="bg-slate-50 min-h-full font-sans">
 
       {/* ── HEADER ─────────────────────────────────────────────────────── */}
       <div className="bg-white border-b border-slate-200 px-6 py-5">
@@ -347,7 +347,7 @@ function AlvarasPage() {
                           <p className="text-xs text-slate-400 mt-0.5">{item.empresas.municipio}</p>
                         )}
                         {item.observacoes && (
-                          <p className="text-xs text-slate-400 mt-0.5 italic truncate max-w-xs">{item.observacoes}</p>
+                          <p className="text-xs text-slate-400 mt-0.5 italic break-words max-w-xs">{item.observacoes}</p>
                         )}
                       </td>
 

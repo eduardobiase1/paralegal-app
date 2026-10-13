@@ -68,7 +68,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
         <main className="flex-1 overflow-y-auto">
           <SectionTabs />
-          {children}
+          {/* largura máxima única: em monitores muito largos o conteúdo fica centralizado */}
+          <div className="mx-auto w-full max-w-[110rem]">
+            {children}
+          </div>
         </main>
       </div>
 

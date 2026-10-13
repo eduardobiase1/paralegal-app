@@ -333,7 +333,7 @@ export default function RelatoriosPage() {
   }
 
   return (
-    <div className="p-8 bg-[#F8FAFC] min-h-screen font-sans">
+    <div className="p-4 md:p-6 xl:p-8">
       {/* Cabeçalho */}
       <header className="mb-8">
         <h1 className="text-2xl font-bold italic tracking-tighter uppercase text-slate-900">

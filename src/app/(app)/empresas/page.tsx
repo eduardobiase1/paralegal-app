@@ -178,7 +178,7 @@ export default function EmpresasPage() {
   if (loading) return <div className="p-10 text-slate-400 italic font-sans">Sincronizando carteira...</div>
 
   return (
-    <div className="p-4 md:p-8 bg-[#F8FAFC] min-h-screen font-sans text-slate-900">
+    <div className="p-4 md:p-6 xl:p-8 text-slate-900">
 
       {/* Cabeçalho */}
       <header className="flex flex-wrap justify-between items-start gap-4 mb-6">
@@ -245,9 +245,9 @@ export default function EmpresasPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 max-w-[180px]">
-                      <p className="font-bold text-slate-800 text-sm truncate">{emp.razao_social}</p>
+                      <p className="font-bold text-slate-800 text-sm break-words">{emp.razao_social}</p>
                       {emp.nome_fantasia && emp.nome_fantasia !== '********' && (
-                        <p className="text-xs text-slate-400 truncate">{emp.nome_fantasia}</p>
+                        <p className="text-xs text-slate-400 break-words">{emp.nome_fantasia}</p>
                       )}
                     </td>
                     <td className="px-4 py-3 font-mono text-xs text-slate-500 hidden md:table-cell">{emp.cnpj}</td>
@@ -323,7 +323,7 @@ export default function EmpresasPage() {
               <form onSubmit={handleSave} className="space-y-4">
                 <div className="bg-slate-50 p-4 rounded-xl border-l-4 border-yellow-400">
                   <p className="text-[8px] font-bold text-slate-400 uppercase tracking-wide">Identificada</p>
-                  <p className="text-sm font-bold text-slate-900 uppercase truncate mt-1">{formData.razao_social}</p>
+                  <p className="text-sm font-bold text-slate-900 uppercase break-words mt-1">{formData.razao_social}</p>
                   <p className="text-xs text-slate-500 font-mono mt-0.5">{formData.cnpj}</p>
                 </div>
 

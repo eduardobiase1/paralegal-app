@@ -235,7 +235,7 @@ function CertificadosPageInner() {
     : ''
 
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6 xl:p-8">
       {/* Banner empresa filtrada */}
       {filtroEmpresa && filtroEmpresa !== '__avulsa__' && searchParams.get('empresa') && (
         <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-2xl px-5 py-3 mb-4">
@@ -244,7 +244,7 @@ function CertificadosPageInner() {
             Voltar para empresa
           </Link>
           <span className="text-blue-300">|</span>
-          <span className="text-sm text-blue-800 font-bold truncate">{empresaNomeAtual}</span>
+          <span className="text-sm text-blue-800 font-bold break-words">{empresaNomeAtual}</span>
         </div>
       )}
 
@@ -363,8 +363,8 @@ function CertificadosPageInner() {
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-1.5">
                               {c.empresa_id
-                                ? <Link href={`/empresas/${c.empresa_id}`} className="font-semibold text-slate-900 hover:text-blue-600 hover:underline underline-offset-2 transition-colors truncate max-w-[160px]" title="Ver cadastro da empresa">{c.razao_social}</Link>
-                                : <span className="font-semibold text-slate-900 truncate max-w-[160px]">{c.razao_social}</span>
+                                ? <Link href={`/empresas/${c.empresa_id}`} className="font-semibold text-slate-900 hover:text-blue-600 hover:underline underline-offset-2 transition-colors break-words" title="Ver cadastro da empresa">{c.razao_social}</Link>
+                                : <span className="font-semibold text-slate-900 break-words">{c.razao_social}</span>
                               }
                               {!c.empresa_id && <span className="text-xs font-bold uppercase tracking-wide bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full">avulsa</span>}
                             </div>
@@ -469,8 +469,8 @@ function CertificadosPageInner() {
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-1.5">
                               {c.empresa_id
-                                ? <Link href={`/empresas/${c.empresa_id}`} className="font-medium text-slate-900 hover:text-blue-600 hover:underline underline-offset-2 transition-colors truncate max-w-[140px]" title="Ver cadastro da empresa">{c.razao_social}</Link>
-                                : <span className="font-medium text-slate-900 truncate max-w-[140px]">{c.razao_social}</span>
+                                ? <Link href={`/empresas/${c.empresa_id}`} className="font-medium text-slate-900 hover:text-blue-600 hover:underline underline-offset-2 transition-colors break-words" title="Ver cadastro da empresa">{c.razao_social}</Link>
+                                : <span className="font-medium text-slate-900 break-words">{c.razao_social}</span>
                               }
                               {!c.empresa_id && <span className="text-xs font-bold uppercase bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full">avulsa</span>}
                             </div>

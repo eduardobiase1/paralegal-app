@@ -147,7 +147,7 @@ export default function TaxasLicencaPage() {
   const anosDisponiveis = Array.from({ length: 5 }, (_, i) => anoAtual - i)
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans">
+    <div className="min-h-full bg-slate-50 font-sans">
 
       {/* ── HEADER ──────────────────────────────────────────────────────── */}
       <div className="bg-white border-b border-slate-200 px-6 py-5">
@@ -312,7 +312,7 @@ export default function TaxasLicencaPage() {
 
                             {/* Nome + info */}
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-semibold text-slate-800 truncate">
+                              <p className="text-sm font-semibold text-slate-800 break-words">
                                 {empresa.razao_social}
                               </p>
                               {enviado && empresa.registro?.data_envio && (

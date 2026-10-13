@@ -4,7 +4,13 @@
 
 @layer base {
   :root {
-    --sidebar-width: 240px;
+    --sidebar-width: 15rem;
+  }
+
+  /* Escala fluida: todas as medidas em rem (textos, espaços, menu) crescem ou
+     encolhem junto com a largura da janela — 14px em ~1366, 16px em 1920, 18px em 2560 */
+  html {
+    font-size: clamp(14px, calc(0.36vw + 9.1px), 18px);
   }
 
   body {

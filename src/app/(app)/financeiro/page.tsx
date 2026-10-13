@@ -637,7 +637,7 @@ export default function FinanceiroPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-full bg-slate-50">
       {/* Header */}
       <div className="bg-white border-b border-slate-100 px-6 py-5">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
@@ -1587,7 +1587,7 @@ export default function FinanceiroPage() {
                           )}
                         </td>
                         <td className="px-5 py-3.5 text-xs text-slate-500 tabular-nums whitespace-nowrap">{fmtDate(t.date)}</td>
-                        <td className="px-5 py-3.5 text-sm text-slate-700 max-w-xs truncate">{t.descricao || '—'}</td>
+                        <td className="px-5 py-3.5 text-sm text-slate-700 max-w-xs break-words">{t.descricao || '—'}</td>
                         <td className={`px-5 py-3.5 text-sm font-bold text-right tabular-nums ${t.tipo === 'credito' ? 'text-emerald-600' : 'text-red-600'}`}>
                           {t.tipo === 'credito' ? '+' : '-'}{fmt(t.valor)}
                         </td>

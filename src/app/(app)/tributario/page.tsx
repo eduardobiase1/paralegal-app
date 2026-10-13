@@ -98,7 +98,7 @@ function DonutChart({ segments, total }: {
         {arcs.map((a, i) => (
           <div key={i} className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ background: a.color }} />
-            <span className="text-slate-600 flex-1 min-w-0 truncate">{a.label}</span>
+            <span className="text-slate-600 flex-1 min-w-0 break-words">{a.label}</span>
             <span className="font-bold text-slate-800">{a.value}</span>
             <span className="text-slate-400">({a.pct}%)</span>
           </div>
@@ -233,7 +233,7 @@ export default function TributarioPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] font-sans">
+    <div className="min-h-full bg-[#F8FAFC] font-sans">
 
       {/* ── Hero Header ───────────────────────────────────────────────────────── */}
       <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white px-4 md:px-8 pt-8 pb-0">

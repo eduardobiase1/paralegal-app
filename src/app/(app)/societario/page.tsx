@@ -524,7 +524,7 @@ function SocietarioPageInner() {
     const nomeExibido = p.empresas?.razao_social || p.cliente_nome || '—'
 
     return (
-      <div className="p-4 md:p-6 bg-[#F8FAFC] min-h-screen font-sans text-slate-900">
+      <div className="p-4 md:p-6 xl:p-8 text-slate-900">
 
         {/* Topo: voltar + título */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
@@ -882,7 +882,7 @@ function SocietarioPageInner() {
     : ''
 
   return (
-    <div className="p-4 md:p-6 bg-[#F8FAFC] min-h-screen font-sans text-slate-900">
+    <div className="p-4 md:p-6 xl:p-8 text-slate-900">
 
       {/* Banner empresa filtrada */}
       {empresaParamId && (
@@ -892,7 +892,7 @@ function SocietarioPageInner() {
             Voltar para empresa
           </Link>
           <span className="text-blue-300">|</span>
-          <span className="text-sm text-blue-800 font-bold truncate">{empresaNomeSoc}</span>
+          <span className="text-sm text-blue-800 font-bold break-words">{empresaNomeSoc}</span>
         </div>
       )}
 
@@ -999,7 +999,7 @@ function SocietarioPageInner() {
 
                   {/* Empresa */}
                   <div className="px-5 py-4 border-r border-slate-100 flex flex-col justify-center gap-1 min-w-0">
-                    <span className="font-bold text-slate-900 text-sm leading-tight truncate">{nomeExibido}</span>
+                    <span className="font-bold text-slate-900 text-sm leading-tight break-words">{nomeExibido}</span>
                     <span className={`text-xs font-bold px-2 py-0.5 rounded-full w-fit uppercase tracking-wide ${TIPO_COLORS[p.tipo] ?? 'bg-slate-100 text-slate-500'}`}>
                       {TIPO_LABELS[p.tipo] ?? p.tipo}
                     </span>
@@ -1008,13 +1008,13 @@ function SocietarioPageInner() {
                   {/* O.S. / Título */}
                   <div className="px-5 py-4 border-r border-slate-100 flex items-center min-w-0">
                     {p.titulo
-                      ? <span className="text-xs font-semibold text-slate-700 truncate">{p.titulo}</span>
+                      ? <span className="text-xs font-semibold text-slate-700 break-words">{p.titulo}</span>
                       : <span className="text-xs text-slate-300 italic">Sem título</span>}
                   </div>
 
                   {/* Próxima Etapa */}
                   <div className="px-5 py-4 border-r border-slate-100 flex items-center min-w-0">
-                    <span className="text-xs text-slate-500 truncate">{proxEtapa}</span>
+                    <span className="text-xs text-slate-500 break-words">{proxEtapa}</span>
                   </div>
 
                   {/* Progresso */}

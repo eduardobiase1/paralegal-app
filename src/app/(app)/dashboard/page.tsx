@@ -128,7 +128,7 @@ export default function DashboardPage() {
   ]
 
   return (
-    <div className="p-4 md:p-8 bg-[#F8FAFC] min-h-screen font-sans">
+    <div className="p-4 md:p-6 xl:p-8">
 
       {/* Header */}
       <header className="mb-8">
@@ -174,7 +174,7 @@ export default function DashboardPage() {
                     <div key={proc.id} className="p-4 hover:bg-slate-50 transition-colors">
                       <div className="flex items-start justify-between gap-2 mb-2">
                         <div className="min-w-0">
-                          <p className="font-bold text-slate-800 text-sm truncate">{proc.empresas?.razao_social || proc.cliente_nome || '—'}</p>
+                          <p className="font-bold text-slate-800 text-sm break-words">{proc.empresas?.razao_social || proc.cliente_nome || '—'}</p>
                           <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 uppercase mt-0.5 inline-block">
                             {(proc.tipo || '').replace(/_/g, ' ')}
                           </span>
@@ -224,11 +224,11 @@ export default function DashboardPage() {
                     return (
                       <tr key={idx} className={`${row} hover:brightness-95 transition-all`}>
                         <td className="px-4 py-3 text-sm font-bold text-slate-800">
-                          <p className="max-w-[130px] truncate">{alerta.empresas?.razao_social || '—'}</p>
+                          <p className="break-words">{alerta.empresas?.razao_social || '—'}</p>
                         </td>
                         <td className="px-4 py-3">
                           <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 uppercase block w-fit">{alerta.categoria}</span>
-                          <p className="text-xs text-slate-500 mt-0.5 max-w-[150px] truncate">{alerta.desc}</p>
+                          <p className="text-xs text-slate-500 mt-0.5 break-words">{alerta.desc}</p>
                         </td>
                         <td className="px-4 py-3 text-xs font-mono font-bold text-slate-700 whitespace-nowrap">
                           {alerta.data_vencimento ? new Date(alerta.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}

@@ -426,7 +426,7 @@ export default function ContratoReverse() {
                               />
                             </div>
                           </div>
-                          <p className="text-xs text-slate-400 pl-6 truncate" title={sub.contexto}>
+                          <p className="text-xs text-slate-400 pl-6 break-words" title={sub.contexto}>
                             {sub.contexto}
                           </p>
                         </div>

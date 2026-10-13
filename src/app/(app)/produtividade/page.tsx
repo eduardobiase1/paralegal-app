@@ -229,7 +229,7 @@ export default function ProdutividadePage() {
   const maxEmpresa = porEmpresa[0]?.[1] || 1
 
   return (
-    <div className="px-4 md:px-6 py-8 max-w-6xl mx-auto space-y-6">
+    <div className="p-4 md:p-6 xl:p-8 space-y-6">
 
       {/* ── Cabeçalho ─────────────────────────────────────────────────────── */}
       <div className="flex items-start justify-between flex-wrap gap-4">
@@ -286,7 +286,7 @@ export default function ProdutividadePage() {
               <div key={c.label} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{c.label}</p>
                 <p className="text-2xl font-bold text-slate-900 mt-1">{c.val}</p>
-                <p className="text-xs text-slate-400 mt-0.5 truncate">{c.sub}</p>
+                <p className="text-xs text-slate-400 mt-0.5 break-words">{c.sub}</p>
               </div>
             ))}
           </div>
@@ -517,7 +517,7 @@ function Barras({ titulo, vazio, itens }: {
           {itens.map(i => (
             <div key={i.nome}>
               <div className="flex items-center justify-between gap-3 mb-1">
-                <span className="text-xs font-semibold text-slate-700 truncate">{i.nome}</span>
+                <span className="text-xs font-semibold text-slate-700 break-words">{i.nome}</span>
                 <span className="text-xs text-slate-500 flex-shrink-0">{i.valor}</span>
               </div>
               <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">

@@ -264,7 +264,7 @@ export default function ProcessoChecklist({ processo, etapas: initialEtapas }: P
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap mb-1">
-                <h1 className="text-xl font-bold text-slate-900 truncate">{processo.empresa?.razao_social}</h1>
+                <h1 className="text-xl font-bold text-slate-900 break-words">{processo.empresa?.razao_social}</h1>
                 <span className="text-sm px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-medium whitespace-nowrap">
                   {TIPO_PROCESSO_LABELS[processo.tipo]}
                 </span>

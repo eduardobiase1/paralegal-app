@@ -147,7 +147,7 @@ function LicencasPage() {
   if (loading) return <div className="p-10 font-sans text-slate-400">Carregando...</div>
 
   return (
-    <div className="p-4 md:p-8 space-y-4 bg-slate-50 min-h-screen font-sans">
+    <div className="p-4 md:p-6 xl:p-8 space-y-4">
 
       {empresaFiltro && (
         <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-2xl px-5 py-3">
@@ -156,7 +156,7 @@ function LicencasPage() {
             Voltar para empresa
           </Link>
           <span className="text-blue-300">|</span>
-          <span className="text-sm text-blue-800 font-bold truncate">{empresaNome}</span>
+          <span className="text-sm text-blue-800 font-bold break-words">{empresaNome}</span>
         </div>
       )}
 
@@ -236,10 +236,10 @@ function LicencasPage() {
                     className="hover:bg-slate-50 transition-colors group"
                     style={{ borderLeft: urgBorder(dias) }}
                   >
-                    <td className="px-5 py-3.5 text-sm font-bold text-slate-800 max-w-[180px] truncate">{item.empresas?.razao_social || '—'}</td>
+                    <td className="px-5 py-3.5 text-sm font-bold text-slate-800 break-words">{item.empresas?.razao_social || '—'}</td>
                     <td className="px-5 py-3.5 text-xs font-bold uppercase text-slate-600">{item.orgao}</td>
                     <td className="px-5 py-3.5 text-xs font-mono text-slate-600">{item.numero_licenca || '—'}</td>
-                    <td className="px-5 py-3.5 text-xs text-slate-500 max-w-[180px] truncate">{item.atividade_sanitaria || '—'}</td>
+                    <td className="px-5 py-3.5 text-xs text-slate-500 break-words">{item.atividade_sanitaria || '—'}</td>
                     <td className="px-5 py-3.5 text-xs font-mono font-bold text-slate-700">
                       {item.data_vencimento ? new Date(item.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}
                     </td>

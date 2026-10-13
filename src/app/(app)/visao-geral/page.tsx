@@ -157,7 +157,7 @@ export default function VisaoGeralPage() {
     )
 
   return (
-    <div className="px-6 py-8">
+    <div className="p-4 md:p-6 xl:p-8">
       {/* ── Cabeçalho ─────────────────────────────────────────────── */}
       <div className="flex items-start justify-between mb-5 flex-wrap gap-4">
         <div>

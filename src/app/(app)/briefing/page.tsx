@@ -199,8 +199,8 @@ function MensalCard({ docs, expanded, onToggle }: {
                   {tipoLabel[doc.tipo]}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-slate-900 truncate group-hover:text-violet-700 transition-colors">{doc.descricao}</p>
-                  <p className="text-xs text-slate-400 truncate">{doc.empresaNome}</p>
+                  <p className="text-xs font-semibold text-slate-900 break-words group-hover:text-violet-700 transition-colors">{doc.descricao}</p>
+                  <p className="text-xs text-slate-400 break-words">{doc.empresaNome}</p>
                 </div>
                 <span className={`text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0 whitespace-nowrap ${diasCls}`}>{diasTxt}</span>
                 <svg className="w-3.5 h-3.5 text-slate-300 group-hover:text-violet-400 flex-shrink-0 transition-colors"
@@ -236,7 +236,7 @@ function CompanyCard({ group, expanded, onToggle, onSnooze, subListExpanded, onT
           {group.initials}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-bold text-slate-900 leading-tight truncate tracking-tight">{group.empresaNome}</p>
+          <p className="text-[13px] font-bold text-slate-900 leading-tight break-words tracking-tight">{group.empresaNome}</p>
           <div className="flex items-center gap-1.5 mt-0.5">
             {group.compType && (
               <span className="text-xs font-bold uppercase tracking-wide text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
@@ -296,7 +296,7 @@ function CompanyCard({ group, expanded, onToggle, onSnooze, subListExpanded, onT
                       style={{ background: its.led, boxShadow: `0 0 6px ${its.glow}` }} />
                     <DocTypeBadge badge={item.badge} />
                     <Link href={item.href} className="flex-1 min-w-0">
-                      <span className="text-[13px] font-medium text-slate-900 truncate block hover:text-blue-700 transition-colors">
+                      <span className="text-[13px] font-medium text-slate-900 break-words block hover:text-blue-700 transition-colors">
                         {item.descricao}
                       </span>
                     </Link>
@@ -977,7 +977,7 @@ export default function BriefingPage() {
                       <span className="text-xs font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border bg-fuchsia-100 border-fuchsia-200 text-fuchsia-700 flex-shrink-0 whitespace-nowrap">
                         {c.tipo}
                       </span>
-                      <span className="text-sm font-semibold text-slate-900 flex-1 min-w-0 truncate">
+                      <span className="text-sm font-semibold text-slate-900 flex-1 min-w-0 break-words">
                         {(c as any).empresa?.razao_social || '—'}
                       </span>
                       <span className="text-xs text-slate-500 hidden sm:block flex-shrink-0">{c.orgao_emissor}</span>

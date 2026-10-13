@@ -62,7 +62,7 @@ export default function EmpresaDetail({ empresa: emp }: Props) {
   const cnaesSecundarios: string[] = (emp as any).cnaes_secundarios ?? []
 
   return (
-    <div className="p-6 max-w-5xl space-y-6">
+    <div className="p-4 md:p-6 xl:p-8 max-w-6xl mx-auto space-y-6">
 
       {/* ── Header ── */}
       <div className="flex items-start justify-between">

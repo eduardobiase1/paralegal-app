@@ -391,7 +391,7 @@ export default function PDFToolsPage() {
   const done = results.length > 0
 
   return (
-    <div className="p-4 md:p-8 bg-[#F8FAFC] min-h-screen font-sans text-slate-900">
+    <div className="p-4 md:p-6 xl:p-8 text-slate-900">
 
       {/* ── Header ── */}
       <header className="mb-8">
@@ -442,7 +442,7 @@ export default function PDFToolsPage() {
             </div>
             <div className="flex-1 min-w-0">
               <h2 className="text-base font-bold uppercase text-yellow-400">{tool.title}</h2>
-              <p className="text-xs text-slate-400 truncate">{tool.description}</p>
+              <p className="text-xs text-slate-400 break-words">{tool.description}</p>
             </div>
             <button onClick={() => { setActiveTool(null); reset() }} className="text-slate-500 hover:text-white transition-colors flex-shrink-0">
               <X className="w-5 h-5" />
@@ -486,7 +486,7 @@ export default function PDFToolsPage() {
                   {files.map((f, i) => (
                     <div key={i} className="flex items-center gap-3 bg-white border border-slate-200 rounded-xl px-4 py-2.5 group">
                       <FileText className="w-4 h-4 text-yellow-500 flex-shrink-0" />
-                      <span className="flex-1 text-sm font-medium text-slate-700 truncate">{f.name}</span>
+                      <span className="flex-1 text-sm font-medium text-slate-700 break-words">{f.name}</span>
                       <span className="text-xs text-slate-400 font-mono flex-shrink-0">{(f.size / 1024).toFixed(1)} KB</span>
                       <button
                         onClick={() => setFiles(prev => prev.filter((_, j) => j !== i))}
@@ -569,7 +569,7 @@ export default function PDFToolsPage() {
                     className="w-full flex items-center gap-3 bg-slate-50 hover:bg-yellow-50 border border-slate-200 hover:border-yellow-400 rounded-xl px-4 py-3 transition-all group"
                   >
                     <Download className="w-4 h-4 text-yellow-500 flex-shrink-0 group-hover:scale-110 transition-transform" />
-                    <span className="flex-1 text-sm font-bold text-slate-700 text-left truncate">{r.name}</span>
+                    <span className="flex-1 text-sm font-bold text-slate-700 text-left break-words">{r.name}</span>
                     <span className="text-xs font-bold text-yellow-600 uppercase flex-shrink-0">Baixar</span>
                   </button>
                 ))}

@@ -268,7 +268,7 @@ function CertidoesPage() {
   const modalTitle = { novo: 'Nova Certidão Negativa', editar: 'Editar Certidão', renovar: 'Renovar Certidão' }
 
   return (
-    <div className="p-4 md:p-8 space-y-4 bg-slate-50 min-h-screen font-sans">
+    <div className="p-4 md:p-6 xl:p-8 space-y-4">
 
       {/* Banner empresa filtrada */}
       {empresaFiltro && empresaDetalhe && (
@@ -283,7 +283,7 @@ function CertidoesPage() {
               Voltar para empresa
             </Link>
             <span className="text-slate-300">|</span>
-            <span className="text-xs text-slate-500 font-medium truncate">{empresaDetalhe.razao_social}</span>
+            <span className="text-xs text-slate-500 font-medium break-words">{empresaDetalhe.razao_social}</span>
           </div>
           {/* Dados */}
           <div className="px-5 py-4 space-y-4">
@@ -347,7 +347,7 @@ function CertidoesPage() {
               {empresaDetalhe.email && (
                 <div>
                   <p className="text-xs font-bold uppercase tracking-wide text-slate-400 mb-0.5">E-mail</p>
-                  <p className="font-semibold text-slate-700 truncate">{empresaDetalhe.email}</p>
+                  <p className="font-semibold text-slate-700 break-words">{empresaDetalhe.email}</p>
                 </div>
               )}
               {empresaDetalhe.telefone && (
@@ -452,7 +452,7 @@ function CertidoesPage() {
                   >
                     <td className="px-5 py-3.5 max-w-[180px]">
                       <Link href={`/empresas/${i.empresa_id}`}
-                        className="text-sm font-bold text-slate-800 hover:text-blue-600 hover:underline underline-offset-2 transition-colors truncate block"
+                        className="text-sm font-bold text-slate-800 hover:text-blue-600 hover:underline underline-offset-2 transition-colors break-words block"
                         title="Ver cadastro da empresa">
                         {i.empresas?.razao_social}
                       </Link>
