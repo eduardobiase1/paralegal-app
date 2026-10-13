@@ -1,6 +1,18 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
+
+// G + letra → rota
+const GO_MAP: Record<string, string> = {
+  b: '/briefing',
+  v: '/visao-geral',
+  e: '/empresas',
+  c: '/certidoes',
+  a: '/alvaras',
+  d: '/certificados',
+  s: '/societario',
+}
 
 const ATALHOS = [
   { grupo: 'Navegação', itens: [
@@ -13,34 +25,48 @@ const ATALHOS = [
     { tecla: 'G + S', desc: 'Ir para Societário' },
   ]},
   { grupo: 'Ações', itens: [
-    { tecla: '⌘ K', desc: 'Abrir paleta de comandos' },
-    { tecla: 'N', desc: 'Nova empresa / registro' },
-    { tecla: 'R', desc: 'Atualizar dados da página' },
-    { tecla: 'F', desc: 'Focar na busca' },
+    { tecla: 'Ctrl + K', desc: 'Buscar empresa ou página' },
+    { tecla: 'F', desc: 'Focar na busca da página' },
     { tecla: 'Esc', desc: 'Fechar modal / overlay' },
-  ]},
-  { grupo: 'Briefing', itens: [
-    { tecla: 'M', desc: 'Ativar Modo Foco' },
-    { tecla: '→  /  ←', desc: 'Próximo / anterior no foco' },
-    { tecla: 'S', desc: 'Adiar item atual (snooze)' },
   ]},
 ]
 
 export default function KeyboardHelpButton() {
   const [open, setOpen] = useState(false)
+  const router = useRouter()
+  const gPressedAt = useRef(0)
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === '?' && !e.ctrlKey && !e.metaKey) {
-        const tag = (e.target as HTMLElement).tagName
-        if (tag === 'INPUT' || tag === 'TEXTAREA') return
-        setOpen(v => !v)
+      if (e.key === 'Escape') { setOpen(false); return }
+      if (e.ctrlKey || e.metaKey || e.altKey) return
+
+      const el = e.target as HTMLElement
+      const tag = el.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable) return
+
+      if (e.key === '?') { setOpen(v => !v); return }
+
+      const key = e.key.toLowerCase()
+
+      // Segunda tecla da sequência G + letra (até 1,5s depois do G)
+      if (Date.now() - gPressedAt.current < 1500) {
+        gPressedAt.current = 0
+        const href = GO_MAP[key]
+        if (href) { e.preventDefault(); setOpen(false); router.push(href) }
+        return
       }
-      if (e.key === 'Escape') setOpen(false)
+
+      if (key === 'g') { gPressedAt.current = Date.now(); return }
+
+      if (key === 'f') {
+        const busca = document.querySelector<HTMLInputElement>('main input[placeholder*="uscar"]')
+        if (busca) { e.preventDefault(); busca.focus() }
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  }, [router])
 
   return (
     <>

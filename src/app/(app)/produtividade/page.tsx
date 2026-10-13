@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useOrg } from '@/lib/org-context'
+import toast from 'react-hot-toast'
 
 type TipoAcao =
   | 'Renovação' | 'Emissão' | 'Protocolo' | 'Reunião'
@@ -36,6 +37,16 @@ type Entrada = {
   descricao: string
   duracao: number   // minutos
   criadoEm: string  // ISO timestamp
+  usuario?: string  // quem registrou (só no modo banco)
+  userId?: string
+}
+
+function fromRow(r: any): Entrada {
+  return {
+    id: r.id, data: r.data, tipo: r.tipo, empresa: r.empresa || '',
+    descricao: r.descricao, duracao: r.duracao, criadoEm: r.criado_em,
+    usuario: r.usuario || undefined, userId: r.user_id,
+  }
 }
 
 function hoje() {
@@ -94,9 +105,47 @@ export default function ProdutividadePage() {
   const [fDesc, setFDesc] = useState('')
   const [fDur, setFDur] = useState(30)
 
+  // 'db' = salvo no banco (compartilhado com a equipe) · 'local' = tabela ainda não criada (migration_v12)
+  const [modo, setModo] = useState<'db' | 'local'>('local')
+  const [me, setMe] = useState<{ id: string; nome: string } | null>(null)
+
   useEffect(() => {
-    setEntradas(loadEntradas())
-  }, [])
+    if (!orgId) return
+    async function load() {
+      const { data: { user } } = await supabase.auth.getUser()
+      const eu = user ? { id: user.id, nome: (user.email || '').split('@')[0] } : null
+      setMe(eu)
+
+      const { data, error } = await supabase
+        .from('produtividade_entradas').select('*').eq('org_id', orgId)
+        .order('criado_em', { ascending: false })
+
+      // Tabela ainda não existe → continua no navegador, como antes
+      if (error || !eu) { setModo('local'); setEntradas(loadEntradas()); return }
+
+      let rows = data || []
+
+      // Envia para o banco o que estava salvo só neste navegador (uma única vez)
+      const locais = loadEntradas()
+      if (locais.length > 0) {
+        const { data: inseridos, error: errMig } = await supabase
+          .from('produtividade_entradas')
+          .insert(locais.map(e => ({
+            org_id: orgId, usuario: eu.nome, data: e.data, tipo: e.tipo,
+            empresa: e.empresa || null, descricao: e.descricao, duracao: e.duracao, criado_em: e.criadoEm,
+          })))
+          .select()
+        if (!errMig) {
+          localStorage.removeItem('produtividade_entradas')
+          rows = [...(inseridos || []), ...rows]
+        }
+      }
+
+      setModo('db')
+      setEntradas(rows.map(fromRow))
+    }
+    load()
+  }, [supabase, orgId])
 
   useEffect(() => {
     if (!orgId) return
@@ -104,9 +153,9 @@ export default function ProdutividadePage() {
       .then(({ data }) => setEmpresas(data || []))
   }, [supabase, orgId])
 
-  function addEntrada() {
+  async function addEntrada() {
     if (!fDesc.trim()) return
-    const nova: Entrada = {
+    let nova: Entrada = {
       id: crypto.randomUUID(),
       data: fData,
       tipo: fTipo,
@@ -115,19 +164,34 @@ export default function ProdutividadePage() {
       duracao: fDur,
       criadoEm: new Date().toISOString(),
     }
+    if (modo === 'db') {
+      const { data, error } = await supabase
+        .from('produtividade_entradas')
+        .insert([{
+          org_id: orgId, usuario: me?.nome, data: nova.data, tipo: nova.tipo,
+          empresa: nova.empresa || null, descricao: nova.descricao, duracao: nova.duracao,
+        }])
+        .select().single()
+      if (error || !data) { toast.error('Erro ao salvar atividade: ' + (error?.message || '')); return }
+      nova = fromRow(data)
+    }
     const updated = [nova, ...entradas]
     setEntradas(updated)
-    saveEntradas(updated)
+    if (modo === 'local') saveEntradas(updated)
     setFDesc('')
     setFEmpresa('')
     setFDur(30)
     setShowForm(false)
   }
 
-  function removeEntrada(id: string) {
+  async function removeEntrada(id: string) {
+    if (modo === 'db') {
+      const { error } = await supabase.from('produtividade_entradas').delete().eq('id', id)
+      if (error) { toast.error('Erro ao remover: ' + error.message); return }
+    }
     const updated = entradas.filter(e => e.id !== id)
     setEntradas(updated)
-    saveEntradas(updated)
+    if (modo === 'local') saveEntradas(updated)
   }
 
   const semana = semanaAtual()
@@ -345,15 +409,18 @@ export default function ProdutividadePage() {
                     {e.empresa && (
                       <span className="text-xs text-slate-500 font-medium truncate max-w-[160px]">{e.empresa}</span>
                     )}
+                    {e.usuario && (
+                      <span className="text-[11px] text-slate-400">por {e.usuario}</span>
+                    )}
                     <span className="text-[11px] text-slate-400 ml-auto">{fmtDate(e.data)} · {fmtDur(e.duracao)}</span>
                   </div>
                   <p className="text-sm text-slate-700 mt-0.5">{e.descricao}</p>
                 </div>
-                <button onClick={() => removeEntrada(e.id)}
+                {(modo === 'local' || e.userId === me?.id) && <button onClick={() => removeEntrada(e.id)}
                   className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-300 hover:text-red-400 text-xs px-1.5 py-0.5 rounded flex-shrink-0"
                   title="Remover">
                   ✕
-                </button>
+                </button>}
               </div>
             ))}
           </div>
@@ -361,7 +428,9 @@ export default function ProdutividadePage() {
       </div>
 
       <p className="text-[11px] text-slate-400 mt-3 text-right">
-        Dados salvos localmente neste dispositivo
+        {modo === 'db'
+          ? 'Dados salvos no banco · visíveis para toda a equipe'
+          : 'Dados salvos apenas neste navegador — rode a migration_v12 no Supabase para salvar no banco'}
       </p>
     </div>
   )

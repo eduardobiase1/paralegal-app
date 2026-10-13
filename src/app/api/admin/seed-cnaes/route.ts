@@ -32,7 +32,10 @@ function formatarCodigo(id: string): string {
 export async function GET(req: NextRequest) {
   // Proteção por token
   const secret = req.nextUrl.searchParams.get('secret')
-  const expectedSecret = process.env.SEED_SECRET ?? 'paralegal-seed-2026'
+  const expectedSecret = process.env.SEED_SECRET
+  if (!expectedSecret) {
+    return NextResponse.json({ error: 'Variável SEED_SECRET não configurada. A rota fica desativada sem ela.' }, { status: 500 })
+  }
   if (secret !== expectedSecret) {
     return NextResponse.json({ error: 'Não autorizado. Informe ?secret=<SEED_SECRET>' }, { status: 401 })
   }
