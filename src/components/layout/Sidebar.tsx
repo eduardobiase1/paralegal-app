@@ -6,7 +6,7 @@ import { useState } from 'react'
 import Image from 'next/image'
 import {
   Sun, Moon, Table2, Building2, CalendarClock, ListChecks, CircleDollarSign,
-  Wrench, Users, LogOut, ChevronsLeft, ChevronDown, type LucideIcon,
+  Wrench, Users, LogOut, ChevronsLeft, ChevronDown, KeyRound, type LucideIcon,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
@@ -23,6 +23,7 @@ const ICONES: Record<string, LucideIcon> = {
   'visao-geral': Table2,
   'carteira': Building2,
   'vencimentos': CalendarClock,
+  'certificados': KeyRound,
   'processos': ListChecks,
   'financeiro': CircleDollarSign,
   'ferramentas': Wrench,

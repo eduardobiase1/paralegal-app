@@ -21,8 +21,10 @@ export const NAV_GROUPS: NavGroup[] = [
     { href: '/certidoes',     label: 'Certidões' },
     { href: '/alvaras',       label: 'Alvarás' },
     { href: '/licencas',      label: 'Licenças sanitárias' },
-    { href: '/certificados',  label: 'Certificados digitais' },
     { href: '/taxas-licenca', label: 'Taxas de licença' },
+  ]},
+  { id: 'certificados', label: 'Certificados digitais', pages: [
+    { href: '/certificados', label: 'Certificados digitais' },
   ]},
   { id: 'processos', label: 'Processos', pages: [
     { href: '/societario/painel', label: 'Briefing societário' },

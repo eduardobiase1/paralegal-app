@@ -13,9 +13,23 @@ import toast from 'react-hot-toast'
 import { registrarAcao } from '@/lib/atividade'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { Download } from 'lucide-react'
+import { diaLocal } from '@/lib/atividade'
 
 type EditingDate = { id: string; field: 'aviso' | 'agenda' } | null
-type Aba = 'processo' | 'certificados'
+type Aba = 'processo' | 'certificados' | 'quinzena'
+
+const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro']
+
+// Quinzena: 1ª = dias 1 a 15 · 2ª = dia 16 ao fim do mês
+function periodoQuinzena(mes: string, num: 1 | 2) {
+  const [y, m] = mes.split('-').map(Number)
+  const ultimo = new Date(y, m, 0).getDate()
+  const ini = `${mes}-${num === 1 ? '01' : '16'}`
+  const fim = `${mes}-${num === 1 ? '15' : String(ultimo)}`
+  const br = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}`
+  return { ini, fim, titulo: `${num}ª quinzena de ${MESES[m - 1]} de ${y}`, faixa: `${br(ini)} a ${br(fim)}` }
+}
 
 function fmtDate(iso?: string | null) {
   if (!iso) return null
@@ -55,6 +69,10 @@ function CertificadosPageInner() {
   const [aba, setAba] = useState<Aba>('processo')
   const [busca, setBusca] = useState('')
   const [filtroEmissao, setFiltroEmissao] = useState<number | null>(null)
+  const [selecionados, setSelecionados] = useState<Set<string>>(new Set())
+  // Relatório quinzenal — abre sempre na quinzena de hoje (no dia 16 vira sozinho para a 2ª)
+  const [qMes, setQMes] = useState(() => diaLocal().slice(0, 7))
+  const [qNum, setQNum] = useState<1 | 2>(() => (new Date().getDate() <= 15 ? 1 : 2))
 
   async function saveControl(id: string, fields: Record<string, any>) {
     setSaving(id)
@@ -124,6 +142,75 @@ function CertificadosPageInner() {
   }
 
   const finalizados = byEmissao(byBusca(byEmpresa(certs.filter(c => !!(c as any).certificado_finalizado))))
+
+  // ─── Seleção e exportação para Excel ─────────────────────────────
+  function toggleSel(id: string) {
+    setSelecionados(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n })
+  }
+  function toggleTodos(lista: CertificadoDigital[]) {
+    setSelecionados(prev => {
+      const n = new Set(prev)
+      const todos = lista.length > 0 && lista.every(c => n.has(c.id))
+      lista.forEach(c => { if (todos) n.delete(c.id); else n.add(c.id) })
+      return n
+    })
+  }
+  const todosMarcados = (lista: CertificadoDigital[]) => lista.length > 0 && lista.every(c => selecionados.has(c.id))
+
+  const cadastradoEm = (c: CertificadoDigital) => (c.created_at ? diaLocal(new Date(c.created_at)) : '')
+
+  async function exportarExcel(lista: CertificadoDigital[], arquivo: string, cabecalho: (string | number)[][] = []) {
+    if (lista.length === 0) { toast.error('Nada para exportar.'); return }
+    const XLSX = await import('xlsx')
+    const linhas = lista.map(c => {
+      const x = c as any
+      const cnpj = c.cnpj || x.empresa_cnpj_livre || ''
+      return [
+        c.razao_social || x.empresa_nome_livre || '', cnpj ? formatCNPJ(cnpj) : '', c.titular, c.tipo, c.uso, c.autoridade_certificadora,
+        c.created_at ? formatDate(cadastradoEm(c)) : '', c.data_emissao ? formatDate(c.data_emissao) : '', c.data_vencimento ? formatDate(c.data_vencimento) : '',
+        x.certificado_finalizado ? 'Concluído' : 'Pendente', x.pagamento_confirmado ? 'Confirmado' : 'Pendente',
+        x.data_aviso_cliente ? formatDate(x.data_aviso_cliente) : '', fmtDateTime(x.data_agendamento) || '', c.observacoes || '',
+      ]
+    })
+    const titulos = ['Empresa', 'CNPJ', 'Titular', 'Tipo', 'Uso', 'Autoridade certificadora', 'Cadastrado em', 'Emissão', 'Vencimento',
+      'Situação', 'Pagamento', 'Aviso ao cliente', 'Videoconferência', 'Observações']
+    const ws = XLSX.utils.aoa_to_sheet([...cabecalho, titulos, ...linhas])
+    ws['!cols'] = [38, 20, 28, 6, 10, 22, 14, 12, 12, 12, 12, 16, 18, 40].map(wch => ({ wch }))
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Certificados')
+    XLSX.writeFile(wb, arquivo + '.xlsx')
+    toast.success(`${lista.length} certificado(s) exportado(s).`)
+  }
+
+  function exportarLista() {
+    const visiveis = aba === 'processo' ? emProcesso : finalizados
+    const marcados = certs.filter(c => selecionados.has(c.id))
+    exportarExcel(marcados.length > 0 ? marcados : visiveis, `certificados_${diaLocal()}`)
+  }
+
+  // ─── Relatório quinzenal: cadastrados no período, concluídos ou pendentes ──
+  const quinzena = periodoQuinzena(qMes, qNum)
+  const daQuinzena = byEmpresa(certs)
+    .filter(c => { const d = cadastradoEm(c); return d >= quinzena.ini && d <= quinzena.fim })
+    .sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''))
+  const qConcluidos = daQuinzena.filter(c => !!(c as any).certificado_finalizado)
+  const qPendentes  = daQuinzena.filter(c => !(c as any).certificado_finalizado)
+
+  function mudarQuinzena(delta: 1 | -1) {
+    if (delta === 1 && qNum === 1) { setQNum(2); return }
+    if (delta === -1 && qNum === 2) { setQNum(1); return }
+    const [y, m] = qMes.split('-').map(Number)
+    setQMes(diaLocal(new Date(y, m - 1 + delta, 1)).slice(0, 7))
+    setQNum(delta === 1 ? 1 : 2)
+  }
+
+  function exportarQuinzena() {
+    exportarExcel(daQuinzena, `certificados_${qMes}_${qNum}a-quinzena`, [
+      [`Certificados digitais — ${quinzena.titulo} (${quinzena.faixa})`],
+      ['Cadastrados', daQuinzena.length, 'Concluídos', qConcluidos.length, 'Pendentes', qPendentes.length],
+      [],
+    ])
+  }
 
   async function handleDelete() {
     if (!deleteItem) return
@@ -257,12 +344,21 @@ function CertificadosPageInner() {
             {emProcesso.length} em processo · {finalizados.length} emitido(s)
           </p>
         </div>
+        <div className="flex items-center gap-2 flex-wrap">
+        {aba !== 'quinzena' && (
+          <button onClick={exportarLista} className="btn-secondary"
+            title="Exporta os certificados marcados; sem nenhum marcado, exporta a lista que está na tela">
+            <Download className="w-4 h-4" />
+            {selecionados.size > 0 ? `Exportar Excel (${selecionados.size} selecionado${selecionados.size > 1 ? 's' : ''})` : 'Exportar Excel'}
+          </button>
+        )}
         <button onClick={() => { setEditItem(null); setModalOpen(true) }} className="btn-primary">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
           Novo Certificado
         </button>
+        </div>
       </div>
 
       {/* Filtro + Abas */}
@@ -300,6 +396,7 @@ function CertificadosPageInner() {
           {([
             { id: 'processo',     label: 'Em Processo',  count: emProcesso.length,  hex: '#F59E0B', glow: 'rgba(245,158,11,0.25)', dot: 'bg-amber-400' },
             { id: 'certificados', label: 'Certificados', count: finalizados.length, hex: '#10B981', glow: 'rgba(16,185,129,0.25)', dot: 'bg-emerald-500' },
+            { id: 'quinzena',     label: 'Relatório quinzenal', count: 0, hex: '#0F172A', glow: 'rgba(15,23,42,0.2)', dot: 'bg-slate-500' },
           ] as const).map(t => {
             const isActive = aba === t.id
             return (
@@ -350,6 +447,7 @@ function CertificadosPageInner() {
                   <table className="w-full text-sm">
                     <thead className="bg-amber-50 border-b border-amber-100">
                       <tr>
+                        <th className="pl-4 py-3 w-8"><input type="checkbox" aria-label="Selecionar todos" checked={todosMarcados(emProcesso)} onChange={() => toggleTodos(emProcesso)} className="w-4 h-4 accent-slate-800" /></th>
                         <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-amber-700">Empresa / Titular</th>
                         <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-amber-700">Tipo / AC</th>
                         <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-amber-700 min-w-[230px]">Controle do Processo</th>
@@ -360,6 +458,7 @@ function CertificadosPageInner() {
                       {emProcesso.map(c => (
                         <>
                         <tr key={c.id} className="hover:bg-amber-50/40 transition-colors">
+                          <td className="pl-4 py-3 w-8"><input type="checkbox" aria-label={`Selecionar ${c.titular}`} checked={selecionados.has(c.id)} onChange={() => toggleSel(c.id)} className="w-4 h-4 accent-slate-800" /></td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-1.5">
                               {c.empresa_id
@@ -400,7 +499,7 @@ function CertificadosPageInner() {
                             </div>
                           </td>
                         </tr>
-                        <DateEditorRow c={c} colSpan={4} />
+                        <DateEditorRow c={c} colSpan={5} />
                         </>
                       ))}
                     </tbody>
@@ -453,6 +552,7 @@ function CertificadosPageInner() {
                   <table className="w-full text-sm">
                     <thead className="bg-slate-50 border-b">
                       <tr>
+                        <th className="pl-4 py-3 w-8"><input type="checkbox" aria-label="Selecionar todos" checked={todosMarcados(finalizados)} onChange={() => toggleTodos(finalizados)} className="w-4 h-4 accent-slate-800" /></th>
                         <th className="px-4 py-3 text-left font-medium text-slate-600">Empresa</th>
                         <th className="px-4 py-3 text-left font-medium text-slate-600">Titular</th>
                         <th className="px-4 py-3 text-left font-medium text-slate-600">Tipo / Uso</th>
@@ -466,6 +566,7 @@ function CertificadosPageInner() {
                     <tbody className="divide-y divide-slate-100">
                       {finalizados.map(c => (
                         <tr key={c.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="pl-4 py-3 w-8"><input type="checkbox" aria-label={`Selecionar ${c.titular}`} checked={selecionados.has(c.id)} onChange={() => toggleSel(c.id)} className="w-4 h-4 accent-slate-800" /></td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-1.5">
                               {c.empresa_id
@@ -538,6 +639,86 @@ function CertificadosPageInner() {
               )}
             </div>
             </>
+          )}
+
+          {/* ══════════════════════════════════════════════════════
+              ABA: RELATÓRIO QUINZENAL
+          ══════════════════════════════════════════════════════ */}
+          {aba === 'quinzena' && (
+            <div className="space-y-4">
+              <div className="card p-4 flex items-center justify-between gap-4 flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button onClick={() => mudarQuinzena(-1)} className="btn-secondary px-3" aria-label="Quinzena anterior">←</button>
+                  <input type="month" aria-label="Mês" value={qMes} onChange={e => e.target.value && setQMes(e.target.value)} className="input w-auto" />
+                  <div className="flex rounded-lg border border-slate-300 overflow-hidden">
+                    {([1, 2] as const).map(n => (
+                      <button key={n} onClick={() => setQNum(n)} aria-pressed={qNum === n}
+                        className={`px-3 py-2 text-sm font-semibold transition-colors ${qNum === n ? 'bg-slate-900 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'}`}>
+                        {n === 1 ? 'Dias 1 a 15' : 'Dia 16 ao fim'}
+                      </button>
+                    ))}
+                  </div>
+                  <button onClick={() => mudarQuinzena(1)} className="btn-secondary px-3" aria-label="Próxima quinzena">→</button>
+                </div>
+                <button onClick={exportarQuinzena} className="btn-primary">
+                  <Download className="w-4 h-4" />
+                  Exportar Excel desta quinzena
+                </button>
+              </div>
+
+              <div>
+                <h2 className="text-base font-bold text-slate-900">{quinzena.titulo}</h2>
+                <p className="text-sm text-slate-500">Certificados cadastrados de {quinzena.faixa}{empresaNomeAtual ? ` · ${empresaNomeAtual}` : ''}</p>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { label: 'Cadastrados', val: daQuinzena.length },
+                  { label: 'Concluídos', val: qConcluidos.length },
+                  { label: 'Pendentes', val: qPendentes.length },
+                ].map(k => (
+                  <div key={k.label} className="card p-4">
+                    <p className="text-xs font-semibold text-slate-500">{k.label}</p>
+                    <p className="text-2xl font-bold text-slate-900 mt-1">{k.val}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="card overflow-hidden">
+                {daQuinzena.length === 0 ? (
+                  <p className="p-12 text-center text-sm text-slate-500">Nenhum certificado cadastrado nesta quinzena.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-slate-50 border-b">
+                        <tr>
+                          {['Cadastrado em', 'Empresa', 'Titular', 'Tipo / Uso', 'AC', 'Situação'].map(h => (
+                            <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-600">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {daQuinzena.map(c => {
+                          const concluido = !!(c as any).certificado_finalizado
+                          return (
+                            <tr key={c.id} className="hover:bg-slate-50 transition-colors">
+                              <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{formatDate(cadastradoEm(c))}</td>
+                              <td className="px-4 py-3 font-semibold text-slate-900 break-words">{c.razao_social || (c as any).empresa_nome_livre || '—'}</td>
+                              <td className="px-4 py-3 text-slate-700">{c.titular}</td>
+                              <td className="px-4 py-3 text-slate-700 whitespace-nowrap">{c.tipo} · {c.uso}</td>
+                              <td className="px-4 py-3 text-slate-600">{c.autoridade_certificadora}</td>
+                              <td className="px-4 py-3">
+                                <span className={concluido ? 'badge-ok' : 'badge-critico'}>{concluido ? 'Concluído' : 'Pendente'}</span>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
           )}
         </>
       )}
