@@ -10,7 +10,7 @@ const ACTIONS = [
 ]
 const NAV = [
   { label: 'Briefing do Dia',     href: '/briefing',         hint: 'Alt+B' },
-  { label: 'Painel de Processos', href: '/societario/painel', hint: '' },
+  { label: 'Briefing Societário', href: '/societario/painel', hint: '' },
 ]
 
 export default function QuickActions() {

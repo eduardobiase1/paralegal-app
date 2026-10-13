@@ -672,7 +672,7 @@ export default function PainelProcessosPage() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px' }}>
             <div>
               <h1 style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '-0.025em', color: '#0F172A', lineHeight: 1.1, margin: 0 }}>
-                Painel de Processos
+                Briefing Societário
               </h1>
               <p style={{ fontSize: '13px', color: '#94A3B8', fontWeight: 500, marginTop: '5px' }}>
                 {diaLabel} · {dateTxt}

@@ -18,6 +18,7 @@ const navigation = [
     label: 'Principal',
     items: [
       { href: '/briefing',     label: 'Briefing Diário', icon: BriefingIcon },
+      { href: '/societario/painel', label: 'Briefing Societário', icon: PainelIcon },
       { href: '/visao-geral',  label: 'Visão Geral',    icon: VisaoGeralIcon },
       { href: '/dashboard',    label: 'Dashboard',       icon: HomeIcon },
       { href: '/empresas',     label: 'Empresas',        icon: BuildingIcon },
@@ -38,7 +39,6 @@ const navigation = [
     label: 'Processos',
     items: [
       { href: '/societario', label: 'Módulo Societário', icon: UsersIcon, exact: true },
-      { href: '/societario/painel', label: 'Painel de Processos', icon: PainelIcon },
       { href: '/contratos', label: 'Contratos', icon: DocumentTextIcon },
       { href: '/simulador', label: 'Simulador de Taxas', icon: CalculatorIcon },
       { href: '/tributario', label: 'Estrategista Tributário', icon: TaxIcon },

@@ -5,12 +5,12 @@ import { createClient } from '@/lib/supabase/client'
 import { useOrg } from '@/lib/org-context'
 
 const PAGES = [
-  { label: 'Briefing Diário',       href: '/briefing',          sub: 'Visão geral do dia' },
+  { label: 'Briefing Diário',       href: '/briefing',          sub: 'Certidões, alvarás, licenças e certificados' },
+  { label: 'Briefing Societário',   href: '/societario/painel', sub: 'Processos em andamento, do mais parado ao mais recente' },
   { label: 'Certidões Negativas',   href: '/certidoes',         sub: 'Federal, Estadual, Municipal, FGTS' },
   { label: 'Alvarás',               href: '/alvaras',           sub: 'Alvarás de funcionamento' },
   { label: 'Licenças Sanitárias',   href: '/licencas',          sub: 'VISA Municipal e ANVISA' },
   { label: 'Empresas',              href: '/empresas',          sub: 'Cadastro de clientes' },
-  { label: 'Painel de Processos',   href: '/societario/painel', sub: 'Abertura, alteração, encerramento' },
   { label: 'Contratos',             href: '/contratos',         sub: 'Gestão de contratos' },
   { label: 'Dashboard',             href: '/dashboard',         sub: 'Visão executiva' },
   { label: 'Financeiro',            href: '/financeiro',        sub: 'Honorários e cobranças' },

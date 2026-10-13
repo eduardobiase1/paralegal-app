@@ -31,7 +31,6 @@ export default function DashboardPage() {
   const [stats, setStats] = useState({ clientes: 0, emAndamento: 0, vencimentos: 0, cobrancas: 0, parados: 0 })
   const [alertas, setAlertas] = useState<any[]>([])
   const [processos, setProcessos] = useState<any[]>([])
-  const [parados, setParados] = useState<any[]>([])
 
   useEffect(() => {
     async function load() {
@@ -42,7 +41,7 @@ export default function DashboardPage() {
           .select('id, status, tipo, cliente_nome, created_at, updated_at, checklist, titulo, empresas(razao_social)')
           .eq('org_id', orgId).eq('status', 'Andamento')
           .order('created_at', { ascending: false }),
-        supabase.from('cobrancas').select('id', { count: 'exact', head: true }).eq('status', 'pendente'),
+        supabase.from('bm_contas_receber').select('id', { count: 'exact', head: true }).eq('org_id', orgId).eq('status', 'aguardando'),
         supabase.from('certidoes').select('id, tipo, orgao_emissor, data_vencimento, empresas(razao_social)').order('data_vencimento'),
         supabase.from('alvaras').select('id, tipo, orgao_emissor, data_vencimento, empresas(razao_social)').order('data_vencimento'),
         supabase.from('licencas_sanitarias').select('id, orgao, atividade_sanitaria, data_vencimento, empresas(razao_social)').order('data_vencimento'),
@@ -58,17 +57,12 @@ export default function DashboardPage() {
         if (!ultimaNotaMap[n.processo_id]) ultimaNotaMap[n.processo_id] = n.created_at
       })
 
-      // Fila de prioridade: TODOS os processos em andamento, do mais antigo sem anotação ao mais recente
+      // Dias sem movimentação: mesma regra do Briefing Societário (alteração no processo ou anotação)
       const agora = Date.now()
-      const paradosList = procsData.map((p: any) => {
-        const ultimaNota    = ultimaNotaMap[p.id] || null
-        const baseDate      = ultimaNota || p.created_at
-        const diasSem       = Math.floor((agora - new Date(baseDate).getTime()) / 86400000)
-        const ultimaNotaFmt = ultimaNota
-          ? new Date(ultimaNota).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
-          : null
-        return { ...p, diasSemMovimento: diasSem, ultimaNotaFmt, temNota: !!ultimaNota }
-      }).sort((a: any, b: any) => b.diasSemMovimento - a.diasSemMovimento)
+      const paradosCount = procsData.filter((p: any) => {
+        const ultimaAtividade = [p.updated_at, ultimaNotaMap[p.id], p.created_at].filter(Boolean).sort().reverse()[0]
+        return Math.round((agora - new Date(ultimaAtividade).getTime()) / 86400000) >= 7
+      }).length
 
       const todos = [
         ...(certRes.data || []).map((i: any) => ({ ...i, categoria: 'Certidão',    desc: [i.tipo, i.orgao_emissor].filter(Boolean).join(' — '), href: '/certidoes' })),
@@ -85,11 +79,10 @@ export default function DashboardPage() {
         emAndamento: procsData.length,
         vencimentos: todos.filter(a => { const d = diasParaVencer(a.data_vencimento); return d !== null && d <= 15 }).length,
         cobrancas: cobRes.count || 0,
-        parados: paradosList.filter((p: any) => p.diasSemMovimento >= 7).length,
+        parados: paradosCount,
       })
       setProcessos(procsData.slice(0, 8))
       setAlertas(todos.slice(0, 25))
-      setParados(paradosList)
       setLoading(false)
     }
     if (orgId) load()
@@ -127,9 +120,9 @@ export default function DashboardPage() {
       icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
     },
     {
-      label: 'Processos Parados', value: stats.parados,
+      label: 'Processos Parados 7+ dias', value: stats.parados,
       color: stats.parados > 0 ? 'text-red-600' : 'text-emerald-600',
-      bg: stats.parados > 0 ? 'bg-red-50' : 'bg-white', link: '/societario',
+      bg: stats.parados > 0 ? 'bg-red-50' : 'bg-white', link: '/societario/painel',
       icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>,
     },
   ]
@@ -256,75 +249,6 @@ export default function DashboardPage() {
         </section>
 
       </div>
-
-      {/* Fila de Prioridade — todos os processos em andamento */}
-      {parados.length > 0 && (
-        <section className="mt-6">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-              <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Fila de Prioridade — Próximo processo a tratar</h3>
-            </div>
-            <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">{parados.length} em andamento</span>
-            <div className="flex gap-3 ml-auto text-[9px] font-bold text-slate-400">
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />Hoje</span>
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-400 inline-block" />1–6 dias</span>
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-orange-400 inline-block" />7–14 dias</span>
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500 inline-block" />15+ dias</span>
-            </div>
-          </div>
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="divide-y divide-slate-100">
-              {parados.map((proc: any, idx: number) => {
-                const dias = proc.diasSemMovimento
-                const urgencia = dias === 0
-                  ? { bar: 'bg-emerald-400', badge: 'bg-emerald-100 text-emerald-700', row: 'hover:bg-emerald-50', label: 'Hoje' }
-                  : dias >= 15
-                  ? { bar: 'bg-red-500',    badge: 'bg-red-100 text-red-700',       row: 'hover:bg-red-50',    label: `${dias} dias` }
-                  : dias >= 7
-                  ? { bar: 'bg-orange-400', badge: 'bg-orange-100 text-orange-700', row: 'hover:bg-orange-50', label: `${dias} dias` }
-                  : { bar: 'bg-blue-400',   badge: 'bg-blue-100 text-blue-700',     row: 'hover:bg-blue-50',   label: `${dias} dia${dias !== 1 ? 's' : ''}` }
-                const checklist = proc.checklist || []
-                const conc = checklist.filter((i: any) => i.status === 'Concluido').length
-                const total = checklist.length || 1
-                const porc = Math.round((conc / total) * 100)
-                const proxEtapa = checklist.find((i: any) => i.status !== 'Concluido')?.etapa
-                return (
-                  <div key={proc.id} className={`flex items-center gap-4 px-5 py-3.5 transition-colors ${urgencia.row}`}>
-                    {/* Número de ordem */}
-                    <span className="text-[11px] font-black text-slate-300 w-4 flex-shrink-0 text-center">{idx + 1}</span>
-                    <div className={`w-1 h-10 rounded-full flex-shrink-0 ${urgencia.bar}`} />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-black text-slate-800 text-sm truncate">
-                        {proc.empresas?.razao_social || proc.cliente_nome || '—'}
-                      </p>
-                      <p className="text-[10px] text-slate-400 truncate mt-0.5">
-                        {proc.temNota
-                          ? `📝 Última anotação: ${proc.ultimaNotaFmt}`
-                          : '📝 Nenhuma anotação ainda'}
-                        {proxEtapa && <span className="ml-2">· ⏳ {proxEtapa}</span>}
-                      </p>
-                    </div>
-                    <div className="hidden sm:block text-[9px] font-black px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 uppercase flex-shrink-0">
-                      {(proc.tipo || '').replace(/_/g, ' ')}
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0 w-28">
-                      <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                        <div className={`h-full rounded-full ${urgencia.bar}`} style={{ width: `${porc}%` }} />
-                      </div>
-                      <span className="text-[9px] font-black text-slate-400 w-7 text-right">{porc}%</span>
-                    </div>
-                    <span className={`text-[9px] font-black px-2.5 py-1 rounded-full flex-shrink-0 whitespace-nowrap ${urgencia.badge}`}>
-                      {urgencia.label} sem anotação
-                    </span>
-                    <Link href={`/societario?processo=${proc.id}`} className="text-[10px] font-bold text-blue-600 hover:underline flex-shrink-0">Tratar →</Link>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        </section>
-      )}
     </div>
   )
 }
