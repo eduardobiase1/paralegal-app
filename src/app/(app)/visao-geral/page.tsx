@@ -30,14 +30,13 @@ function diasParaVencer(d: string | null): number | null {
 }
 
 function cellColor(info: CellInfo): string {
-  if (info.pendente) return 'bg-red-50 text-red-600 font-semibold'
+  if (info.pendente) return 'text-red-700 font-bold'
   if (!info.date) return ''
   const d = diasParaVencer(info.date)
   if (d === null) return 'text-slate-400'
-  if (d < 0)   return 'bg-red-100 text-red-700 font-bold'
-  if (d <= 30) return 'bg-orange-100 text-orange-900 font-semibold'
-  if (d <= 60) return 'bg-yellow-100 text-yellow-900'
-  return 'text-slate-700'
+  if (d < 0)   return 'bg-red-100 text-red-800 font-bold'
+  if (d <= 30) return 'bg-yellow-100 text-yellow-900 font-semibold'
+  return 'bg-green-100 text-green-800'
 }
 
 function cellLabel(info: CellInfo): string {
@@ -143,7 +142,7 @@ export default function VisaoGeralPage() {
       if (info.pendente) return true
       if (!info.date) return false
       const d = diasParaVencer(info.date)
-      return d !== null && d <= 60
+      return d !== null && d <= 30
     })
   }
 
@@ -214,10 +213,9 @@ export default function VisaoGeralPage() {
       {/* ── Legenda ────────────────────────────────────────────────── */}
       <div className="flex items-center gap-4 mb-4 flex-wrap text-xs">
         {[
-          { color: 'bg-red-100 border-red-200',    label: 'Vencida' },
-          { color: 'bg-orange-100 border-orange-200', label: '≤ 30 dias' },
-          { color: 'bg-yellow-100 border-yellow-200', label: '≤ 60 dias' },
-          { color: 'bg-white border-slate-300', label: 'Em dia' },
+          { color: 'bg-red-100 border-red-200',       label: 'Vencida' },
+          { color: 'bg-yellow-100 border-yellow-200', label: 'Vence em até 30 dias' },
+          { color: 'bg-green-100 border-green-200',   label: 'Vence em mais de 30 dias' },
         ].map(({ color, label }) => (
           <div key={label} className="flex items-center gap-1.5">
             <div className={`w-3 h-3 rounded ${color} border`} />
@@ -225,8 +223,8 @@ export default function VisaoGeralPage() {
           </div>
         ))}
         <div className="flex items-center gap-1">
-          <span className="text-red-600 font-semibold">Pendente</span>
-          <span className="text-slate-400">= impossível renovar</span>
+          <span className="text-red-700 font-bold">Pendente</span>
+          <span className="text-slate-500">= não foi possível renovar (débito ou pendência)</span>
         </div>
         <span className="text-slate-400 ml-auto">Clique em qualquer data para copiar</span>
       </div>
