@@ -10,6 +10,7 @@ import Modal from '@/components/ui/Modal'
 import CertificadoForm from '@/components/modules/CertificadoForm'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import toast from 'react-hot-toast'
+import { registrarAcao } from '@/lib/atividade'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
@@ -62,6 +63,8 @@ function CertificadosPageInner() {
     setSaving(null)
     if (fields.certificado_finalizado === true) {
       toast.success('Certificado finalizado! Movido para a lista de Certificados.')
+      const c = certs.find(x => x.id === id)
+      registrarAcao('Certificado finalizado', `Certificado digital ${c?.tipo ?? ''} ${c?.uso ?? ''} finalizado — ${c?.titular ?? ''}`.replace(/\s+/g, ' ').trim(), { empresaId: c?.empresa_id })
       setAba('certificados')
     } else if (fields.certificado_finalizado === false) {
       toast.success('Reaberto. Movido para Em Processo.')

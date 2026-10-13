@@ -6,6 +6,7 @@ import { useOrg } from '@/lib/org-context'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
+import { registrarAcao } from '@/lib/atividade'
 
 // ─── Labels ──────────────────────────────────────────────────────────────────
 
@@ -351,6 +352,13 @@ function SocietarioPageInner() {
 
   // ─── Handlers ──────────────────────────────────────────────────────────────
 
+  // Registro automático de produtividade, com a empresa/cliente do processo
+  function logProc(procId: string, acao: string, descricao: string) {
+    const p = processos.find(x => x.id === procId)
+    const rotulo = (p?.titulo || p?.tipo || '').replace(/_/g, ' ')
+    registrarAcao(acao, rotulo ? `${descricao} · ${rotulo}` : descricao, { empresaId: p?.empresa_id, empresaNome: p?.empresas?.razao_social || p?.cliente_nome || '' })
+  }
+
   async function handleIniciar(e: React.FormEvent) {
     e.preventDefault()
     if (!formData.empresa_id && !formData.cliente_nome.trim())
@@ -362,6 +370,7 @@ function SocietarioPageInner() {
     const { data, error } = await supabase.from('processos_societarios').insert([payload]).select().single()
     if (!error && data) {
       toast.success('Processo iniciado!')
+      registrarAcao('Processo aberto', `Processo de ${formData.tipo.replace(/_/g, ' ')} aberto`, { empresaId: formData.empresa_id || null, empresaNome: formData.empresa_id ? undefined : formData.cliente_nome.trim() })
       setIsModalOpen(false)
       setFormData({ empresa_id: '', cliente_nome: '', tipo: 'abertura', titulo: '' })
       await fetchData()
@@ -433,6 +442,7 @@ function SocietarioPageInner() {
     if (!error && data) {
       setNotas(prev => ({ ...prev, [procId]: [data, ...(prev[procId] || [])] }))
       setNotaInput('')
+      logProc(procId, 'Anotação', 'Anotação no processo')
     } else { toast.error('Erro ao salvar anotação.') }
     setSavingNota(false)
   }
@@ -456,6 +466,8 @@ function SocietarioPageInner() {
     const novoStatus = concluidos === updated.length ? 'Finalizado' : 'Andamento'
     await supabase.from('processos_societarios').update({ checklist: updated, status: novoStatus }).eq('id', procId)
     setProcessos(prev => prev.map(p => p.id === procId ? { ...p, checklist: updated, status: novoStatus } : p))
+    if (updated[index].status === 'Concluido') logProc(procId, 'Etapa concluída', `Etapa concluída: ${updated[index].etapa}`)
+    if (novoStatus === 'Finalizado') logProc(procId, 'Processo finalizado', 'Processo finalizado')
   }
 
   async function saveEditItem(procId: string, checklist: any[]) {

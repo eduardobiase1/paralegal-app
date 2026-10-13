@@ -6,6 +6,7 @@ import AppShell from '@/components/layout/AppShell'
 import InactivityLogout from '@/components/InactivityLogout'
 import ViewerGuard from '@/components/ViewerGuard'
 import PasswordChangeGuard from '@/components/PasswordChangeGuard'
+import AtividadeTracker from '@/components/AtividadeTracker'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -58,6 +59,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <ViewerGuard />
       <PasswordChangeGuard />
       <InactivityLogout />
+      <AtividadeTracker />
       <AppShell>{children}</AppShell>
     </OrgProvider>
   )

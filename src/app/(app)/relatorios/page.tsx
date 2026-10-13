@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useOrg } from '@/lib/org-context'
 import { Empresa } from '@/types'
 import toast from 'react-hot-toast'
+import { registrarAcao } from '@/lib/atividade'
 
 // Paralegal PRO colors
 const PRETO: [number, number, number] = [13, 13, 13]
@@ -322,6 +323,7 @@ export default function RelatoriosPage() {
       const nomeArquivo = `ParalegalPRO_${empresa.razao_social.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 30)}_${new Date().toISOString().split('T')[0]}.pdf`
       doc.save(nomeArquivo)
       toast.success('Relatório gerado com sucesso!')
+      registrarAcao('Relatório gerado', 'Relatório PDF do cliente gerado', { empresaId, empresaNome: empresa.razao_social })
     } catch (err: any) {
       console.error(err)
       toast.error('Erro ao gerar PDF: ' + (err.message ?? 'Erro desconhecido'))

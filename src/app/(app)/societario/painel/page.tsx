@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useOrg } from '@/lib/org-context'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
+import { registrarAcao } from '@/lib/atividade'
 
 // ── Labels ─────────────────────────────────────────────────────────────────────
 const TIPO_LABELS: Record<string, string> = {
@@ -558,7 +559,11 @@ export default function PainelProcessosPage() {
   // ── Ações ─────────────────────────────────────────────────────────────────
   async function handleFinalizar(id: string) {
     const { error } = await supabase.from('processos_societarios').update({ status: 'Finalizado' }).eq('id', id)
-    if (!error) { setProcessos(prev => prev.filter(p => p.id !== id)); toast.success('Processo finalizado!') }
+    if (!error) {
+      const p = processos.find(x => x.id === id)
+      registrarAcao('Processo finalizado', `Processo ${(p?.titulo || p?.tipo || '').replace(/_/g, ' ')} finalizado`, { empresaId: p?.empresa_id, empresaNome: (p?.empresas as any)?.razao_social || p?.cliente_nome || '' })
+      setProcessos(prev => prev.filter(p => p.id !== id)); toast.success('Processo finalizado!')
+    }
     setOpenStatus(null)
   }
 
@@ -607,6 +612,8 @@ export default function PainelProcessosPage() {
       setNotaInput(prev => ({ ...prev, [id]: '' }))
       setNotaCount(prev => ({ ...prev, [id]: (prev[id] || 0) + 1 }))
       toast.success('Nota salva!')
+      const p = processos.find(x => x.id === id)
+      registrarAcao('Anotação', `Anotação no processo ${(p?.titulo || p?.tipo || '').replace(/_/g, ' ')}`, { empresaId: p?.empresa_id, empresaNome: (p?.empresas as any)?.razao_social || p?.cliente_nome || '' })
     }
     setSavingNota(prev => ({ ...prev, [id]: false }))
   }

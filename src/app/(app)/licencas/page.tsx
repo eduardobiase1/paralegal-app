@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useOrg } from '@/lib/org-context'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
+import { registrarAcao } from '@/lib/atividade'
 
 const FORM_EMPTY = {
   empresa_id: '',
@@ -84,6 +85,7 @@ function LicencasPage() {
     setSaving(false)
     if (!error) {
       toast.success(editItem ? 'Licença atualizada!' : 'Licença cadastrada!')
+      registrarAcao(editItem ? 'Atualização' : 'Cadastro', `Licença Sanitária (${form.orgao}) ${editItem ? 'atualizada' : 'cadastrada'}`, { empresaId: form.empresa_id })
       setModal(false)
       setEditItem(null)
       setForm(FORM_EMPTY)

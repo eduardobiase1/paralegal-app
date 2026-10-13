@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useOrg } from '@/lib/org-context'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
+import { registrarAcao } from '@/lib/atividade'
 
 type Alvara = {
   id: string
@@ -95,7 +96,7 @@ function AlvarasPage() {
       data_vencimento: form.data_vencimento || null, observacoes: form.observacoes || null,
     }])
     setSaving(false)
-    if (!error) { toast.success('Alvará cadastrado!'); setModalNovo(false); setForm(FORM_EMPTY); load() }
+    if (!error) { registrarAcao('Cadastro', `Alvará ${form.tipo} (${form.orgao_emissor}) cadastrado`, { empresaId: form.empresa_id }); toast.success('Alvará cadastrado!'); setModalNovo(false); setForm(FORM_EMPTY); load() }
     else toast.error('Erro: ' + error.message)
   }
 
@@ -120,7 +121,7 @@ function AlvarasPage() {
       data_vencimento: form.data_vencimento || null, observacoes: form.observacoes || null,
     }).eq('id', editItem.id)
     setSaving(false)
-    if (!error) { toast.success('Alvará atualizado!'); setEditItem(null); setForm(FORM_EMPTY); load() }
+    if (!error) { registrarAcao('Atualização', `Alvará ${form.tipo} (${form.orgao_emissor}) atualizado`, { empresaId: editItem.empresa_id }); toast.success('Alvará atualizado!'); setEditItem(null); setForm(FORM_EMPTY); load() }
     else toast.error('Erro: ' + error.message)
   }
 
@@ -146,7 +147,7 @@ function AlvarasPage() {
       observacoes: renovForm.observacoes || null,
     }])
     setSaving(false)
-    if (!error) { toast.success('Renovação registrada!'); setRenovarItem(null); load() }
+    if (!error) { registrarAcao('Renovação', `Alvará ${renovarItem.tipo} (${renovarItem.orgao_emissor}) renovado`, { empresaId: renovarItem.empresa_id }); toast.success('Renovação registrada!'); setRenovarItem(null); load() }
     else toast.error('Erro: ' + error.message)
   }
 

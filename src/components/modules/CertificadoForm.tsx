@@ -6,6 +6,7 @@ import { CertificadoDigital, Empresa } from '@/types'
 import { formatDateInput } from '@/lib/utils'
 import { useOrg } from '@/lib/org-context'
 import toast from 'react-hot-toast'
+import { registrarAcao } from '@/lib/atividade'
 
 const ACS = ['Serasa', 'Certisign', 'Valid', 'Soluti', 'Safeweb', 'VRSafe', 'Outro']
 
@@ -110,6 +111,7 @@ export default function CertificadoForm({ empresas, certificado, defaultEmpresaI
     setLoading(false)
     if (error) { toast.error('Erro ao salvar: ' + error.message); return }
     toast.success(certificado ? 'Certificado atualizado!' : 'Cadastrado com sucesso!')
+    registrarAcao(certificado ? 'Atualização' : 'Cadastro', `Certificado digital ${certificado ? 'atualizado' : 'cadastrado'}`, { empresaId: payload.empresa_id ?? null })
     onSuccess()
   }
 

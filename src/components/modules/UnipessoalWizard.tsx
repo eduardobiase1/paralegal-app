@@ -6,6 +6,7 @@ import {
   HorizontalPositionRelativeFrom, VerticalPositionRelativeFrom,
 } from 'docx'
 import toast from 'react-hot-toast'
+import { registrarAcao } from '@/lib/atividade'
 
 // ── Number → Portuguese words ────────────────────────────────────────────────
 const UNID  = ['','um','dois','três','quatro','cinco','seis','sete','oito','nove',
@@ -428,6 +429,7 @@ export default function UnipessoalWizard() {
       a.click()
       URL.revokeObjectURL(url)
       toast.success('Contrato Word gerado!')
+      registrarAcao('Contrato gerado', `Contrato Social Unipessoal — ${f.razaoSocial || 'sem razão social'}`)
     } catch (e) {
       console.error(e)
       toast.error('Erro ao gerar DOCX')

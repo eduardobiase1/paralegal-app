@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useOrg } from '@/lib/org-context'
 import toast from 'react-hot-toast'
+import { registrarAcao } from '@/lib/atividade'
 
 function getNatTag(natureza: string): string {
   if (!natureza) return ''
@@ -124,7 +125,7 @@ export default function EmpresasPage() {
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
     const { error } = await supabase.from('empresas').upsert([{ ...formData, org_id: orgId, organizacao: orgName }])
-    if (!error) { fetchData(); setIsModalOpen(false); setFormData(initialForm); toast.success('Empresa salva!') }
+    if (!error) { fetchData(); setIsModalOpen(false); registrarAcao('Cadastro', `Empresa ${formData.razao_social || ''} salva`.replace(/\s+/g, ' ')); setFormData(initialForm); toast.success('Empresa salva!') }
     else toast.error('Erro ao salvar: ' + error.message)
   }
 

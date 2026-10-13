@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useOrg } from '@/lib/org-context'
 import toast from 'react-hot-toast'
+import { registrarAcao } from '@/lib/atividade'
 
 // ── Tipos ──────────────────────────────────────────────────────────────────────
 type Empresa = {
@@ -104,6 +105,7 @@ export default function TaxasLicencaPage() {
 
     if (!error) {
       toast.success('Envio registrado!')
+      registrarAcao('Comunicado', `Taxa de licença ${ano} enviada`, { empresaId: empresa.id, empresaNome: empresa.razao_social })
       setEditando(null)
       await load()
     } else {

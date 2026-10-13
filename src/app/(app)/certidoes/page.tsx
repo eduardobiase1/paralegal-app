@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useOrg } from '@/lib/org-context'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
+import { registrarAcao } from '@/lib/atividade'
 
 const EMPTY_FORM = {
   id: '',
@@ -155,6 +156,11 @@ function CertidoesPage() {
     if (!error) {
       const msgs = { novo: 'Certidão cadastrada!', editar: 'Certidão atualizada!', renovar: 'Renovação registrada!' }
       toast.success(msgs[modalMode])
+      registrarAcao(
+        modalMode === 'renovar' ? 'Renovação' : modalMode === 'novo' ? 'Cadastro' : 'Atualização',
+        `Certidão ${form.tipo} (${form.orgao_emissor}) ${modalMode === 'renovar' ? 'renovada' : modalMode === 'novo' ? 'cadastrada' : 'atualizada'}`,
+        { empresaId: form.empresa_id },
+      )
 
       // Ao renovar: limpa campos de comunicado/followup e registra no histórico
       if (modalMode === 'renovar' && form.id) {
@@ -231,6 +237,7 @@ function CertidoesPage() {
       // historico não crítico — não interrompe o fluxo
     }
     toast.success(`${ordinal} comunicação registrada! Follow-up agendado para 30 dias.`)
+    registrarAcao('Comunicado', `${ordinal} comunicação · Certidão ${comunicandoItem.tipo} · ${canal} para ${para}`, { empresaId: comunicandoItem.empresa_id })
     setComunicandoItem(null)
     load()
   }
