@@ -57,7 +57,7 @@ function localDatetimeToISO(localStr: string): string | null {
 
 function CertificadosPageInner() {
   const searchParams = useSearchParams()
-  const { orgName } = useOrg()
+  const { orgName, orgId } = useOrg()
   const [certs, setCerts] = useState<CertificadoDigital[]>([])
   const [empresas, setEmpresas] = useState<Empresa[]>([])
   const [loading, setLoading] = useState(true)
@@ -106,7 +106,7 @@ function CertificadosPageInner() {
     setLoading(true)
     const [{ data: cs }, { data: emps }, { data: concl }] = await Promise.all([
       supabase.from('v_certificados_status').select('*').order('data_vencimento', { ascending: true }),
-      supabase.from('empresas').select('id, razao_social, cnpj').order('razao_social'),
+      supabase.from('empresas').select('id, razao_social, cnpj').eq('org_id', orgId).order('razao_social'),
       supabase.from('certificados_digitais').select('id, data_conclusao'),
     ])
     const conclusoes = new Map((concl ?? []).map((r: any) => [r.id, r.data_conclusao]))
@@ -115,7 +115,7 @@ function CertificadosPageInner() {
     setLoading(false)
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [orgId])
 
   const byEmpresa = (list: CertificadoDigital[]) =>
     filtroEmpresa === '__avulsa__'

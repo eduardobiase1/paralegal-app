@@ -22,7 +22,7 @@ export default function RelatoriosPage() {
   const [supabase] = useState(createClient)
 
   useEffect(() => {
-    supabase.from('empresas').select('id, razao_social, cnpj, uf').order('razao_social')
+    supabase.from('empresas').select('id, razao_social, cnpj, uf').eq('org_id', orgId).order('razao_social')
       .then(({ data }) => setEmpresas((data ?? []) as Empresa[]))
   }, [])
 

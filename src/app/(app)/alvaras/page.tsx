@@ -44,7 +44,7 @@ function fmtDate(d: string | null) {
 
 // ══════════════════════════════════════════════════════════════════════════════
 function AlvarasPage() {
-  const { orgName } = useOrg()
+  const { orgName, orgId } = useOrg()
   const searchParams = useSearchParams()
   const empresaFiltro = searchParams.get('empresa')
   const [supabase] = useState(createClient())
@@ -76,12 +76,12 @@ function AlvarasPage() {
       supabase.from('alvaras')
         .select('*, empresas(razao_social, municipio)')
         .order('data_vencimento', { ascending: true }),
-      supabase.from('empresas').select('id, razao_social').order('razao_social'),
+      supabase.from('empresas').select('id, razao_social').eq('org_id', orgId).order('razao_social'),
     ])
     setDados(res.data || [])
     setEmpresas(empRes.data || [])
     setLoading(false)
-  }, [supabase])
+  }, [supabase, orgId])
 
   useEffect(() => { load() }, [load])
 

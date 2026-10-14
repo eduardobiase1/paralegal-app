@@ -324,7 +324,7 @@ function SocietarioPageInner() {
       .select('*, empresas(razao_social)')
       .eq('org_id', orgId)
       .order('created_at', { ascending: false })
-    const { data: emp } = await supabase.from('empresas').select('id, razao_social').order('razao_social')
+    const { data: emp } = await supabase.from('empresas').select('id, razao_social').eq('org_id', orgId).order('razao_social')
     setProcessos(proc || [])
     setEmpresas(emp || [])
     setLoading(false)

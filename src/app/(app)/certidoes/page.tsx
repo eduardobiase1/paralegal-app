@@ -68,12 +68,12 @@ function CertidoesPage() {
   const load = useCallback(async () => {
     const [res, empRes] = await Promise.all([
       supabase.from('certidoes').select('*, empresas(razao_social)').order('data_vencimento', { ascending: true }),
-      supabase.from('empresas').select('id, razao_social').order('razao_social'),
+      supabase.from('empresas').select('id, razao_social').eq('org_id', orgId).order('razao_social'),
     ])
     setData(res.data || [])
     setEmpresas(empRes.data || [])
     setLoading(false)
-  }, [supabase])
+  }, [supabase, orgId])
 
   useEffect(() => {
     if (!empresaFiltro) { setEmpresaDetalhe(null); return }
