@@ -579,12 +579,6 @@ function SocietarioPageInner() {
                   </button>
                 </>
               )}
-              {p.status === 'Finalizado' && (
-                <button onClick={() => arquivarProcesso(p.id)}
-                  className="text-xs text-slate-500 hover:text-slate-700 font-bold transition-colors border border-slate-200 hover:border-slate-400 px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-slate-100">
-                  ⬇ Arquivar
-                </button>
-              )}
               {p.status === 'Arquivado' && (
                 <button onClick={() => reabrirProcesso(p.id)}
                   className="text-xs text-blue-600 hover:text-blue-700 font-bold transition-colors border border-blue-200 hover:border-blue-400 px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100">
