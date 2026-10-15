@@ -269,7 +269,8 @@ function SocietarioPageInner() {
 
   // ── Navegação ────────────────────────────────────────────────────────────
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [filtroStatus, setFiltroStatus] = useState<'todos' | 'Andamento' | 'Finalizado'>('Andamento')
+  const [filtroStatus, setFiltroStatus] = useState<'todos' | 'Andamento' | 'Finalizado' | 'Arquivado'>('Andamento')
+  const [busca, setBusca] = useState('')
   const [activeDetailTab, setActiveDetailTab] = useState<'etapas' | 'documentos' | 'anotacoes'>('etapas')
 
   // ── Modal novo processo ──────────────────────────────────────────────────
@@ -306,14 +307,19 @@ function SocietarioPageInner() {
   // ── Computed ─────────────────────────────────────────────────────────────
   const empresaParamId = searchParams.get('empresa')
   const selectedProcesso = processos.find(p => p.id === selectedId) ?? null
-  const processosFiltrados = useMemo(() =>
-    processos.filter(p => {
+  const processosFiltrados = useMemo(() => {
+    const term = busca.toLowerCase()
+    return processos.filter(p => {
       const matchStatus  = filtroStatus === 'todos' ? true : p.status === filtroStatus
       const matchEmpresa = !empresaParamId || p.empresa_id === empresaParamId
-      return matchStatus && matchEmpresa
-    }),
-    [processos, filtroStatus, empresaParamId]
-  )
+      const matchBusca   = !term ||
+        (p.empresas?.razao_social || '').toLowerCase().includes(term) ||
+        (p.cliente_nome || '').toLowerCase().includes(term) ||
+        (p.titulo || '').toLowerCase().includes(term) ||
+        (TIPO_LABELS[p.tipo] || '').toLowerCase().includes(term)
+      return matchStatus && matchEmpresa && matchBusca
+    })
+  }, [processos, filtroStatus, empresaParamId, busca])
 
   // ─── Fetch ─────────────────────────────────────────────────────────────────
 
@@ -510,6 +516,28 @@ function SocietarioPageInner() {
     toast.success('Processo excluído.')
   }
 
+  async function finalizarProcesso(id: string) {
+    if (!confirm('Finalizar este processo mesmo com etapas pendentes?')) return
+    await supabase.from('processos_societarios').update({ status: 'Finalizado' }).eq('id', id)
+    setProcessos(prev => prev.map(p => p.id === id ? { ...p, status: 'Finalizado' } : p))
+    logProc(id, 'Processo finalizado', 'Processo finalizado manualmente')
+    toast.success('Processo finalizado.')
+  }
+
+  async function arquivarProcesso(id: string) {
+    if (!confirm('Arquivar este processo?')) return
+    await supabase.from('processos_societarios').update({ status: 'Arquivado' }).eq('id', id)
+    setProcessos(prev => prev.map(p => p.id === id ? { ...p, status: 'Arquivado' } : p))
+    setSelectedId(null)
+    toast.success('Processo arquivado.')
+  }
+
+  async function reabrirProcesso(id: string) {
+    await supabase.from('processos_societarios').update({ status: 'Andamento' }).eq('id', id)
+    setProcessos(prev => prev.map(p => p.id === id ? { ...p, status: 'Andamento' } : p))
+    toast.success('Processo reaberto.')
+  }
+
   // ─── Render ───────────────────────────────────────────────────────────────
 
   // ── DETALHE DO PROCESSO ──────────────────────────────────────────────────
@@ -538,12 +566,36 @@ function SocietarioPageInner() {
             Voltar aos Processos
           </button>
           {!isViewer && (
-            <button
-              onClick={() => deleteProcesso(p.id)}
-              className="text-xs text-red-400 hover:text-red-600 font-bold transition-colors"
-            >
-              Excluir processo
-            </button>
+            <div className="flex items-center gap-3">
+              {p.status === 'Andamento' && (
+                <>
+                  <button onClick={() => finalizarProcesso(p.id)}
+                    className="text-xs text-emerald-600 hover:text-emerald-700 font-bold transition-colors border border-emerald-200 hover:border-emerald-400 px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100">
+                    ✓ Finalizar
+                  </button>
+                  <button onClick={() => arquivarProcesso(p.id)}
+                    className="text-xs text-slate-500 hover:text-slate-700 font-bold transition-colors border border-slate-200 hover:border-slate-400 px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-slate-100">
+                    ⬇ Arquivar
+                  </button>
+                </>
+              )}
+              {p.status === 'Finalizado' && (
+                <button onClick={() => arquivarProcesso(p.id)}
+                  className="text-xs text-slate-500 hover:text-slate-700 font-bold transition-colors border border-slate-200 hover:border-slate-400 px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-slate-100">
+                  ⬇ Arquivar
+                </button>
+              )}
+              {p.status === 'Arquivado' && (
+                <button onClick={() => reabrirProcesso(p.id)}
+                  className="text-xs text-blue-600 hover:text-blue-700 font-bold transition-colors border border-blue-200 hover:border-blue-400 px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100">
+                  ↑ Desarquivar
+                </button>
+              )}
+              <button onClick={() => deleteProcesso(p.id)}
+                className="text-xs text-red-400 hover:text-red-600 font-bold transition-colors">
+                Excluir
+              </button>
+            </div>
           )}
         </div>
 
@@ -556,9 +608,11 @@ function SocietarioPageInner() {
                   {TIPO_LABELS[p.tipo] ?? p.tipo}
                 </span>
                 <span className={`text-xs font-bold px-2.5 py-1 rounded-full uppercase tracking-wide ${
-                  p.status === 'Finalizado' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
+                  p.status === 'Finalizado' ? 'bg-emerald-100 text-emerald-700' :
+                  p.status === 'Arquivado'  ? 'bg-slate-100 text-slate-500' :
+                  'bg-blue-100 text-blue-700'
                 }`}>
-                  {p.status === 'Finalizado' ? 'Finalizado' : 'Em Andamento'}
+                  {p.status === 'Finalizado' ? 'Finalizado' : p.status === 'Arquivado' ? 'Arquivado' : 'Em Andamento'}
                 </span>
               </div>
               <h2 className="text-xl font-bold text-slate-900">{nomeExibido}</h2>
@@ -872,9 +926,10 @@ function SocietarioPageInner() {
   // ── LISTA DE PROCESSOS ───────────────────────────────────────────────────
 
   const stats = {
-    total: processos.length,
+    total: processos.filter(p => p.status !== 'Arquivado').length,
     andamento: processos.filter(p => p.status === 'Andamento').length,
     finalizado: processos.filter(p => p.status === 'Finalizado').length,
+    arquivado: processos.filter(p => p.status === 'Arquivado').length,
   }
 
   const empresaNomeSoc = empresaParamId
@@ -919,6 +974,25 @@ function SocietarioPageInner() {
         )}
       </header>
 
+      {/* Barra de pesquisa */}
+      <div className="relative mb-4">
+        <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 111 11a6 6 0 0116 0z" />
+        </svg>
+        <input
+          type="text"
+          placeholder="Pesquisar por empresa, cliente, O.S. ou tipo..."
+          value={busca}
+          onChange={e => setBusca(e.target.value)}
+          className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-medium text-slate-700 placeholder-slate-400 outline-none focus:border-yellow-400 shadow-sm transition-colors"
+        />
+        {busca && (
+          <button onClick={() => setBusca('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 font-bold text-lg leading-none">
+            ✕
+          </button>
+        )}
+      </div>
+
       {/* KPIs — barra compacta */}
       <div className="flex items-center gap-px mb-6 bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
         {[
@@ -937,10 +1011,11 @@ function SocietarioPageInner() {
       </div>
 
       {/* Filtros */}
-      <div className="flex gap-1.5 mb-5">
+      <div className="flex flex-wrap gap-1.5 mb-5">
         {([
           { val: 'Andamento', label: 'Em Andamento', hex: '#F59E0B', glow: 'rgba(245,158,11,0.25)' },
           { val: 'Finalizado', label: 'Finalizados',  hex: '#10B981', glow: 'rgba(16,185,129,0.25)' },
+          { val: 'Arquivado',  label: 'Arquivados',   hex: '#64748B', glow: 'rgba(100,116,139,0.25)' },
           { val: 'todos',      label: 'Todos',         hex: '#1E293B', glow: 'rgba(30,41,59,0.25)'  },
         ] as const).map(({ val, label, hex, glow }) => {
           const isActive = filtroStatus === val
