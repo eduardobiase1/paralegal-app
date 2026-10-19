@@ -104,13 +104,22 @@ function CertificadosPageInner() {
 
   async function load() {
     setLoading(true)
-    const [{ data: cs }, { data: emps }, { data: concl }] = await Promise.all([
+    if (!orgId) return
+    const [{ data: cs }, { data: emps }, { data: concl }, { data: donos }] = await Promise.all([
       supabase.from('v_certificados_status').select('*').order('data_vencimento', { ascending: true }),
       supabase.from('empresas').select('id, razao_social, cnpj').eq('org_id', orgId).order('razao_social'),
       supabase.from('certificados_digitais').select('id, data_conclusao'),
+      supabase.from('certificados_digitais').select('id, empresa_id, org_id'),
     ])
+    // Só certificados da organização selecionada: de empresas dela ou avulsos cadastrados nela
+    const idsEmpresas = new Set((emps ?? []).map((e: any) => e.id))
+    const dono = new Map((donos ?? []).map((r: any) => [r.id, r]))
+    const daOrg = (c: any) => {
+      const d: any = dono.get(c.id) ?? c
+      return d.empresa_id ? idsEmpresas.has(d.empresa_id) : d.org_id === orgId
+    }
     const conclusoes = new Map((concl ?? []).map((r: any) => [r.id, r.data_conclusao]))
-    setCerts((cs ?? []).map((c: any) => ({ ...c, data_conclusao: conclusoes.get(c.id) ?? null })))
+    setCerts((cs ?? []).filter(daOrg).map((c: any) => ({ ...c, data_conclusao: conclusoes.get(c.id) ?? null })))
     setEmpresas((emps ?? []) as Empresa[])
     setLoading(false)
   }

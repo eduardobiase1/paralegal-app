@@ -41,7 +41,7 @@ function PrazoBadge({ dias }: { dias: number | null }) {
 }
 
 function LicencasPage() {
-  const { orgName } = useOrg()
+  const { orgName, orgId } = useOrg()
   const searchParams = useSearchParams()
   const empresaFiltro = searchParams.get('empresa')
   const [supabase] = useState(createClient())
@@ -56,14 +56,16 @@ function LicencasPage() {
   const [form, setForm] = useState(FORM_EMPTY)
 
   const load = useCallback(async () => {
+    if (!orgId) return
     const [res, empRes] = await Promise.all([
-      supabase.from('licencas_sanitarias').select('*, empresas(razao_social)').order('data_vencimento', { ascending: true }),
-      supabase.from('empresas').select('id, razao_social').order('razao_social'),
+      // só licenças de empresas da organização selecionada
+      supabase.from('licencas_sanitarias').select('*, empresas!inner(razao_social, org_id)').eq('empresas.org_id', orgId).order('data_vencimento', { ascending: true }),
+      supabase.from('empresas').select('id, razao_social').eq('org_id', orgId).order('razao_social'),
     ])
     setDados(res.data || [])
     setEmpresas(empRes.data || [])
     setLoading(false)
-  }, [supabase])
+  }, [supabase, orgId])
 
   useEffect(() => { load() }, [load])
 

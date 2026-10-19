@@ -74,7 +74,8 @@ function AlvarasPage() {
   const load = useCallback(async () => {
     const [res, empRes] = await Promise.all([
       supabase.from('alvaras')
-        .select('*, empresas(razao_social, municipio)')
+        .select('*, empresas!inner(razao_social, municipio, org_id)')
+        .eq('empresas.org_id', orgId) // só alvarás de empresas da organização selecionada
         .order('data_vencimento', { ascending: true }),
       supabase.from('empresas').select('id, razao_social').eq('org_id', orgId).order('razao_social'),
     ])

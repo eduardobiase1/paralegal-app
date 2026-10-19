@@ -66,8 +66,10 @@ function CertidoesPage() {
   const [empresaDetalhe, setEmpresaDetalhe] = useState<any | null>(null)
 
   const load = useCallback(async () => {
+    if (!orgId) return
     const [res, empRes] = await Promise.all([
-      supabase.from('certidoes').select('*, empresas(razao_social)').order('data_vencimento', { ascending: true }),
+      // só certidões de empresas da organização selecionada
+      supabase.from('certidoes').select('*, empresas!inner(razao_social, org_id)').eq('empresas.org_id', orgId).order('data_vencimento', { ascending: true }),
       supabase.from('empresas').select('id, razao_social').eq('org_id', orgId).order('razao_social'),
     ])
     setData(res.data || [])
