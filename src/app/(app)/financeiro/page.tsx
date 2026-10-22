@@ -212,6 +212,10 @@ export default function FinanceiroPage() {
   const [pagtoItem, setPagtoItem] = useState<any>(null)
   const [pagtoJuros, setPagtoJuros] = useState('0')
   const [pagtoMulta, setPagtoMulta] = useState('0')
+  const [pagtoData, setPagtoData] = useState(today())
+  const [modalReceber, setModalReceber] = useState(false)
+  const [recebItem, setRecebItem] = useState<any>(null)
+  const [recebData, setRecebData] = useState(today())
   const fileRef = useRef<HTMLInputElement>(null)
   const [relPeriodo, setRelPeriodo] = useState(new Date().toISOString().slice(0, 7))
   const [relTipo, setRelTipo] = useState<RelTipo>('dre')
@@ -277,8 +281,16 @@ export default function FinanceiroPage() {
     else toast.error(error.message)
   }
 
-  async function receberPago(r: any) {
-    const dt = today()
+  function abrirRecebimento(r: any) {
+    setRecebItem(r)
+    setRecebData(today())
+    setModalReceber(true)
+  }
+
+  async function confirmarRecebimento() {
+    if (!recebItem) return
+    const r = recebItem
+    const dt = recebData || today()
     await supabase.from('bm_contas_receber').update({ status: 'pago', data_pagamento: dt, valor_pago: r.valor }).eq('id', r.id)
     if (contaSel) {
       await supabase.from('bm_extrato').insert([{
@@ -288,6 +300,8 @@ export default function FinanceiroPage() {
       }])
     }
     toast.success('Recebimento registrado!')
+    setModalReceber(false)
+    setRecebItem(null)
     fetchAll()
     if (contaSel) fetchExtrato(contaSel)
   }
@@ -337,13 +351,14 @@ export default function FinanceiroPage() {
     setPagtoItem(p)
     setPagtoJuros('0')
     setPagtoMulta('0')
+    setPagtoData(today())
     setModalPagto(true)
   }
 
   async function confirmarPagamento() {
     if (!pagtoItem) return
     const p = pagtoItem
-    const dt = today()
+    const dt = pagtoData || today()
     const juros = parseFloat(pagtoJuros) || 0
     const multa = parseFloat(pagtoMulta) || 0
     const totalPago = p.valor + juros + multa
@@ -815,7 +830,7 @@ export default function FinanceiroPage() {
                       </div>
                       <div className="text-right flex-shrink-0 ml-4">
                         <p className="text-sm font-bold text-red-600 tabular-nums">{fmt(r.valor)}</p>
-                        <button onClick={() => receberPago(r)} className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 mt-0.5">Marcar recebido →</button>
+                        <button onClick={() => abrirRecebimento(r)} className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 mt-0.5">Marcar recebido →</button>
                       </div>
                     </div>
                   ))}
@@ -886,7 +901,7 @@ export default function FinanceiroPage() {
                         <td className="px-5 py-3.5"><StatusBadge status={atrasado ? 'vencido' : r.status} map={STATUS_R} /></td>
                         <td className="px-5 py-3.5">
                           <div className="flex items-center gap-3">
-                            {r.status === 'aguardando' && <button onClick={() => receberPago(r)} className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 whitespace-nowrap">Recebido ✓</button>}
+                            {r.status === 'aguardando' && <button onClick={() => abrirRecebimento(r)} className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 whitespace-nowrap">Recebido ✓</button>}
                             {r.status === 'pago' && <button onClick={() => estornarR(r)} className="text-xs font-semibold text-amber-600 hover:text-amber-700 whitespace-nowrap">Estornar</button>}
                             <button onClick={() => {
                               setEditId(r.id)
@@ -1501,6 +1516,13 @@ export default function FinanceiroPage() {
                   </div>
                 </div>
 
+                {/* Data do pagamento */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1.5">Data do pagamento</label>
+                  <input type="date" value={pagtoData} onChange={e => setPagtoData(e.target.value)}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400 transition-all" />
+                </div>
+
                 {/* Multa + Juros */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -1538,6 +1560,49 @@ export default function FinanceiroPage() {
           </div>
         )
       })()}
+
+      {/* ── MODAL CONFIRMAR RECEBIMENTO ── */}
+      {modalReceber && recebItem && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl">
+            <div className="px-6 py-5 border-b border-slate-100">
+              <h2 className="text-base font-bold text-slate-900">Confirmar Recebimento</h2>
+              <p className="text-xs text-slate-400 mt-0.5">{recebItem.descricao}</p>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="bg-slate-50 rounded-xl p-4 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500">Cliente</span>
+                  <span className="font-semibold text-slate-800">{recebItem.cliente?.nome || '—'}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500">Vencimento</span>
+                  <span className="font-semibold text-slate-800">{fmtDate(recebItem.data_vencimento)}</span>
+                </div>
+                <div className="flex justify-between text-sm border-t border-slate-200 pt-2 mt-1">
+                  <span className="text-slate-500">Valor</span>
+                  <span className="font-bold text-emerald-700 tabular-nums">{fmt(recebItem.valor)}</span>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1.5">Data do recebimento</label>
+                <input type="date" value={recebData} onChange={e => setRecebData(e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400 transition-all" />
+              </div>
+              <div className="flex gap-3 pt-1">
+                <button type="button" onClick={() => { setModalReceber(false); setRecebItem(null) }}
+                  className="flex-1 bg-slate-100 text-slate-600 py-2.5 rounded-xl font-semibold text-sm hover:bg-slate-200 transition-colors">
+                  Cancelar
+                </button>
+                <button onClick={confirmarRecebimento}
+                  className="flex-1 bg-emerald-600 text-white py-2.5 rounded-xl font-semibold text-sm hover:bg-emerald-700 transition-colors">
+                  Confirmar Recebimento
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── MODAL CONCILIAÇÃO OFX/CSV ── */}
       {modalOFX && (
