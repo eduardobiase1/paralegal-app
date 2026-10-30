@@ -14,8 +14,8 @@ const EMPTY: CellInfo = { date: null, pendente: false }
 const COLS: Array<{ key: CellKey; label: string }> = [
   { key: 'federal',        label: 'CND Federal' },
   { key: 'estadual',       label: 'CND Estadual' },
-  { key: 'municipal',      label: 'CND Municipal' },
   { key: 'fgts',           label: 'FGTS' },
+  { key: 'municipal',      label: 'CND Municipal' },
   { key: 'trabalhista',    label: 'Trabalhista' },
   { key: 'previdenciaria', label: 'Previdenciária' },
   { key: 'alvara',         label: 'Alvará' },
