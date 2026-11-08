@@ -7,6 +7,8 @@ import { useOrg } from '@/lib/org-context'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import { registrarAcao } from '@/lib/atividade'
+import { Search, ExternalLink, Ellipsis } from 'lucide-react'
+import { SEFAZ_URLS } from '@/types'
 
 const EMPTY_FORM = {
   id: '',
@@ -37,13 +39,40 @@ function diasParaVencer(data?: string): number | null {
   return Math.round((venc.getTime() - hoje.getTime()) / 86400000)
 }
 
-function vencBadge(dias: number | null) {
-  if (dias === null) return { cls: 'bg-slate-100 text-slate-400', label: 'Sem data' }
-  if (dias < 0)   return { cls: 'bg-red-600 text-white',          label: `Vencida há ${Math.abs(dias)}d` }
-  if (dias <= 15) return { cls: 'bg-red-100 text-red-700',        label: `${dias}d` }
-  if (dias <= 30) return { cls: 'bg-orange-100 text-orange-700',  label: `${dias}d` }
-  if (dias <= 60) return { cls: 'bg-yellow-100 text-yellow-700',  label: `${dias}d` }
-  return             { cls: 'bg-emerald-100 text-emerald-700', label: `${dias}d` }
+const MESES_ABREV = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ']
+
+// Grupos da agenda, do mais urgente ao mais distante
+const GRUPOS_AGENDA: Array<{ id: string; titulo: string; tom: 'red' | 'orange' | 'slate'; teste: (d: number | null) => boolean }> = [
+  { id: 'vencidas', titulo: 'Vencidas',                tom: 'red',    teste: d => d !== null && d < 0 },
+  { id: 'ate5',     titulo: 'Vencem em até 5 dias',    tom: 'orange', teste: d => d !== null && d >= 0 && d <= 5 },
+  { id: 'ate15',    titulo: 'Vencem em 6 a 15 dias',   tom: 'slate',  teste: d => d !== null && d > 5 && d <= 15 },
+  { id: 'ate30',    titulo: 'Vencem em 16 a 30 dias',  tom: 'slate',  teste: d => d !== null && d > 15 && d <= 30 },
+  { id: 'semdata',  titulo: 'Sem data de vencimento',  tom: 'slate',  teste: d => d === null },
+]
+
+const TOM_DATA: Record<string, string> = {
+  red:    'bg-red-50 text-red-800',
+  orange: 'bg-orange-50 text-orange-800',
+  slate:  'bg-slate-100 text-slate-700',
+  green:  'bg-green-50 text-green-800',
+}
+
+function prazoTexto(d: number | null) {
+  if (d === null) return 'sem data de vencimento'
+  if (d < 0) return `venceu há ${-d} dia${d === -1 ? '' : 's'}`
+  if (d === 0) return 'vence hoje'
+  return `vence em ${d} dia${d === 1 ? '' : 's'}`
+}
+
+// Portal de emissão de cada tipo de certidão
+function portalCertidao(i: any): string | null {
+  const t = (i.tipo || '').toLowerCase()
+  if (t === 'federal' || t.startsWith('previd')) return 'https://servicos.receitafederal.gov.br/servico/certidoes/#/home/cnpj'
+  if (t === 'trabalhista') return 'https://cndt-certidao.tst.jus.br'
+  if (t === 'fgts') return 'https://consulta-crf.caixa.gov.br'
+  if (t === 'estadual') return SEFAZ_URLS[i.empresas?.uf] || null
+  if (t === 'municipal') return i.empresas?.url_certidao_municipal || null
+  return null
 }
 
 function CertidoesPage() {
@@ -59,7 +88,8 @@ function CertidoesPage() {
   const [saving, setSaving] = useState(false)
   const [search, setSearch] = useState('')
   const [filterPendencia, setFilterPendencia] = useState('todas')
-  const [filterPrazo, setFilterPrazo] = useState<'todas' | 'vencidas' | 'alerta' | 'ok'>('todas')
+  const [mostrarEmDia, setMostrarEmDia] = useState(false)
+  const [menuAberto, setMenuAberto] = useState<string | null>(null)
   const [comunicandoItem, setComunicandoItem] = useState<any | null>(null)
 
   const [form, setForm] = useState<typeof EMPTY_FORM>({ ...EMPTY_FORM })
@@ -69,7 +99,7 @@ function CertidoesPage() {
     if (!orgId) return
     const [res, empRes] = await Promise.all([
       // só certidões de empresas da organização selecionada
-      supabase.from('certidoes').select('*, empresas!inner(razao_social, org_id)').eq('empresas.org_id', orgId).order('data_vencimento', { ascending: true }),
+      supabase.from('certidoes').select('*, empresas!inner(razao_social, org_id, cnpj, uf, url_certidao_municipal)').eq('empresas.org_id', orgId).order('data_vencimento', { ascending: true }),
       supabase.from('empresas').select('id, razao_social').eq('org_id', orgId).order('razao_social'),
     ])
     setData(res.data || [])
@@ -244,10 +274,13 @@ function CertidoesPage() {
     load()
   }
 
-  // Métricas
-  const totalVencidas = data.filter(i => { const d = diasParaVencer(i.data_vencimento); return d !== null && d < 0 }).length
-  const totalAlerta   = data.filter(i => { const d = diasParaVencer(i.data_vencimento); return d !== null && d >= 0 && d <= 30 }).length
-  const totalOk       = data.filter(i => { const d = diasParaVencer(i.data_vencimento); return d === null || d > 30 }).length
+  // Fecha o menu "⋯" ao clicar fora
+  useEffect(() => {
+    if (!menuAberto) return
+    const fechar = () => setMenuAberto(null)
+    document.addEventListener('click', fechar)
+    return () => document.removeEventListener('click', fechar)
+  }, [menuAberto])
 
   // Filtro/busca
   const empresaNome = empresaFiltro ? (empresas.find(e => e.id === empresaFiltro)?.razao_social || '') : ''
@@ -258,14 +291,89 @@ function CertidoesPage() {
       (i.tipo || '').toLowerCase().includes(search.toLowerCase()) ||
       (i.orgao_emissor || '').toLowerCase().includes(search.toLowerCase())
     const matchPend = filterPendencia === 'todas' || (i.pendencia_status || 'nenhuma') === filterPendencia
-    const d = diasParaVencer(i.data_vencimento)
-    const matchPrazo =
-      filterPrazo === 'todas'   ? true :
-      filterPrazo === 'vencidas'? (d !== null && d < 0) :
-      filterPrazo === 'alerta'  ? (d !== null && d >= 0 && d <= 30) :
-      /* ok */                    (d === null || d > 30)
-    return matchEmpresa && matchSearch && matchPend && matchPrazo
+    return matchEmpresa && matchSearch && matchPend
   })
+
+  // Agenda: agrupa pelo prazo de vencimento, da mais urgente para a mais distante
+  const ordenadas = [...filtered].sort((x, y) => (x.data_vencimento || '9999').localeCompare(y.data_vencimento || '9999'))
+  const grupos = GRUPOS_AGENDA
+    .map(g => ({ ...g, itens: ordenadas.filter(i => g.teste(diasParaVencer(i.data_vencimento))) }))
+    .filter(g => g.itens.length > 0)
+  const emDia = ordenadas.filter(i => { const d = diasParaVencer(i.data_vencimento); return d !== null && d > 30 })
+  const exibirEmDia = mostrarEmDia || !!search
+
+  function abrirPortal(i: any) {
+    const cnpj = (i.empresas?.cnpj || '').replace(/\D/g, '')
+    if (cnpj) {
+      navigator.clipboard?.writeText(cnpj).then(() => toast.success('CNPJ copiado — é só colar no portal')).catch(() => {})
+    }
+  }
+
+  function linhaCertidao(i: any, tom: string) {
+    const d = diasParaVencer(i.data_vencimento)
+    const venc = i.data_vencimento ? new Date(i.data_vencimento + 'T00:00:00') : null
+    const pend = PENDENCIA_OPTIONS.find(p => p.value === (i.pendencia_status || 'nenhuma'))
+    const portal = portalCertidao(i)
+    return (
+      <div key={i.id} className="flex flex-wrap items-center gap-x-5 gap-y-2 px-5 py-3">
+        <div className={`w-14 flex-shrink-0 rounded-lg py-1 text-center ${TOM_DATA[tom]}`}>
+          {venc ? (
+            <>
+              <div className="text-xl font-bold leading-tight">{String(venc.getDate()).padStart(2, '0')}</div>
+              <div className="text-xs font-semibold">{MESES_ABREV[venc.getMonth()]}{venc.getFullYear() !== new Date().getFullYear() ? ` ${String(venc.getFullYear()).slice(2)}` : ''}</div>
+            </>
+          ) : <div className="text-sm font-semibold py-2">—</div>}
+        </div>
+
+        <div className="flex-1 min-w-[16rem]">
+          <Link href={`/empresas/${i.empresa_id}`} className="font-semibold text-slate-900 hover:underline underline-offset-2 break-words">
+            {i.empresas?.razao_social}
+          </Link>
+          <p className="text-sm text-slate-600">Certidão {i.tipo} · {i.orgao_emissor} · {prazoTexto(d)}</p>
+        </div>
+
+        <div className="w-56 flex-shrink-0 text-sm">
+          {pend && pend.value === 'impossivel_renovar' && <p className="font-bold text-red-700">Pendente · não foi possível renovar</p>}
+          {pend && pend.value !== 'nenhuma' && pend.value !== 'impossivel_renovar' && <p className="text-slate-700">{pend.label}</p>}
+          {i.comunicado_em && (
+            <p className="text-xs text-slate-500">Cliente comunicado em {new Date(i.comunicado_em).toLocaleDateString('pt-BR')}{(i.comunicado_count || 0) > 1 ? ` (${i.comunicado_count}×)` : ''}</p>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1 ml-auto">
+          {portal && (
+            <a href={portal} target="_blank" rel="noopener noreferrer" onClick={() => abrirPortal(i)}
+              className="inline-flex items-center gap-1.5 h-10 px-3 rounded-lg text-sm font-semibold text-blue-700 hover:bg-blue-50">
+              Abrir portal<span className="sr-only"> da certidão {i.tipo} de {i.empresas?.razao_social}</span>
+              <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
+            </a>
+          )}
+          <button onClick={() => openRenovar(i)}
+            className="h-10 px-4 rounded-lg border border-slate-300 bg-white text-sm font-semibold text-slate-900 hover:bg-slate-50">
+            Renovar
+          </button>
+          <div className="relative">
+            <button aria-label="Mais ações" aria-expanded={menuAberto === i.id}
+              onClick={e => { e.stopPropagation(); setMenuAberto(menuAberto === i.id ? null : i.id) }}
+              className="h-10 w-10 inline-flex items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100">
+              <Ellipsis className="w-5 h-5" aria-hidden="true" />
+            </button>
+            {menuAberto === i.id && (
+              <div onClick={e => e.stopPropagation()}
+                className="absolute right-0 top-11 z-20 w-52 bg-white border border-slate-200 rounded-lg shadow-lg py-1">
+                <button onClick={() => { setMenuAberto(null); openEditar(i) }}
+                  className="w-full text-left px-3 py-2 text-sm text-slate-800 hover:bg-slate-50">Editar</button>
+                <button onClick={() => { setMenuAberto(null); setComunicandoItem(i) }}
+                  className="w-full text-left px-3 py-2 text-sm text-slate-800 hover:bg-slate-50">Comunicar cliente</button>
+                <button onClick={() => { setMenuAberto(null); handleDelete(i.id) }}
+                  className="w-full text-left px-3 py-2 text-sm text-red-700 hover:bg-red-50">Excluir</button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   const modalTitle = { novo: 'Nova Certidão Negativa', editar: 'Editar Certidão', renovar: 'Renovar Certidão' }
 
@@ -363,183 +471,79 @@ function CertidoesPage() {
         </div>
       )}
 
-      {/* Header */}
-      <header className="flex flex-wrap justify-between items-center gap-3 bg-white p-4 md:p-6 rounded-2xl border border-slate-200 shadow-sm">
+      {/* Cabeçalho */}
+      <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs font-bold uppercase tracking-wide text-blue-600 mb-1">CONTROLES</p>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Certidões Negativas</h1>
-          <p className="text-sm text-slate-400 mt-0.5">{empresaNome || orgName}</p>
+          <h1 className="text-2xl font-bold text-slate-900">Certidões</h1>
+          <p className="text-sm text-slate-600 mt-1">
+            {filtered.length} {filtered.length === 1 ? 'certidão' : 'certidões'}{empresaNome ? ` de ${empresaNome}` : ''}, organizadas pela data em que vencem
+          </p>
         </div>
-        <button onClick={openNovo} className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-800 transition-all whitespace-nowrap">
-          + Nova Certidão
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="flex items-center gap-2 h-11 px-3 bg-white border border-slate-300 rounded-lg text-slate-500">
+            <Search className="w-4 h-4" aria-hidden="true" />
+            <input value={search} onChange={e => setSearch(e.target.value)}
+              aria-label="Buscar por empresa, tipo ou órgão" placeholder="Buscar empresa, tipo ou órgão"
+              className="w-56 bg-transparent outline-none text-sm text-slate-900 placeholder:text-slate-500" />
+          </label>
+          <select value={filterPendencia} onChange={e => setFilterPendencia(e.target.value)} aria-label="Situação"
+            className="h-11 px-3 bg-white border border-slate-300 rounded-lg text-sm text-slate-900">
+            <option value="todas">Todas as situações</option>
+            {PENDENCIA_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+          <button onClick={openNovo} className="h-11 px-4 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 whitespace-nowrap">
+            Nova certidão
+          </button>
+        </div>
       </header>
 
-      {/* Métricas */}
-      {!empresaFiltro && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <button onClick={() => setFilterPrazo('todas')}
-            className={`text-left p-4 rounded-xl border transition-all ${filterPrazo === 'todas' ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-200 hover:border-slate-300'}`}>
-            <p className={`text-xs font-bold uppercase tracking-wide mb-1 ${filterPrazo === 'todas' ? 'text-slate-400' : 'text-slate-400'}`}>Total</p>
-            <p className={`text-2xl font-bold ${filterPrazo === 'todas' ? 'text-white' : 'text-slate-800'}`}>{data.length}</p>
-            <p className={`text-xs mt-0.5 ${filterPrazo === 'todas' ? 'text-slate-400' : 'text-slate-400'}`}>certidões cadastradas</p>
-          </button>
-          <button onClick={() => setFilterPrazo(filterPrazo === 'vencidas' ? 'todas' : 'vencidas')}
-            className={`text-left p-4 rounded-xl border transition-all ${filterPrazo === 'vencidas' ? 'bg-red-600 border-red-600 text-white' : 'bg-white border-slate-200 hover:border-red-200'}`}>
-            <p className={`text-xs font-bold uppercase tracking-wide mb-1 ${filterPrazo === 'vencidas' ? 'text-red-200' : 'text-slate-400'}`}>Vencidas</p>
-            <p className={`text-2xl font-bold ${filterPrazo === 'vencidas' ? 'text-white' : totalVencidas > 0 ? 'text-red-600' : 'text-slate-800'}`}>{totalVencidas}</p>
-            <p className={`text-xs mt-0.5 ${filterPrazo === 'vencidas' ? 'text-red-200' : 'text-slate-400'}`}>exigem ação imediata</p>
-          </button>
-          <button onClick={() => setFilterPrazo(filterPrazo === 'alerta' ? 'todas' : 'alerta')}
-            className={`text-left p-4 rounded-xl border transition-all ${filterPrazo === 'alerta' ? 'bg-orange-500 border-orange-500 text-white' : 'bg-white border-slate-200 hover:border-orange-200'}`}>
-            <p className={`text-xs font-bold uppercase tracking-wide mb-1 ${filterPrazo === 'alerta' ? 'text-orange-100' : 'text-slate-400'}`}>Vencendo em 30d</p>
-            <p className={`text-2xl font-bold ${filterPrazo === 'alerta' ? 'text-white' : totalAlerta > 0 ? 'text-orange-500' : 'text-slate-800'}`}>{totalAlerta}</p>
-            <p className={`text-xs mt-0.5 ${filterPrazo === 'alerta' ? 'text-orange-100' : 'text-slate-400'}`}>requerem atenção</p>
-          </button>
-          <button onClick={() => setFilterPrazo(filterPrazo === 'ok' ? 'todas' : 'ok')}
-            className={`text-left p-4 rounded-xl border transition-all ${filterPrazo === 'ok' ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-white border-slate-200 hover:border-emerald-200'}`}>
-            <p className={`text-xs font-bold uppercase tracking-wide mb-1 ${filterPrazo === 'ok' ? 'text-emerald-100' : 'text-slate-400'}`}>Regulares</p>
-            <p className={`text-2xl font-bold ${filterPrazo === 'ok' ? 'text-white' : 'text-emerald-600'}`}>{totalOk}</p>
-            <p className={`text-xs mt-0.5 ${filterPrazo === 'ok' ? 'text-emerald-100' : 'text-slate-400'}`}>dentro do prazo</p>
-          </button>
+      {/* Agenda de vencimentos */}
+      {loading ? (
+        <div className="space-y-2">
+          {[...Array(4)].map((_, k) => <div key={k} className="h-16 bg-white rounded-xl border border-slate-200 animate-pulse" />)}
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="bg-white border border-slate-200 rounded-xl px-6 py-12 text-center text-sm text-slate-600">
+          {data.length === 0 ? 'Nenhuma certidão cadastrada.' : 'Nenhuma certidão encontrada com esses filtros.'}
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {grupos.length === 0 && (
+            <p className="text-sm text-slate-600">Nenhuma certidão vence nos próximos 30 dias.</p>
+          )}
+          {grupos.map(g => (
+            <section key={g.id} className="space-y-2" aria-label={g.titulo}>
+              <div className="flex items-baseline gap-2">
+                <h2 className="text-base font-bold text-slate-900">{g.titulo}</h2>
+                <span className="text-sm text-slate-500">{g.itens.length} {g.itens.length === 1 ? 'certidão' : 'certidões'}</span>
+              </div>
+              <div className="bg-white border border-slate-200 rounded-xl divide-y divide-slate-100">
+                {g.itens.map(i => linhaCertidao(i, g.tom))}
+              </div>
+            </section>
+          ))}
+
+          {emDia.length > 0 && (exibirEmDia ? (
+            <section className="space-y-2" aria-label="Em dia">
+              <div className="flex items-baseline gap-2">
+                <h2 className="text-base font-bold text-slate-900">Em dia</h2>
+                <span className="text-sm text-slate-500">{emDia.length} {emDia.length === 1 ? 'certidão vence' : 'certidões vencem'} depois de 30 dias</span>
+                {!search && (
+                  <button onClick={() => setMostrarEmDia(false)} className="ml-auto text-sm font-semibold text-slate-600 hover:text-slate-900">Recolher</button>
+                )}
+              </div>
+              <div className="bg-white border border-slate-200 rounded-xl divide-y divide-slate-100">
+                {emDia.map(i => linhaCertidao(i, 'green'))}
+              </div>
+            </section>
+          ) : (
+            <button onClick={() => setMostrarEmDia(true)}
+              className="h-11 px-4 rounded-lg border border-dashed border-slate-300 text-sm font-semibold text-slate-700 hover:bg-white">
+              Mostrar as {emDia.length} {emDia.length === 1 ? 'certidão em dia' : 'certidões em dia'} (vencem depois de 30 dias)
+            </button>
+          ))}
         </div>
       )}
-
-      {/* Filtros */}
-      <div className="flex flex-wrap gap-3">
-        <div className="relative flex-1 min-w-[200px]">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none">🔍</span>
-          <input
-            placeholder="Buscar por empresa, tipo ou órgão..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 pl-9 text-sm outline-none focus:border-slate-400 transition-all"
-          />
-        </div>
-        <select
-          value={filterPendencia}
-          onChange={e => setFilterPendencia(e.target.value)}
-          className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-slate-400"
-        >
-          <option value="todas">Todas as pendências</option>
-          {PENDENCIA_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
-      </div>
-
-      {/* Tabela */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left min-w-[700px]">
-            <thead className="bg-slate-50 border-b border-slate-200 text-xs font-bold uppercase text-slate-500 tracking-wide">
-              <tr>
-                <th className="px-5 py-4">Empresa</th>
-                <th className="px-5 py-4">Tipo</th>
-                <th className="px-5 py-4">Órgão Emissor</th>
-                <th className="px-5 py-4">Emissão</th>
-                <th className="px-5 py-4">Vencimento</th>
-                <th className="px-5 py-4">Prazo</th>
-                <th className="px-5 py-4">Pendência</th>
-                <th className="px-5 py-4 text-right">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filtered.map(i => {
-                const dias = diasParaVencer(i.data_vencimento)
-                const { cls: vCls, label: vLabel } = vencBadge(dias)
-                const pend = PENDENCIA_OPTIONS.find(p => p.value === (i.pendencia_status || 'nenhuma')) || PENDENCIA_OPTIONS[0]
-                return (
-                  <tr key={i.id}
-                    className={`hover:bg-slate-50 transition-colors ${dias !== null && dias < 0 ? 'bg-red-50/40' : dias !== null && dias <= 15 ? 'bg-orange-50/40' : ''}`}
-                    style={{ borderLeft: dias !== null && dias < 0 ? '3px solid #ef4444' : dias !== null && dias <= 30 ? '3px solid #f97316' : dias !== null && dias <= 60 ? '3px solid #eab308' : '3px solid transparent' }}
-                  >
-                    <td className="px-5 py-3.5 max-w-[180px]">
-                      <Link href={`/empresas/${i.empresa_id}`}
-                        className="text-sm font-bold text-slate-800 hover:text-blue-600 hover:underline underline-offset-2 transition-colors break-words block"
-                        title="Ver cadastro da empresa">
-                        {i.empresas?.razao_social}
-                      </Link>
-                    </td>
-                    <td className="px-5 py-3.5 text-xs font-bold uppercase text-slate-600">{i.tipo}</td>
-                    <td className="px-5 py-3.5 text-xs text-slate-500">{i.orgao_emissor}</td>
-                    <td className="px-5 py-3.5">
-                      <span className="text-xs font-mono text-slate-600 block">
-                        {i.data_emissao ? new Date(i.data_emissao + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}
-                      </span>
-                      {i.data_emissao && (() => {
-                        const d = new Date(); d.setHours(0,0,0,0)
-                        const e = new Date(i.data_emissao + 'T00:00:00')
-                        const diff = Math.round((d.getTime() - e.getTime()) / 86400000)
-                        return <span className="text-xs text-slate-400">{diff === 0 ? 'hoje' : `há ${diff}d`}</span>
-                      })()}
-                    </td>
-                    <td className="px-5 py-3.5 text-xs font-mono font-bold text-slate-700">
-                      {i.data_vencimento ? new Date(i.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${vCls}`}>{vLabel}</span>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      {pend.value !== 'nenhuma' && (
-                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${pend.badge}`}>{pend.label}</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3.5 text-right">
-                      <div className="flex items-center justify-end gap-1.5 flex-wrap">
-                        {/* Comunicar — só para impossível renovar */}
-                        {(i.pendencia_status || 'nenhuma') === 'impossivel_renovar' && !i.comunicado_em && (
-                          <button onClick={() => setComunicandoItem(i)} title="Gerar comunicado"
-                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-violet-50 hover:bg-violet-100 text-violet-700 text-xs font-bold uppercase transition-all">
-                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                            </svg>
-                            Comunicar
-                          </button>
-                        )}
-                        {(i.pendencia_status || 'nenhuma') === 'impossivel_renovar' && i.comunicado_em && (
-                          <button onClick={() => setComunicandoItem(i)} title={`Comunicado para ${i.comunicado_para || '?'} em ${new Date(i.comunicado_em).toLocaleDateString('pt-BR')}`}
-                            className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-xs font-bold transition-all hover:bg-green-200">
-                            ✓ Comunicado{(i.comunicado_count || 0) > 1 ? ` (${i.comunicado_count}×)` : ''}
-                          </button>
-                        )}
-                        {/* Renovar */}
-                        <button
-                          onClick={() => openRenovar(i)}
-                          title="Renovar certidão"
-                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold uppercase transition-all"
-                        >
-                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                          </svg>
-                          Renovar
-                        </button>
-                        {/* Editar */}
-                        <button
-                          onClick={() => openEditar(i)}
-                          title="Editar certidão"
-                          className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-yellow-100 text-slate-500 hover:text-yellow-700 flex items-center justify-center text-sm transition-all"
-                        >✎</button>
-                        {/* Excluir */}
-                        <button
-                          onClick={() => handleDelete(i.id)}
-                          title="Excluir"
-                          className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-red-100 text-slate-400 hover:text-red-600 flex items-center justify-center text-xs transition-all"
-                        >✕</button>
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-              {filtered.length === 0 && !loading && (
-                <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-slate-400 italic text-sm">
-                    {data.length === 0 ? 'Nenhuma certidão cadastrada.' : 'Nenhum resultado para os filtros aplicados.'}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
 
       {/* Modal Comunicado */}
       {comunicandoItem && (
