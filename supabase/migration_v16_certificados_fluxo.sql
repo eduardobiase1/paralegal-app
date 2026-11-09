@@ -17,7 +17,6 @@ ALTER TABLE public.certificados_digitais
   ADD COLUMN IF NOT EXISTS agendamento_modalidade text,
   ADD COLUMN IF NOT EXISTS oferta_renovacao_em    date,
   ADD COLUMN IF NOT EXISTS renovacao_de           uuid REFERENCES public.certificados_digitais(id) ON DELETE SET NULL,
-  ADD COLUMN IF NOT EXISTS titular_cpf            text,
   ADD COLUMN IF NOT EXISTS titular_email          text,
   ADD COLUMN IF NOT EXISTS titular_telefone       text,
   ADD COLUMN IF NOT EXISTS data_conclusao         date;   -- já criada na v14; repetida por segurança

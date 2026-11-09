@@ -9,7 +9,7 @@ import toast from 'react-hot-toast'
 import { registrarAcao, diaLocal } from '@/lib/atividade'
 
 // Colunas da migration_v16 — se ainda não existirem, salva sem elas
-const COLUNAS_V16 = ['titular_cpf', 'titular_email', 'titular_telefone', 'cliente_pagou_em']
+const COLUNAS_V16 = ['titular_email', 'titular_telefone', 'cliente_pagou_em']
 
 const ACS = ['Serasa', 'Certisign', 'Valid', 'Soluti', 'Safeweb', 'VRSafe', 'Outro']
 
@@ -42,7 +42,6 @@ export default function CertificadoForm({ empresas, certificado, defaultEmpresaI
     empresa_nome_livre:     certificado?.empresa_nome_livre ?? '',
     empresa_cnpj_livre:     certificado?.empresa_cnpj_livre ?? '',
     titular:                certificado?.titular ?? '',
-    titular_cpf:            (certificado as any)?.titular_cpf ?? '',
     titular_email:          (certificado as any)?.titular_email ?? '',
     titular_telefone:       (certificado as any)?.titular_telefone ?? '',
     tipo:                   certificado?.tipo ?? 'A1',
@@ -80,7 +79,6 @@ export default function CertificadoForm({ empresas, certificado, defaultEmpresaI
 
     const payload: Record<string, any> = {
       titular:                  form.titular,
-      titular_cpf:              form.titular_cpf.trim() || null,
       titular_email:            form.titular_email.trim() || null,
       titular_telefone:         form.titular_telefone.trim() || null,
       tipo:                     form.tipo,
@@ -119,7 +117,7 @@ export default function CertificadoForm({ empresas, certificado, defaultEmpresaI
     if (error && COLUNAS_V16.some(c => error!.message?.includes(c))) {
       const semNovas = Object.fromEntries(Object.entries(payload).filter(([k]) => !COLUNAS_V16.includes(k)))
       ;({ error } = await gravar(semNovas))
-      if (!error) toast('Salvo sem CPF/e-mail/telefone do titular — rode a migration_v16 no Supabase.')
+      if (!error) toast('Salvo sem e-mail/telefone do titular — rode a migration_v16 no Supabase.')
     }
 
     setLoading(false)
@@ -173,12 +171,7 @@ export default function CertificadoForm({ empresas, certificado, defaultEmpresaI
       </div>
 
       {/* Dados do titular pedidos pela certificadora */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div>
-          <label className="label">CPF do titular</label>
-          <input className="input font-mono" placeholder="000.000.000-00"
-            value={form.titular_cpf} onChange={e => set('titular_cpf', e.target.value)} />
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="label">E-mail do titular</label>
           <input className="input" type="email" placeholder="email@cliente.com.br"

@@ -305,7 +305,6 @@ function CertificadosPageInner() {
       `Razão social: ${(c.razao_social || '').toUpperCase()}`,
       `CNPJ: ${c.cnpj ? formatCNPJ(c.cnpj) : '—'}`,
       `Titular: ${(c.titular || '').toUpperCase()}`,
-      `CPF do titular: ${c.titular_cpf || '—'}`,
       `E-mail: ${c.titular_email || e.email || '—'}`,
       `Telefone: ${c.titular_telefone || e.telefone || '—'}`,
       `Endereço: ${endereco || '—'}`,
@@ -383,7 +382,7 @@ function CertificadosPageInner() {
       titular: c.titular, tipo: c.tipo, uso: c.uso, autoridade_certificadora: c.autoridade_certificadora,
       localizacao_fisica: c.localizacao_fisica, pagamento_confirmado: true, certificado_finalizado: false,
     }
-    const novos = { cliente_pagou_em: diaLocal(), renovacao_de: c.id, titular_cpf: c.titular_cpf, titular_email: c.titular_email, titular_telefone: c.titular_telefone }
+    const novos = { cliente_pagou_em: diaLocal(), renovacao_de: c.id, titular_email: c.titular_email, titular_telefone: c.titular_telefone }
     let { data, error } = await supabase.from('certificados_digitais').insert({ ...base, ...novos }).select('id').single()
     if (erroDeColuna(error)) {
       ;({ data, error } = await supabase.from('certificados_digitais').insert(base).select('id').single())
@@ -468,17 +467,17 @@ function CertificadosPageInner() {
     if (lista.length === 0) { toast.error('Nada para exportar.'); return }
     const XLSX = await import('xlsx')
     const linhas = lista.map(c => [
-      c.razao_social, c.cnpj ? formatCNPJ(c.cnpj) : '', c.titular, c.titular_cpf || '', c.tipo, c.uso, c.autoridade_certificadora,
+      c.razao_social, c.cnpj ? formatCNPJ(c.cnpj) : '', c.titular, c.tipo, c.uso, c.autoridade_certificadora,
       c.created_at ? formatDate(cadastradoEm(c)) : '',
       c.certificado_finalizado ? 'Emitido' : ETAPAS[etapaAtual(c)].parado,
       c.boleto_valor != null ? Number(c.boleto_valor) : '', c.voucher_numero || '', fmtDateTime(c.data_agendamento),
       c.data_emissao ? formatDate(c.data_emissao) : '', c.data_vencimento ? formatDate(c.data_vencimento) : '',
       concluidoEm(c) ? formatDate(concluidoEm(c)) : '', c.observacoes || '',
     ])
-    const titulos = ['Empresa', 'CNPJ', 'Titular', 'CPF do titular', 'Tipo', 'Uso', 'Autoridade certificadora', 'Cadastrado em',
+    const titulos = ['Empresa', 'CNPJ', 'Titular', 'Tipo', 'Uso', 'Autoridade certificadora', 'Cadastrado em',
       'Etapa', 'Valor do boleto', 'Voucher', 'Atendimento', 'Emissão', 'Vencimento', 'Concluído em', 'Observações']
     const ws = XLSX.utils.aoa_to_sheet([...cabecalho, titulos, ...linhas])
-    ws['!cols'] = [38, 20, 28, 16, 6, 10, 20, 14, 24, 14, 14, 18, 12, 12, 14, 40].map(wch => ({ wch }))
+    ws['!cols'] = [38, 20, 28, 6, 10, 20, 14, 24, 14, 14, 18, 12, 12, 14, 40].map(wch => ({ wch }))
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Certificados')
     XLSX.writeFile(wb, arquivo + '.xlsx')
@@ -798,9 +797,6 @@ function CertificadosPageInner() {
               <h2 className="text-base font-bold text-slate-900">Dados para a certificadora</h2>
               <p className="text-sm text-slate-600">Montado com o cadastro. Um clique copia tudo para colar no e-mail ou no site da certificadora.</p>
               <pre className="m-0 p-3 bg-slate-50 border border-slate-200 rounded-lg text-[0.8rem] leading-relaxed whitespace-pre-wrap font-mono text-slate-900">{textoDados(c)}</pre>
-              {!c.titular_cpf && (
-                <p className="text-sm text-orange-800">Falta o CPF do titular. Use “Editar dados” para completar antes de enviar.</p>
-              )}
               <div className="flex flex-wrap gap-2">
                 <button onClick={() => copiarDados(c)} className={btnPri}>Copiar dados</button>
                 <button onClick={() => abrirEmail(c)} className={btnSec}>Abrir e-mail para a certificadora</button>
