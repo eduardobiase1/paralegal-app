@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, Suspense } from 'react'
+import { useEffect, useState, useCallback, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useOrg } from '@/lib/org-context'
@@ -85,6 +85,15 @@ function AlvarasPage() {
   }, [supabase, orgId])
 
   useEffect(() => { load() }, [load])
+
+  // Vindo da ficha da empresa com ?renovar=ID: abre direto a renovação daquele documento
+  const renovarId = searchParams.get('renovar')
+  const renovarAberto = useRef(false)
+  useEffect(() => {
+    if (!renovarId || renovarAberto.current || dados.length === 0) return
+    const item = dados.find((d: any) => d.id === renovarId)
+    if (item) { renovarAberto.current = true; openRenovar(item) }
+  }, [renovarId, dados])
 
   // ── Criar novo ───────────────────────────────────────────────────────────────
   async function handleSave(e: React.FormEvent) {

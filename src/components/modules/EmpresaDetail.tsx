@@ -1,11 +1,13 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Empresa } from '@/types'
+import toast from 'react-hot-toast'
+import { Empresa, SEFAZ_URLS } from '@/types'
 import HistoricoEmpresa from '@/components/modules/HistoricoEmpresa'
-import { formatCNPJ, formatCEP, endereco } from '@/lib/utils'
+import { createClient } from '@/lib/supabase/client'
+import { formatCNPJ, formatCEP, formatDate } from '@/lib/utils'
 import { capitalExtenso, formatarReais, calcularCapitalSocial } from '@/lib/formatters'
-import { SEFAZ_URLS } from '@/types'
 
 interface Props {
   empresa: Empresa
@@ -23,277 +25,352 @@ function cnaeStr(val: unknown): string {
   return String(val)
 }
 
-const quickLinks = (emp: Empresa) => [
-  { label: 'CND Federal', url: 'https://servicos.receitafederal.gov.br/servico/certidoes/#/home/cnpj', color: 'blue' },
-  { label: 'CNDT Trabalhista', url: 'https://cndt-certidao.tst.jus.br', color: 'purple' },
-  { label: 'FGTS (CRF)', url: 'https://consulta-crf.caixa.gov.br', color: 'orange' },
-  { label: 'e-CAC', url: 'https://cav.receita.fazenda.gov.br', color: 'red' },
-  ...(emp.uf && SEFAZ_URLS[emp.uf] ? [{ label: `SEFAZ-${emp.uf}`, url: SEFAZ_URLS[emp.uf], color: 'green' }] : []),
-  ...(emp.url_certidao_municipal ? [{ label: 'Certidão Municipal', url: emp.url_certidao_municipal, color: 'teal' }] : []),
-  ...(emp.url_portal_alvara ? [{ label: 'Portal Alvará', url: emp.url_portal_alvara, color: 'yellow' }] : []),
-  ...(emp.url_portal_visa ? [{ label: 'Portal VISA', url: emp.url_portal_visa, color: 'pink' }] : []),
+function diasAte(d?: string | null): number | null {
+  if (!d) return null
+  const h = new Date(); h.setHours(0, 0, 0, 0)
+  return Math.round((new Date(d.slice(0, 10) + 'T00:00:00').getTime() - h.getTime()) / 86400000)
+}
+function prazoTexto(d: number | null) {
+  if (d === null) return ''
+  if (d < 0) return `venceu há ${-d} dia${d === -1 ? '' : 's'}`
+  if (d === 0) return 'vence hoje'
+  return `em ${d} dia${d === 1 ? '' : 's'}`
+}
+
+type Linha = {
+  chave: string
+  nome: string
+  orgao: string
+  data: string | null
+  pendente?: boolean
+  situacao?: string
+  portal?: string | null
+  acao?: { label: string; href: string }
+  naoCadastrado?: { href: string }
+}
+
+// Certidões mostradas na ficha, na mesma ordem da Visão Geral
+const CERTIDOES: Array<{ tipo: string; nome: string; orgao: string }> = [
+  { tipo: 'Federal',     nome: 'CND Federal',      orgao: 'Receita Federal / PGFN' },
+  { tipo: 'Estadual',    nome: 'CND Estadual',     orgao: 'SEFAZ' },
+  { tipo: 'FGTS',        nome: 'FGTS',             orgao: 'Caixa · CRF' },
+  { tipo: 'Municipal',   nome: 'CND Municipal',    orgao: 'Prefeitura' },
+  { tipo: 'Trabalhista', nome: 'CNDT Trabalhista', orgao: 'TST' },
 ]
 
-const colorMap: Record<string, string> = {
-  blue:   'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100',
-  purple: 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100',
-  orange: 'bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100',
-  red:    'bg-red-50 text-red-700 border-red-200 hover:bg-red-100',
-  green:  'bg-green-50 text-green-700 border-green-200 hover:bg-green-100',
-  teal:   'bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100',
-  yellow: 'bg-yellow-50 text-yellow-700 border-yellow-200 hover:bg-yellow-100',
-  pink:   'bg-pink-50 text-pink-700 border-pink-200 hover:bg-pink-100',
+const PENDENCIA_LABEL: Record<string, string> = {
+  em_renovacao: 'Em renovação',
+  aguardando_cliente: 'Aguardando cliente',
+  vencida_aguardando: 'Vencida, aguardando',
 }
 
 export default function EmpresaDetail({ empresa: emp }: Props) {
-  const end = endereco(emp)
-  const mapsUrl = end
-    ? `https://www.google.com/maps?q=${encodeURIComponent(end)}`
-    : null
+  const e = emp as any
+  const [supabase] = useState(createClient)
+  const [carregando, setCarregando] = useState(true)
+  const [linhas, setLinhas] = useState<Linha[]>([])
+  const [processos, setProcessos] = useState<any[]>([])
 
-  // Capital social calculado
-  const capFormatado  = (emp as any).capital_social ? formatarReais((emp as any).capital_social) : null
-  const capExtenso    = (emp as any).capital_social ? capitalExtenso((emp as any).capital_social) : null
-  const quotasInfo    = (emp as any).capital_social && (emp as any).valor_quota
-    ? calcularCapitalSocial((emp as any).capital_social, (emp as any).valor_quota)
-    : null
+  const endereco = [[emp.logradouro, emp.numero].filter(Boolean).join(', '), emp.complemento].filter(Boolean).join(' · ')
+  const cidadeUf = [emp.cidade || e.municipio, emp.uf].filter(Boolean).join('/')
+  const enderecoMapa = [endereco, emp.bairro, cidadeUf, emp.cep].filter(Boolean).join(', ')
+  const nomeFantasia = emp.nome_fantasia && /[^*\s]/.test(emp.nome_fantasia) ? emp.nome_fantasia : ''
+  const telDigitos = String(e.telefone || '').replace(/\D/g, '')
 
-  // CNAEs secundários
-  const cnaesSecundarios: string[] = (emp as any).cnaes_secundarios ?? []
+  useEffect(() => {
+    async function carregar() {
+      const [cert, alv, lic, cd, proc] = await Promise.all([
+        supabase.from('certidoes').select('*').eq('empresa_id', emp.id),
+        supabase.from('alvaras').select('*').eq('empresa_id', emp.id),
+        supabase.from('licencas_sanitarias').select('*').eq('empresa_id', emp.id),
+        supabase.from('certificados_digitais').select('*').eq('empresa_id', emp.id),
+        supabase.from('processos_societarios').select('*').eq('empresa_id', emp.id).eq('status', 'Andamento').order('created_at'),
+      ])
+
+      // O documento "atual" de cada tipo é o de vencimento mais distante
+      const maisRecente = (lista: any[]) =>
+        [...lista].sort((a, b) => (b.data_vencimento || '').localeCompare(a.data_vencimento || ''))[0]
+
+      const portais: Record<string, string | null> = {
+        Federal: 'https://servicos.receitafederal.gov.br/servico/certidoes/#/home/cnpj',
+        Estadual: emp.uf ? SEFAZ_URLS[emp.uf] || null : null,
+        FGTS: 'https://consulta-crf.caixa.gov.br',
+        Municipal: emp.url_certidao_municipal || null,
+        Trabalhista: 'https://cndt-certidao.tst.jus.br',
+      }
+
+      const certidoes = cert.data || []
+      const novas: Linha[] = CERTIDOES.map(c => {
+        const doc = maisRecente(certidoes.filter((x: any) => x.tipo === c.tipo))
+        if (!doc) return { chave: c.tipo, nome: c.nome, orgao: c.tipo === 'Estadual' && emp.uf ? `SEFAZ-${emp.uf}` : c.orgao, data: null, naoCadastrado: { href: `/certidoes?empresa=${emp.id}` } }
+        return {
+          chave: c.tipo, nome: c.nome, orgao: doc.orgao_emissor || c.orgao, data: doc.data_vencimento,
+          pendente: doc.pendencia_status === 'impossivel_renovar',
+          situacao: PENDENCIA_LABEL[doc.pendencia_status] || '',
+          portal: portais[c.tipo],
+          acao: { label: 'Renovar', href: `/certidoes?empresa=${emp.id}&renovar=${doc.id}` },
+        }
+      })
+
+      // Previdenciária só aparece se a empresa tiver uma cadastrada
+      const prev = maisRecente(certidoes.filter((x: any) => x.tipo === 'Previdenciária'))
+      if (prev) novas.push({
+        chave: 'prev', nome: 'CND Previdenciária', orgao: prev.orgao_emissor || 'Receita Federal', data: prev.data_vencimento,
+        pendente: prev.pendencia_status === 'impossivel_renovar', situacao: PENDENCIA_LABEL[prev.pendencia_status] || '',
+        portal: portais.Federal, acao: { label: 'Renovar', href: `/certidoes?empresa=${emp.id}&renovar=${prev.id}` },
+      })
+
+      const alvara = maisRecente(alv.data || [])
+      novas.push(alvara
+        ? { chave: 'alvara', nome: 'Alvará de funcionamento', orgao: alvara.orgao_emissor || 'Prefeitura', data: alvara.data_vencimento,
+            portal: emp.url_portal_alvara || null, acao: { label: 'Renovar', href: `/alvaras?empresa=${emp.id}&renovar=${alvara.id}` } }
+        : { chave: 'alvara', nome: 'Alvará de funcionamento', orgao: 'Prefeitura', data: null, naoCadastrado: { href: `/alvaras?empresa=${emp.id}` } })
+
+      const licenca = maisRecente(lic.data || [])
+      novas.push(licenca
+        ? { chave: 'licenca', nome: 'Licença sanitária', orgao: licenca.orgao === 'ANVISA' ? 'ANVISA' : 'VISA municipal', data: licenca.data_vencimento,
+            portal: emp.url_portal_visa || null, acao: { label: 'Atualizar', href: `/licencas?empresa=${emp.id}` } }
+        : { chave: 'licenca', nome: 'Licença sanitária', orgao: 'VISA municipal ou ANVISA', data: null, naoCadastrado: { href: `/licencas?empresa=${emp.id}` } })
+
+      const certs = cd.data || []
+      const emitido = maisRecente(certs.filter((x: any) => x.certificado_finalizado))
+      const emProcesso = certs.find((x: any) => !x.certificado_finalizado)
+      if (emitido || emProcesso) {
+        const base = emitido || emProcesso
+        novas.push({
+          chave: 'certificado', nome: 'Certificado digital',
+          orgao: [`${base.uso} ${base.tipo}`, base.autoridade_certificadora].filter(Boolean).join(' · '),
+          data: emitido ? emitido.data_vencimento : null,
+          situacao: emProcesso ? 'Renovação em andamento' : (emitido?.oferta_renovacao_em ? `Renovação oferecida em ${formatDate(emitido.oferta_renovacao_em)}` : ''),
+          acao: { label: 'Ver certificados', href: `/certificados?empresa=${emp.id}` },
+        })
+      } else {
+        novas.push({ chave: 'certificado', nome: 'Certificado digital', orgao: 'e-CNPJ ou e-CPF', data: null, naoCadastrado: { href: `/certificados?empresa=${emp.id}` } })
+      }
+      setLinhas(novas)
+
+      // Processos em andamento, com a etapa atual e há quantos dias está parado
+      const lista = proc.data || []
+      let ultimaNota: Record<string, string> = {}
+      if (lista.length > 0) {
+        const { data: notas } = await supabase.from('processo_notas').select('processo_id, created_at')
+          .in('processo_id', lista.map((p: any) => p.id)).order('created_at', { ascending: false })
+        for (const n of notas || []) if (!ultimaNota[n.processo_id]) ultimaNota[n.processo_id] = n.created_at
+      }
+      setProcessos(lista.map((p: any) => {
+        const checklist: any[] = p.checklist || []
+        const feitas = checklist.filter(i => i.status === 'Concluido').length
+        const proxima = checklist.find(i => i.status !== 'Concluido')?.etapa
+        const ultima = [p.updated_at, ultimaNota[p.id], p.created_at].filter(Boolean).sort().reverse()[0]
+        const parado = ultima ? Math.max(0, -(diasAte(String(ultima)) ?? 0)) : 0
+        return { ...p, feitas, total: checklist.length, proxima, parado }
+      }))
+      setCarregando(false)
+    }
+    carregar()
+  }, [emp.id])
+
+  const atencao = linhas.filter(l => { const d = diasAte(l.data); return l.pendente || (d !== null && d <= 30) }).length
+  const resumo = [
+    atencao > 0 ? `${atencao} ${atencao === 1 ? 'documento vence' : 'documentos vencem'} nos próximos 30 dias ou já ${atencao === 1 ? 'venceu' : 'venceram'}` : 'Documentos em dia',
+    processos.length > 0 ? `${processos.length} ${processos.length === 1 ? 'processo em andamento' : 'processos em andamento'}` : '',
+  ].filter(Boolean).join(' · ')
+
+  function copiar(texto: string, aviso: string) {
+    navigator.clipboard?.writeText(texto).then(() => toast.success(aviso)).catch(() => {})
+  }
+
+  // Capital social
+  const capFormatado = e.capital_social ? formatarReais(e.capital_social) : null
+  const capExtenso   = e.capital_social ? capitalExtenso(e.capital_social) : null
+  const quotasInfo   = e.capital_social && e.valor_quota ? calcularCapitalSocial(e.capital_social, e.valor_quota) : null
+  const cnaesSecundarios: unknown[] = e.cnaes_secundarios ?? []
+
+  const blocos: Array<{ titulo: string; campos: Array<[string, string | null | undefined]> }> = [
+    { titulo: 'Dados cadastrais', campos: [
+      ['Natureza jurídica', cnaeStr(e.natureza_juridica)],
+      ['Abertura', e.data_abertura ? formatDate(e.data_abertura) : ''],
+      ['Inscr. estadual', emp.inscricao_estadual],
+      ['Inscr. municipal', emp.inscricao_municipal],
+      ['NIRE', e.nire],
+      ['Sessão da Junta', e.sessao_junta],
+    ]},
+    { titulo: 'Endereço', campos: [
+      ['Logradouro', endereco],
+      ['Bairro', emp.bairro],
+      ['Cidade', [cidadeUf, emp.cep ? `CEP ${formatCEP(emp.cep)}` : ''].filter(Boolean).join(' · ')],
+    ]},
+    { titulo: 'Contato', campos: [
+      ['Telefone', [e.telefone, e.telefone2].filter(Boolean).join(' · ')],
+      ['E-mail', e.email],
+    ]},
+    { titulo: 'Capital social', campos: [
+      ['Valor', capFormatado ? `${capFormatado}${capExtenso ? ` (${capExtenso})` : ''}` : ''],
+      ['Quotas', quotasInfo ? `${quotasInfo.quantidade_str} quotas de ${quotasInfo.valor_quota_str}` : ''],
+    ]},
+  ]
+
+  const btnSec = 'inline-flex items-center h-10 px-4 rounded-lg border border-slate-300 bg-white text-sm font-semibold text-slate-900 hover:bg-slate-50 whitespace-nowrap'
 
   return (
-    <div className="p-4 md:p-6 xl:p-8 max-w-6xl mx-auto space-y-6">
+    <div className="p-4 md:p-6 xl:p-8 space-y-5">
 
-      {/* ── Header ── */}
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-2xl font-bold text-slate-900">{emp.razao_social}</h1>
-            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-              emp.status === 'ativa'        ? 'bg-green-100 text-green-700' :
-              emp.status === 'em_abertura'  ? 'bg-yellow-100 text-yellow-700' :
-              'bg-red-100 text-red-700'
-            }`}>
-              {emp.status === 'ativa' ? 'Ativa' : emp.status === 'em_abertura' ? 'Em Abertura' : 'Inativa'}
-            </span>
+      {/* Cabeçalho */}
+      <div>
+        <Link href="/empresas" className="text-sm font-semibold text-blue-700 hover:underline">← Carteira</Link>
+        <div className="flex flex-wrap items-start justify-between gap-4 mt-2">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h1 className="text-2xl font-bold text-slate-900 break-words">{emp.razao_social}</h1>
+              <span className={`text-sm font-semibold px-2 py-0.5 rounded-md border ${
+                emp.status === 'ativa' ? 'text-green-800 bg-green-50 border-green-200'
+                : emp.status === 'em_abertura' ? 'text-yellow-900 bg-yellow-50 border-yellow-200'
+                : 'text-slate-700 bg-slate-100 border-slate-200'}`}>
+                {emp.status === 'ativa' ? 'Ativa' : emp.status === 'em_abertura' ? 'Em abertura' : 'Inativa'}
+              </span>
+            </div>
+            {nomeFantasia && <p className="text-slate-600 mt-0.5">{nomeFantasia}</p>}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5 text-sm text-slate-600">
+              {emp.cnpj ? (
+                <span className="inline-flex items-center gap-2">CNPJ <span className="font-semibold text-slate-900">{formatCNPJ(emp.cnpj)}</span>
+                  <button onClick={() => copiar(emp.cnpj.replace(/\D/g, ''), 'CNPJ copiado')}
+                    className="h-8 px-2 rounded-md border border-slate-300 bg-white text-xs font-semibold text-slate-900 hover:bg-slate-50">Copiar</button>
+                </span>
+              ) : <span>CNPJ ainda não disponível (em abertura)</span>}
+              {emp.codigo && <span>Código {emp.codigo}</span>}
+              {cidadeUf && <span>{cidadeUf}</span>}
+              {e.natureza_juridica && <span>{cnaeStr(e.natureza_juridica)}</span>}
+            </div>
           </div>
-          {emp.nome_fantasia && <p className="text-slate-500 mt-0.5">{emp.nome_fantasia}</p>}
+          <div className="flex flex-wrap gap-2">
+            {telDigitos && (
+              <a href={`https://api.whatsapp.com/send?phone=55${telDigitos}`} target="_blank" rel="noopener noreferrer" className={btnSec}>WhatsApp</a>
+            )}
+            {enderecoMapa && (
+              <a href={`https://www.google.com/maps?q=${encodeURIComponent(enderecoMapa)}`} target="_blank" rel="noopener noreferrer" className={btnSec}>Ver no mapa</a>
+            )}
+            <Link href={`/empresas/${emp.id}?edit=1`} className="inline-flex items-center h-10 px-4 rounded-lg bg-slate-900 text-sm font-semibold text-white hover:bg-slate-800">Editar cadastro</Link>
+          </div>
         </div>
-        <div className="flex gap-2 flex-shrink-0">
-          <Link href={`/empresas/${emp.id}?edit=1`} className="btn-secondary">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-            Editar
-          </Link>
-          {mapsUrl && (
-            <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="btn-secondary">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-              </svg>
-              Maps
-            </a>
-          )}
-        </div>
+        {!carregando && (
+          <p className={`mt-3 px-4 py-2.5 rounded-lg border text-sm ${atencao > 0 ? 'bg-yellow-50 border-yellow-200 text-yellow-900' : 'bg-white border-slate-200 text-slate-700'}`}>
+            {resumo}
+          </p>
+        )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="flex flex-wrap gap-5 items-start">
 
-        {/* ── Dados Cadastrais ── */}
-        <div className="card">
-          <div className="card-header"><h2 className="font-semibold text-slate-900">Dados Cadastrais</h2></div>
-          <div className="card-body space-y-3 text-sm">
-            <Row label="Código" value={`#${emp.codigo}`} mono />
-            {emp.cnpj
-              ? <Row label="CNPJ" value={formatCNPJ(emp.cnpj)} mono />
-              : <Row label="CNPJ" value="Em Abertura — ainda não disponível" muted />
-            }
-            {(emp as any).natureza_juridica && <Row label="Natureza Jurídica" value={cnaeStr((emp as any).natureza_juridica)} />}
-            {(emp as any).data_abertura && (
-              <Row label="Data de Abertura"
-                value={new Date((emp as any).data_abertura + 'T12:00:00').toLocaleDateString('pt-BR')} />
-            )}
-            {emp.inscricao_estadual  && <Row label="Insc. Estadual"  value={emp.inscricao_estadual} />}
-            {emp.inscricao_municipal && <Row label="Insc. Municipal" value={emp.inscricao_municipal} />}
-            {(emp as any).nire         && <Row label="NIRE"           value={(emp as any).nire} mono />}
-            {(emp as any).sessao_junta && <Row label="Sessão Junta"   value={(emp as any).sessao_junta} />}
-          </div>
-        </div>
+        {/* Coluna principal */}
+        <div className="flex-[1.6_1_32rem] min-w-0 space-y-5">
 
-        {/* ── Endereço ── */}
-        <div className="card">
-          <div className="card-header"><h2 className="font-semibold text-slate-900">Endereço da Sede</h2></div>
-          <div className="card-body space-y-3 text-sm">
-            {emp.cep       && <Row label="CEP"        value={formatCEP(emp.cep)} mono />}
-            {emp.logradouro && <Row label="Logradouro" value={[emp.logradouro, emp.numero].filter(Boolean).join(', ')} />}
-            {emp.complemento && <Row label="Complemento" value={emp.complemento} />}
-            {emp.bairro    && <Row label="Bairro"     value={emp.bairro} />}
-            {emp.cidade    && <Row label="Cidade/UF"  value={`${emp.cidade}/${emp.uf}`} />}
-          </div>
-        </div>
-
-        {/* ── CNAE ── */}
-        {((emp as any).cnae_principal || cnaesSecundarios.length > 0) && (
-          <div className="card lg:col-span-2">
-            <div className="card-header"><h2 className="font-semibold text-slate-900">Atividades (CNAE)</h2></div>
-            <div className="card-body space-y-3 text-sm">
-              {(emp as any).cnae_principal && (
-                <div className="flex items-start gap-2">
-                  <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full flex-shrink-0 mt-0.5">Principal</span>
-                  <span className="text-slate-900">{cnaeStr((emp as any).cnae_principal)}</span>
+          {/* Situação dos documentos */}
+          <section aria-label="Situação dos documentos" className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+            <div className="flex items-baseline justify-between gap-3 px-5 pt-4 pb-2">
+              <h2 className="text-base font-bold text-slate-900">Situação dos documentos</h2>
+              <span className="text-sm text-slate-500">clique na data para copiar</span>
+            </div>
+            {carregando ? (
+              <div className="px-5 pb-5 space-y-2">{[...Array(5)].map((_, k) => <div key={k} className="h-10 bg-slate-100 rounded-lg animate-pulse" />)}</div>
+            ) : linhas.map(l => {
+              const d = diasAte(l.data)
+              const cor = l.pendente || (d !== null && d < 0)
+                ? 'text-red-900 bg-red-100 border-red-300'
+                : d !== null && d <= 30 ? 'text-yellow-900 bg-yellow-100 border-yellow-300'
+                : 'text-green-900 bg-green-100 border-green-300'
+              return (
+                <div key={l.chave} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-2.5 border-t border-slate-100">
+                  <div className="flex-[1_1_11rem] min-w-0">
+                    <div className="font-semibold text-slate-900">{l.nome}</div>
+                    <div className="text-sm text-slate-600">{l.orgao}</div>
+                  </div>
+                  <div className="flex-[1_1_15rem] min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1">
+                    {l.naoCadastrado ? (
+                      <span className="text-sm text-slate-500">Não cadastrado</span>
+                    ) : l.pendente ? (
+                      <span className="text-sm font-bold text-red-700">Pendente · não foi possível renovar</span>
+                    ) : l.data ? (
+                      <>
+                        <button onClick={() => copiar(formatDate(l.data), 'Data copiada')} title="Copiar data"
+                          className={`text-sm font-semibold px-2.5 py-0.5 rounded-md border cursor-copy ${cor}`}>{formatDate(l.data)}</button>
+                        <span className="text-sm text-slate-600">{prazoTexto(d)}</span>
+                      </>
+                    ) : (
+                      <span className="text-sm text-slate-500">Sem data de validade</span>
+                    )}
+                    {l.situacao && <span className="text-sm text-slate-600">· {l.situacao}</span>}
+                  </div>
+                  <div className="flex items-center gap-1 ml-auto">
+                    {l.portal && (
+                      <a href={l.portal} target="_blank" rel="noopener noreferrer"
+                        onClick={() => emp.cnpj && copiar(emp.cnpj.replace(/\D/g, ''), 'CNPJ copiado: é só colar no portal')}
+                        className="inline-flex items-center h-10 px-3 rounded-lg text-sm font-semibold text-blue-700 hover:bg-blue-50">
+                        Abrir portal<span className="sr-only"> · {l.nome} de {emp.razao_social}</span>
+                      </a>
+                    )}
+                    {l.naoCadastrado
+                      ? <Link href={l.naoCadastrado.href} className={btnSec}>Cadastrar</Link>
+                      : l.acao && <Link href={l.acao.href} className={btnSec}>{l.acao.label}</Link>}
+                  </div>
                 </div>
-              )}
-              {cnaesSecundarios.length > 0 && (
-                <div className="space-y-1.5">
-                  {cnaesSecundarios.map((c: unknown, i: number) => (
-                    <div key={i} className="flex items-start gap-2">
-                      <span className="text-xs px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full flex-shrink-0 mt-0.5">Secundário</span>
-                      <span className="text-slate-700">{cnaeStr(c)}</span>
+              )
+            })}
+          </section>
+
+          {/* Processos em andamento */}
+          <section aria-label="Processos em andamento" className="bg-white border border-slate-200 rounded-xl p-5 space-y-3">
+            <div className="flex items-baseline justify-between gap-3">
+              <h2 className="text-base font-bold text-slate-900">Processos em andamento</h2>
+              <Link href={`/societario?empresa=${emp.id}`} className="text-sm font-semibold text-blue-700 hover:underline">Ver processos da empresa</Link>
+            </div>
+            {carregando ? null : processos.length === 0 ? (
+              <p className="text-sm text-slate-600">Nenhum processo em andamento.</p>
+            ) : processos.map(p => (
+              <div key={p.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-3 border-t border-slate-100 first-of-type:border-0 first-of-type:pt-0">
+                <div className="flex-[1_1_16rem] min-w-0">
+                  <div className="font-semibold text-slate-900">{p.titulo || String(p.tipo || '').replace(/_/g, ' ')}</div>
+                  <div className="text-sm text-slate-600">
+                    {p.total > 0 && <>Etapa {Math.min(p.feitas + 1, p.total)} de {p.total}{p.proxima ? ` · ${p.proxima}` : ''} · </>}
+                    {p.parado === 0 ? 'movimentado hoje' : `sem movimentação há ${p.parado} dia${p.parado === 1 ? '' : 's'}`}
+                  </div>
+                </div>
+                <Link href={`/societario?processo=${p.id}`} className={btnSec}>Abrir processo</Link>
+              </div>
+            ))}
+          </section>
+
+          {/* Histórico e comunicações */}
+          <HistoricoEmpresa empresaId={emp.id} />
+        </div>
+
+        {/* Coluna lateral: cadastro */}
+        <aside aria-label="Dados cadastrais" className="flex-[1_1_20rem] min-w-0 bg-white border border-slate-200 rounded-xl p-5 space-y-5">
+          {blocos.map(b => {
+            const campos = b.campos.filter(([, v]) => v)
+            if (campos.length === 0) return null
+            return (
+              <div key={b.titulo}>
+                <h2 className="text-sm font-bold text-slate-900 mb-1.5">{b.titulo}</h2>
+                <dl>
+                  {campos.map(([k, v]) => (
+                    <div key={k} className="flex gap-3 py-1 text-sm">
+                      <dt className="w-32 flex-shrink-0 text-slate-600">{k}</dt>
+                      <dd className="flex-1 min-w-0 font-medium text-slate-900 break-words">{v}</dd>
                     </div>
                   ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ── Capital Social ── */}
-        {capFormatado && (
-          <div className="card">
-            <div className="card-header"><h2 className="font-semibold text-slate-900">Capital Social</h2></div>
-            <div className="card-body space-y-3 text-sm">
-              <div className="flex items-center gap-3">
-                <div className="flex-1">
-                  <p className="text-2xl font-bold text-slate-900">{capFormatado}</p>
-                  {capExtenso && <p className="text-xs text-slate-500 mt-0.5 italic">{capExtenso}</p>}
-                </div>
+                </dl>
               </div>
-              {quotasInfo && (
-                <>
-                  <div className="h-px bg-slate-100" />
-                  <Row label="Qtd. de Quotas"  value={quotasInfo.quantidade_str} />
-                  <Row label="Valor por Quota" value={quotasInfo.valor_quota_str} mono />
-                  <p className="text-xs text-slate-400 italic">{quotasInfo.quantidade_extenso} de {quotasInfo.valor_quota_extenso} cada</p>
-                </>
-              )}
+            )
+          })}
+          {(e.cnae_principal || cnaesSecundarios.length > 0) && (
+            <div>
+              <h2 className="text-sm font-bold text-slate-900 mb-1.5">Atividades (CNAE)</h2>
+              {e.cnae_principal && <p className="text-sm text-slate-900 py-1"><span className="text-slate-600">Principal: </span>{cnaeStr(e.cnae_principal)}</p>}
+              {cnaesSecundarios.map((c, i) => <p key={i} className="text-sm text-slate-700 py-0.5">{cnaeStr(c)}</p>)}
             </div>
-          </div>
-        )}
-
-        {/* ── Contatos ── */}
-        {((emp as any).email || (emp as any).telefone || (emp as any).telefone2) && (
-          <div className="card">
-            <div className="card-header"><h2 className="font-semibold text-slate-900">Contatos</h2></div>
-            <div className="card-body space-y-3 text-sm">
-              {(emp as any).email && (
-                <div className="flex items-center gap-2">
-                  <svg className="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
-                  <a href={`mailto:${(emp as any).email}`}
-                    className="text-primary-600 hover:underline">{(emp as any).email}</a>
-                </div>
-              )}
-              {(emp as any).telefone && (
-                <div className="flex items-center gap-2">
-                  <svg className="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                  </svg>
-                  <a href={`tel:${(emp as any).telefone}`}
-                    className="text-slate-900">{(emp as any).telefone}</a>
-                  {(emp as any).telefone2 && (
-                    <span className="text-slate-400 mx-1">·</span>
-                  )}
-                  {(emp as any).telefone2 && (
-                    <a href={`tel:${(emp as any).telefone2}`}
-                      className="text-slate-900">{(emp as any).telefone2}</a>
-                  )}
-                </div>
-              )}
-              {/* WhatsApp direto */}
-              {(emp as any).telefone && (
-                <a
-                  href={`https://api.whatsapp.com/send?phone=55${(emp as any).telefone.replace(/\D/g, '')}`}
-                  target="_blank" rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5 hover:bg-green-100 transition-colors w-fit"
-                >
-                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
-                    <path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.555 4.117 1.528 5.845L0 24l6.335-1.505A11.95 11.95 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.943 0-3.772-.524-5.337-1.438l-.383-.228-3.962.941.976-3.858-.25-.397A9.96 9.96 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
-                  </svg>
-                  Abrir WhatsApp
-                </a>
-              )}
-            </div>
-          </div>
-        )}
-
+          )}
+        </aside>
       </div>
-
-      {/* ── Acesso rápido ── */}
-      <div className="card">
-        <div className="card-header">
-          <h2 className="font-semibold text-slate-900">Acesso Rápido — Portais</h2>
-        </div>
-        <div className="card-body">
-          <div className="flex flex-wrap gap-2">
-            {quickLinks(emp).map(link => (
-              <a
-                key={link.label}
-                href={link.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${colorMap[link.color]}`}
-              >
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                </svg>
-                {link.label}
-              </a>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* ── Links módulos ── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { href: `/certidoes?empresa=${emp.id}`,    label: 'Certidões',    icon: '📋' },
-          { href: `/alvaras?empresa=${emp.id}`,       label: 'Alvarás',      icon: '🏷️' },
-          { href: `/licencas?empresa=${emp.id}`,      label: 'Licenças',     icon: '🛡️' },
-          { href: `/certificados?empresa=${emp.id}`,  label: 'Certificados', icon: '🔑' },
-          { href: `/societario?empresa=${emp.id}`,    label: 'Societário',   icon: '🏢' },
-          { href: `/contratos?empresa=${emp.id}`,     label: 'Contratos',    icon: '📄' },
-          { href: `/simulador`,                       label: 'Simulador',    icon: '🧮' },
-          { href: `/relatorios?empresa=${emp.id}`,    label: 'Relatório PDF', icon: '📊' },
-        ].map(item => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className="card p-4 text-center hover:border-primary-300 hover:shadow-md transition-all group"
-          >
-            <div className="text-2xl mb-2">{item.icon}</div>
-            <p className="text-sm font-medium text-slate-700 group-hover:text-primary-600">{item.label}</p>
-          </Link>
-        ))}
-      </div>
-
-      {/* ── Histórico & Caixa Postal ── */}
-      <HistoricoEmpresa empresaId={emp.id} />
-    </div>
-  )
-}
-
-function Row({ label, value, mono, muted }: { label: string; value: string; mono?: boolean; muted?: boolean }) {
-  return (
-    <div className="flex justify-between gap-4">
-      <span className="text-slate-500 flex-shrink-0">{label}</span>
-      <span className={`text-right ${mono ? 'font-mono' : ''} ${muted ? 'text-slate-400 italic text-xs' : 'text-slate-900'}`}>{value}</span>
     </div>
   )
 }
