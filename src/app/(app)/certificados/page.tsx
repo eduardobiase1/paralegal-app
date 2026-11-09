@@ -174,6 +174,8 @@ function CertificadosPageInner() {
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set())
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [passo, setPasso] = useState(PASSO_VAZIO)
+  // Etapa aberta para edição (já feita, ou fora de ordem); null = formulário da etapa atual
+  const [editando, setEditando] = useState<number | null>(null)
   const [salvando, setSalvando] = useState(false)
   const [menuAberto, setMenuAberto] = useState<string | null>(null)
   const [modeloOferta, setModeloOferta] = useState(MODELO_OFERTA_PADRAO)
@@ -234,7 +236,26 @@ function CertificadosPageInner() {
       emissao: hoje,
       validade: somarAnos(hoje, c.tipo === 'A3' ? 3 : 1),
     })
+    setEditando(null)
   }, [selectedId])
+
+  // Preenche o formulário com o que já foi registrado na etapa, para corrigir
+  function prepararPasso(c: any, i: number) {
+    const hoje = diaLocal()
+    const datas: Record<number, string | null> = { 0: c.cliente_pagou_em, 1: c.dados_enviados_em, 3: c.boleto_pago_em }
+    const emissao = c.data_conclusao || c.data_emissao || hoje
+    setPasso({
+      data: datas[i] || hoje,
+      valor: c.boleto_valor != null ? String(c.boleto_valor).replace('.', ',') : '',
+      vencimento: c.boleto_vencimento || '',
+      voucher: c.voucher_numero || '',
+      agenda: c.data_agendamento ? toLocalDatetimeInput(c.data_agendamento) : '',
+      modalidade: c.agendamento_modalidade || 'video',
+      emissao,
+      validade: c.certificado_finalizado && c.data_vencimento ? c.data_vencimento : somarAnos(emissao, c.tipo === 'A3' ? 3 : 1),
+    })
+    setEditando(i)
+  }
 
   // ── Gravação ──────────────────────────────────────────────────────────────
   async function salvar(id: string, fields: Record<string, any>): Promise<boolean> {
@@ -249,19 +270,19 @@ function CertificadosPageInner() {
     return true
   }
 
-  function camposEtapa(i: number): Record<string, any> | null {
+  function camposEtapa(i: number, c: any): Record<string, any> | null {
     switch (i) {
       case 0: return { cliente_pagou_em: passo.data || diaLocal(), pagamento_confirmado: true }
       case 1: return { dados_enviados_em: passo.data || diaLocal() }
       case 2: {
         const valor = passo.valor ? Number(passo.valor.replace(/\./g, '').replace(',', '.')) : null
         if (passo.valor && Number.isNaN(valor)) { toast.error('Valor do boleto inválido.'); return null }
-        return { boleto_recebido_em: diaLocal(), boleto_valor: valor, boleto_vencimento: passo.vencimento || null }
+        return { boleto_recebido_em: c.boleto_recebido_em || diaLocal(), boleto_valor: valor, boleto_vencimento: passo.vencimento || null }
       }
       case 3: return { boleto_pago_em: passo.data || diaLocal() }
       case 4:
         if (!passo.voucher.trim()) { toast.error('Informe o número do voucher.'); return null }
-        return { voucher_numero: passo.voucher.trim(), voucher_emitido_em: diaLocal() }
+        return { voucher_numero: passo.voucher.trim(), voucher_emitido_em: c.voucher_emitido_em || diaLocal() }
       case 5:
         if (!passo.agenda) { toast.error('Informe a data e a hora do atendimento.'); return null }
         return { data_agendamento: new Date(passo.agenda).toISOString(), agendamento_modalidade: passo.modalidade }
@@ -273,9 +294,12 @@ function CertificadosPageInner() {
   }
 
   async function concluirEtapa(c: any, i: number, campos?: Record<string, any>) {
-    const f = campos ?? camposEtapa(i)
+    const f = campos ?? camposEtapa(i, c)
     if (!f) return
+    const eraFeita = etapasFeitas(c)[i]
     if (!(await salvar(c.id, f))) return
+    setEditando(null)
+    if (eraFeita) { toast.success(`${ETAPAS[i].nome}: alteração salva.`); return }
     toast.success(i === 6 ? 'Certificado emitido! Movido para Emitidos.' : `${ETAPAS[i].nome}: registrado.`)
     registrarAcao(i === 6 ? 'Certificado finalizado' : 'Certificado digital',
       `${ETAPAS[i].nome} — ${c.titular} (${c.uso} ${c.tipo})`, { empresaId: c.empresa_id, empresaNome: c.razao_social })
@@ -664,7 +688,9 @@ function CertificadosPageInner() {
           <div className={caixa}>
             <button onClick={() => copiarDados(c)} className={btnSec}>Copiar dados</button>
             <button onClick={() => abrirEmail(c)} className={btnSec}>Abrir e-mail</button>
-            <button disabled={salvando} onClick={() => concluirEtapa(c, 1, { dados_enviados_em: diaLocal() })} className={btnPri}>Marcar como enviado</button>
+            <div><label className={rotulo} htmlFor="et-envio">Enviados em</label>
+              <input id="et-envio" type="date" value={passo.data} onChange={e => set('data', e.target.value)} className={inputCls} /></div>
+            <button disabled={salvando} onClick={() => concluirEtapa(c, 1)} className={btnPri}>{c.dados_enviados_em ? 'Salvar' : 'Marcar como enviado'}</button>
           </div>
         )
       case 2:
@@ -779,12 +805,21 @@ function CertificadosPageInner() {
                       <div className="flex flex-wrap items-baseline gap-x-3">
                         <span className={`font-semibold ${feito || ehAtual ? 'text-slate-900' : 'text-slate-500'}`}>{e.nome}</span>
                         {feito && <span className="text-sm text-slate-600">{infoEtapa(c, i)}</span>}
-                        {feito && (
-                          <button onClick={() => desfazerEtapa(c, i)} className="text-xs font-semibold text-slate-500 hover:text-slate-800 hover:underline">desfazer</button>
+                        {feito && editando !== i && (
+                          <>
+                            <button onClick={() => prepararPasso(c, i)} className="text-sm font-semibold text-blue-700 hover:underline">editar</button>
+                            <button onClick={() => desfazerEtapa(c, i)} className="text-sm font-semibold text-slate-500 hover:text-slate-800 hover:underline">desfazer</button>
+                          </>
+                        )}
+                        {!feito && !ehAtual && editando !== i && (
+                          <button onClick={() => prepararPasso(c, i)} className="text-sm font-semibold text-blue-700 hover:underline">preencher agora</button>
                         )}
                       </div>
-                      {alerta && <p className="text-sm font-semibold text-orange-800 mt-0.5">{alerta}</p>}
-                      {ehAtual && formEtapa(c, i)}
+                      {alerta && editando === null && <p className="text-sm font-semibold text-orange-800 mt-0.5">{alerta}</p>}
+                      {(editando === i || (ehAtual && editando === null)) && formEtapa(c, i)}
+                      {editando === i && (
+                        <button onClick={() => setEditando(null)} className="mt-2 text-sm font-semibold text-slate-600 hover:text-slate-900 hover:underline">Cancelar edição</button>
+                      )}
                     </div>
                   </li>
                 )
