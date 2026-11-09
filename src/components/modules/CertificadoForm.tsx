@@ -6,7 +6,10 @@ import { CertificadoDigital, Empresa } from '@/types'
 import { formatDateInput } from '@/lib/utils'
 import { useOrg } from '@/lib/org-context'
 import toast from 'react-hot-toast'
-import { registrarAcao } from '@/lib/atividade'
+import { registrarAcao, diaLocal } from '@/lib/atividade'
+
+// Colunas da migration_v16 — se ainda não existirem, salva sem elas
+const COLUNAS_V16 = ['titular_cpf', 'titular_email', 'titular_telefone', 'cliente_pagou_em']
 
 const ACS = ['Serasa', 'Certisign', 'Valid', 'Soluti', 'Safeweb', 'VRSafe', 'Outro']
 
@@ -39,6 +42,9 @@ export default function CertificadoForm({ empresas, certificado, defaultEmpresaI
     empresa_nome_livre:     certificado?.empresa_nome_livre ?? '',
     empresa_cnpj_livre:     certificado?.empresa_cnpj_livre ?? '',
     titular:                certificado?.titular ?? '',
+    titular_cpf:            (certificado as any)?.titular_cpf ?? '',
+    titular_email:          (certificado as any)?.titular_email ?? '',
+    titular_telefone:       (certificado as any)?.titular_telefone ?? '',
     tipo:                   certificado?.tipo ?? 'A1',
     uso:                    certificado?.uso ?? 'e-CNPJ',
     autoridade_certificadora: certificado?.autoridade_certificadora ?? '',
@@ -47,7 +53,8 @@ export default function CertificadoForm({ empresas, certificado, defaultEmpresaI
     localizacao_fisica:     certificado?.localizacao_fisica ?? '',
     observacoes:            certificado?.observacoes ?? '',
     // Controle do processo
-    pagamento_confirmado:   certificado?.pagamento_confirmado ?? false,
+    // novo certificado = cliente já pagou (primeiro passo do fluxo)
+    pagamento_confirmado:   certificado?.pagamento_confirmado ?? true,
     data_aviso_cliente:     (certificado as any)?.data_aviso_cliente ?? '',
     data_agendamento:       (certificado as any)?.data_agendamento
                               ? toLocalDatetimeInput((certificado as any).data_agendamento)
@@ -73,6 +80,9 @@ export default function CertificadoForm({ empresas, certificado, defaultEmpresaI
 
     const payload: Record<string, any> = {
       titular:                  form.titular,
+      titular_cpf:              form.titular_cpf.trim() || null,
+      titular_email:            form.titular_email.trim() || null,
+      titular_telefone:         form.titular_telefone.trim() || null,
       tipo:                     form.tipo,
       uso:                      form.uso,
       autoridade_certificadora: form.autoridade_certificadora,
@@ -99,13 +109,17 @@ export default function CertificadoForm({ empresas, certificado, defaultEmpresaI
       payload.org_id = orgId
     }
 
-    let error
-    if (certificado) {
-      const res = await supabase.from('certificados_digitais').update(payload).eq('id', certificado.id)
-      error = res.error
-    } else {
-      const res = await supabase.from('certificados_digitais').insert(payload)
-      error = res.error
+    if (!certificado && payload.pagamento_confirmado) payload.cliente_pagou_em = diaLocal()
+
+    const gravar = (p: Record<string, any>) => certificado
+      ? supabase.from('certificados_digitais').update(p).eq('id', certificado.id)
+      : supabase.from('certificados_digitais').insert(p)
+
+    let { error } = await gravar(payload)
+    if (error && COLUNAS_V16.some(c => error!.message?.includes(c))) {
+      const semNovas = Object.fromEntries(Object.entries(payload).filter(([k]) => !COLUNAS_V16.includes(k)))
+      ;({ error } = await gravar(semNovas))
+      if (!error) toast('Salvo sem CPF/e-mail/telefone do titular — rode a migration_v16 no Supabase.')
     }
 
     setLoading(false)
@@ -156,6 +170,25 @@ export default function CertificadoForm({ empresas, certificado, defaultEmpresaI
         <label className="label">Titular *</label>
         <input className="input" required placeholder="Nome do titular do certificado"
           value={form.titular} onChange={e => set('titular', e.target.value)} />
+      </div>
+
+      {/* Dados do titular pedidos pela certificadora */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div>
+          <label className="label">CPF do titular</label>
+          <input className="input font-mono" placeholder="000.000.000-00"
+            value={form.titular_cpf} onChange={e => set('titular_cpf', e.target.value)} />
+        </div>
+        <div>
+          <label className="label">E-mail do titular</label>
+          <input className="input" type="email" placeholder="email@cliente.com.br"
+            value={form.titular_email} onChange={e => set('titular_email', e.target.value)} />
+        </div>
+        <div>
+          <label className="label">Celular / WhatsApp</label>
+          <input className="input" placeholder="(11) 90000-0000"
+            value={form.titular_telefone} onChange={e => set('titular_telefone', e.target.value)} />
+        </div>
       </div>
 
       {/* Tipo + Uso */}
