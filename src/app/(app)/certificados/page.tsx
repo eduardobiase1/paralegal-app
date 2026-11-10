@@ -209,7 +209,7 @@ function CertificadosPageInner() {
         status_cor: statusCor(dias),
       }
     }))
-    setEmpresas((emps ?? []) as Empresa[])
+    setEmpresas((emps ?? []) as unknown as Empresa[])
     if ((org as any)?.modelo_oferta_certificado) setModeloOferta((org as any).modelo_oferta_certificado)
     setLoading(false)
   }
