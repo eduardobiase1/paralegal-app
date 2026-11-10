@@ -3,10 +3,10 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { CertificadoDigital, Empresa } from '@/types'
-import { formatDateInput } from '@/lib/utils'
 import { useOrg } from '@/lib/org-context'
 import toast from 'react-hot-toast'
 import { registrarAcao, diaLocal } from '@/lib/atividade'
+import { mensagemCertificadora, enderecoEmpresa, valorCertificado } from '@/lib/certificadoMensagem'
 
 // Colunas da migration_v16 — se ainda não existirem, salva sem elas
 const COLUNAS_V16 = ['titular_email', 'titular_telefone', 'cliente_pagou_em']
@@ -20,15 +20,6 @@ interface Props {
   onSuccess: () => void
 }
 
-function todayISO() {
-  return new Date().toISOString().slice(0, 10)
-}
-function toLocalDatetimeInput(iso: string): string {
-  const d = new Date(iso)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
-
 export default function CertificadoForm({ empresas, certificado, defaultEmpresaId, onSuccess }: Props) {
   const [supabase] = useState(createClient)
   const [loading, setLoading] = useState(false)
@@ -38,31 +29,43 @@ export default function CertificadoForm({ empresas, certificado, defaultEmpresaI
   const [modoEmpresa, setModoEmpresa] = useState<'cadastrada' | 'avulsa'>(modoInicial)
 
   const [form, setForm] = useState({
-    empresa_id:             certificado?.empresa_id ?? defaultEmpresaId ?? '',
-    empresa_nome_livre:     certificado?.empresa_nome_livre ?? '',
-    empresa_cnpj_livre:     certificado?.empresa_cnpj_livre ?? '',
-    titular:                certificado?.titular ?? '',
-    titular_email:          (certificado as any)?.titular_email ?? '',
-    titular_telefone:       (certificado as any)?.titular_telefone ?? '',
-    tipo:                   certificado?.tipo ?? 'A1',
-    uso:                    certificado?.uso ?? 'e-CNPJ',
+    empresa_id:               certificado?.empresa_id ?? (defaultEmpresaId && defaultEmpresaId !== '__avulsa__' ? defaultEmpresaId : ''),
+    empresa_nome_livre:       certificado?.empresa_nome_livre ?? '',
+    empresa_cnpj_livre:       certificado?.empresa_cnpj_livre ?? '',
+    titular:                  certificado?.titular ?? '',
+    titular_email:            (certificado as any)?.titular_email ?? '',
+    titular_telefone:         (certificado as any)?.titular_telefone ?? '',
+    tipo:                     certificado?.tipo ?? 'A1',
+    uso:                      certificado?.uso ?? 'e-CNPJ',
     autoridade_certificadora: certificado?.autoridade_certificadora ?? '',
-    data_emissao:           formatDateInput(certificado?.data_emissao),
-    data_vencimento:        formatDateInput(certificado?.data_vencimento),
-    localizacao_fisica:     certificado?.localizacao_fisica ?? '',
-    observacoes:            certificado?.observacoes ?? '',
-    // Controle do processo
-    // novo certificado = cliente já pagou (primeiro passo do fluxo)
-    pagamento_confirmado:   certificado?.pagamento_confirmado ?? true,
-    data_aviso_cliente:     (certificado as any)?.data_aviso_cliente ?? '',
-    data_agendamento:       (certificado as any)?.data_agendamento
-                              ? toLocalDatetimeInput((certificado as any).data_agendamento)
-                              : '',
-    certificado_finalizado: (certificado as any)?.certificado_finalizado ?? false,
+    localizacao_fisica:       certificado?.localizacao_fisica ?? '',
+    observacoes:              certificado?.observacoes ?? '',
   })
 
   function set(field: string, value: any) {
     setForm(prev => ({ ...prev, [field]: value }))
+  }
+
+  const pessoaFisica = form.uso === 'e-CPF'
+  const empresaSel: any = empresas.find(e => e.id === form.empresa_id)
+  const mensagem = mensagemCertificadora({
+    tipo: form.tipo,
+    uso: form.uso,
+    cnpj: modoEmpresa === 'cadastrada' ? empresaSel?.cnpj : form.empresa_cnpj_livre,
+    razaoSocial: modoEmpresa === 'cadastrada' ? empresaSel?.razao_social : form.empresa_nome_livre,
+    titular: form.titular,
+    endereco: modoEmpresa === 'cadastrada' ? enderecoEmpresa(empresaSel) : '',
+    email: form.titular_email,
+    telefone: form.titular_telefone,
+  })
+
+  async function copiarMensagem() {
+    try {
+      await navigator.clipboard.writeText(mensagem)
+      toast.success('Mensagem copiada: é só colar para a certificadora.')
+    } catch {
+      toast.error('Não foi possível copiar. Selecione o texto e copie manualmente.')
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -77,6 +80,7 @@ export default function CertificadoForm({ empresas, certificado, defaultEmpresaI
 
     setLoading(true)
 
+    // Datas de emissão e validade não entram aqui: são registradas na etapa "Certificado emitido"
     const payload: Record<string, any> = {
       titular:                  form.titular,
       titular_email:            form.titular_email.trim() || null,
@@ -84,15 +88,8 @@ export default function CertificadoForm({ empresas, certificado, defaultEmpresaI
       tipo:                     form.tipo,
       uso:                      form.uso,
       autoridade_certificadora: form.autoridade_certificadora,
-      data_emissao:             form.data_emissao || null,
-      data_vencimento:          form.data_vencimento || null,
       localizacao_fisica:       form.tipo === 'A3' ? form.localizacao_fisica : null,
       observacoes:              form.observacoes || null,
-      // Controle
-      pagamento_confirmado:     form.pagamento_confirmado,
-      data_aviso_cliente:       form.data_aviso_cliente || null,
-      data_agendamento:         form.data_agendamento ? new Date(form.data_agendamento).toISOString() : null,
-      certificado_finalizado:   form.certificado_finalizado,
     }
 
     if (modoEmpresa === 'cadastrada') {
@@ -107,7 +104,12 @@ export default function CertificadoForm({ empresas, certificado, defaultEmpresaI
       payload.org_id = orgId
     }
 
-    if (!certificado && payload.pagamento_confirmado) payload.cliente_pagou_em = diaLocal()
+    // Novo certificado = o cliente já pagou (primeiro passo do fluxo)
+    if (!certificado) {
+      payload.pagamento_confirmado = true
+      payload.certificado_finalizado = false
+      payload.cliente_pagou_em = diaLocal()
+    }
 
     const gravar = (p: Record<string, any>) => certificado
       ? supabase.from('certificados_digitais').update(p).eq('id', certificado.id)
@@ -117,7 +119,7 @@ export default function CertificadoForm({ empresas, certificado, defaultEmpresaI
     if (error && COLUNAS_V16.some(c => error!.message?.includes(c))) {
       const semNovas = Object.fromEntries(Object.entries(payload).filter(([k]) => !COLUNAS_V16.includes(k)))
       ;({ error } = await gravar(semNovas))
-      if (!error) toast('Salvo sem e-mail/telefone do titular — rode a migration_v16 no Supabase.')
+      if (!error) toast('Salvo sem e-mail/telefone — rode a migration_v16 no Supabase.')
     }
 
     setLoading(false)
@@ -127,37 +129,43 @@ export default function CertificadoForm({ empresas, certificado, defaultEmpresaI
     onSuccess()
   }
 
+  const seg = (ativo: boolean) =>
+    `flex-1 h-10 text-sm font-semibold transition-colors ${ativo ? 'bg-slate-900 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'}`
+
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
 
+      {/* Pessoa jurídica ou física */}
+      <div>
+        <span className="label">O certificado é de</span>
+        <div className="flex rounded-lg overflow-hidden border border-slate-300" role="group" aria-label="Tipo de pessoa">
+          <button type="button" aria-pressed={!pessoaFisica} className={seg(!pessoaFisica)}
+            onClick={() => set('uso', form.uso === 'e-CPF' ? 'e-CNPJ' : form.uso)}>Pessoa jurídica (CNPJ)</button>
+          <button type="button" aria-pressed={pessoaFisica} className={seg(pessoaFisica) + ' border-l border-slate-300'}
+            onClick={() => set('uso', 'e-CPF')}>Pessoa física (CPF)</button>
+        </div>
+      </div>
+
       {/* Empresa */}
       <div>
-        <label className="label mb-1.5">Empresa *</label>
-        <div className="flex rounded-xl overflow-hidden border border-slate-200 mb-3">
-          {[
-            { v: 'cadastrada', label: '📋 Cliente da Base' },
-            { v: 'avulsa',     label: '✍️ Empresa Avulsa' },
-          ].map(opt => (
-            <button type="button" key={opt.v}
-              onClick={() => setModoEmpresa(opt.v as 'cadastrada' | 'avulsa')}
-              className={`flex-1 py-2 text-xs font-bold transition-all ${
-                modoEmpresa === opt.v ? 'bg-black text-yellow-400' : 'bg-white text-slate-500 hover:bg-slate-50'
-              }`}>
-              {opt.label}
-            </button>
-          ))}
+        <span className="label">{pessoaFisica ? 'Empresa do cliente *' : 'Empresa *'}</span>
+        <div className="flex rounded-lg overflow-hidden border border-slate-300 mb-3" role="group" aria-label="Origem da empresa">
+          <button type="button" aria-pressed={modoEmpresa === 'cadastrada'} className={seg(modoEmpresa === 'cadastrada')}
+            onClick={() => setModoEmpresa('cadastrada')}>Cliente da carteira</button>
+          <button type="button" aria-pressed={modoEmpresa === 'avulsa'} className={seg(modoEmpresa === 'avulsa') + ' border-l border-slate-300'}
+            onClick={() => setModoEmpresa('avulsa')}>Empresa avulsa</button>
         </div>
 
         {modoEmpresa === 'cadastrada' ? (
-          <select className="input" value={form.empresa_id} onChange={e => set('empresa_id', e.target.value)}>
+          <select className="input" aria-label="Empresa" value={form.empresa_id} onChange={e => set('empresa_id', e.target.value)}>
             <option value="">Selecione uma empresa...</option>
             {empresas.map(e => <option key={e.id} value={e.id}>{e.razao_social}</option>)}
           </select>
         ) : (
           <div className="space-y-2">
-            <input className="input" placeholder="Nome / Razão Social *"
+            <input className="input" aria-label="Nome ou razão social" placeholder="Nome / Razão Social *"
               value={form.empresa_nome_livre} onChange={e => set('empresa_nome_livre', e.target.value)} />
-            <input className="input font-mono" placeholder="CNPJ (opcional)"
+            <input className="input" aria-label="CNPJ" placeholder="CNPJ (opcional)"
               value={form.empresa_cnpj_livre} onChange={e => set('empresa_cnpj_livre', e.target.value)} />
           </div>
         )}
@@ -165,176 +173,76 @@ export default function CertificadoForm({ empresas, certificado, defaultEmpresaI
 
       {/* Titular */}
       <div>
-        <label className="label">Titular *</label>
-        <input className="input" required placeholder="Nome do titular do certificado"
+        <label className="label" htmlFor="cf-titular">Titular *</label>
+        <input id="cf-titular" className="input" required placeholder="Nome do titular do certificado"
           value={form.titular} onChange={e => set('titular', e.target.value)} />
       </div>
 
-      {/* Dados do titular pedidos pela certificadora */}
+      {/* E-mail e telefone que vão na mensagem para a certificadora */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="label">E-mail do titular</label>
-          <input className="input" type="email" placeholder="email@cliente.com.br"
+          <label className="label" htmlFor="cf-email">E-mail</label>
+          <input id="cf-email" className="input" type="email" placeholder="email@cliente.com.br"
             value={form.titular_email} onChange={e => set('titular_email', e.target.value)} />
         </div>
         <div>
-          <label className="label">Celular / WhatsApp</label>
-          <input className="input" placeholder="(11) 90000-0000"
+          <label className="label" htmlFor="cf-tel">Telefone</label>
+          <input id="cf-tel" className="input" placeholder="(11) 90000-0000"
             value={form.titular_telefone} onChange={e => set('titular_telefone', e.target.value)} />
         </div>
       </div>
 
-      {/* Tipo + Uso */}
-      <div className="grid grid-cols-2 gap-4">
+      {/* Tipo e certificadora */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="label">Tipo *</label>
-          <select className="input" required value={form.tipo} onChange={e => set('tipo', e.target.value)}>
-            <option value="A1">A1</option>
-            <option value="A3">A3</option>
+          <span className="label">Tipo *</span>
+          <div className="flex rounded-lg overflow-hidden border border-slate-300" role="group" aria-label="Tipo do certificado">
+            <button type="button" aria-pressed={form.tipo === 'A1'} className={seg(form.tipo === 'A1')} onClick={() => set('tipo', 'A1')}>A1 · 1 ano</button>
+            <button type="button" aria-pressed={form.tipo === 'A3'} className={seg(form.tipo === 'A3') + ' border-l border-slate-300'} onClick={() => set('tipo', 'A3')}>A3 · 2 anos e 6 meses</button>
+          </div>
+        </div>
+        <div>
+          <label className="label" htmlFor="cf-ac">Autoridade certificadora *</label>
+          <select id="cf-ac" className="input" required value={form.autoridade_certificadora}
+            onChange={e => set('autoridade_certificadora', e.target.value)}>
+            <option value="">Selecione...</option>
+            {ACS.map(ac => <option key={ac} value={ac}>{ac}</option>)}
           </select>
-        </div>
-        <div>
-          <label className="label">Uso *</label>
-          <select className="input" required value={form.uso} onChange={e => set('uso', e.target.value)}>
-            <option value="e-CNPJ">e-CNPJ</option>
-            <option value="e-CPF">e-CPF</option>
-            <option value="NF-e">NF-e</option>
-            <option value="CT-e">CT-e</option>
-            <option value="eSocial">eSocial</option>
-            <option value="outro">Outro</option>
-          </select>
-        </div>
-      </div>
-
-      {/* AC */}
-      <div>
-        <label className="label">Autoridade Certificadora *</label>
-        <select className="input" required value={form.autoridade_certificadora}
-          onChange={e => set('autoridade_certificadora', e.target.value)}>
-          <option value="">Selecione...</option>
-          {ACS.map(ac => <option key={ac} value={ac}>{ac}</option>)}
-        </select>
-      </div>
-
-      {/* Datas — opcionais, preencher após emissão */}
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="label">
-            Data de Emissão
-            <span className="ml-1 text-xs font-normal text-slate-400 normal-case">(preencher após emissão)</span>
-          </label>
-          <input type="date" className="input" value={form.data_emissao}
-            onChange={e => set('data_emissao', e.target.value)} />
-        </div>
-        <div>
-          <label className="label">
-            Data de Vencimento
-            <span className="ml-1 text-xs font-normal text-slate-400 normal-case">(preencher após emissão)</span>
-          </label>
-          <input type="date" className="input" value={form.data_vencimento}
-            onChange={e => set('data_vencimento', e.target.value)} />
         </div>
       </div>
 
       {form.tipo === 'A3' && (
         <div>
-          <label className="label">Localização Física *</label>
-          <input className="input" required placeholder="Ex: Gaveta do Eduardo, Cofre da sala"
+          <label className="label" htmlFor="cf-local">Localização física *</label>
+          <input id="cf-local" className="input" required placeholder="Ex.: gaveta do Eduardo, cofre da sala"
             value={form.localizacao_fisica} onChange={e => set('localizacao_fisica', e.target.value)} />
         </div>
       )}
 
-      {/* ===== CONTROLE DO PROCESSO ===== */}
-      <div className="border border-slate-200 rounded-2xl overflow-hidden">
-        <div className="bg-slate-50 px-4 py-2.5 border-b border-slate-200">
-          <p className="text-xs font-bold uppercase tracking-wide text-slate-500">📋 Controle do Processo de Renovação</p>
+      {/* Mensagem para a certificadora, montada conforme o que foi escolhido acima */}
+      <div className="border border-slate-200 rounded-lg overflow-hidden">
+        <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-slate-50 border-b border-slate-200">
+          <span className="text-sm font-semibold text-slate-900">Mensagem para a certificadora · valor R$ {valorCertificado(form.tipo, form.uso)}</span>
+          <button type="button" onClick={copiarMensagem}
+            className="h-8 px-3 rounded-md border border-slate-300 bg-white text-xs font-semibold text-slate-900 hover:bg-slate-50">Copiar</button>
         </div>
-        <div className="p-4 space-y-4">
-
-          {/* Aviso ao cliente */}
-          <div>
-            <label className="text-xs font-bold uppercase tracking-wide text-slate-500 block mb-1.5">
-              📧 Aviso Enviado ao Cliente
-            </label>
-            <div className="flex gap-2 items-center">
-              <input type="date" className="input flex-1" value={form.data_aviso_cliente}
-                onChange={e => set('data_aviso_cliente', e.target.value)} />
-              <button type="button"
-                onClick={() => set('data_aviso_cliente', todayISO())}
-                className="flex-shrink-0 bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-2 rounded-xl text-xs font-bold transition-all">
-                Hoje
-              </button>
-            </div>
-          </div>
-
-          {/* Pagamento */}
-          <div>
-            <label className="text-xs font-bold uppercase tracking-wide text-slate-500 block mb-1.5">
-              💰 Pagamento pelo Cliente
-            </label>
-            <div className="flex gap-2">
-              {[
-                { v: false, label: 'Pendente',    cls: 'bg-amber-400 text-black border-amber-400' },
-                { v: true,  label: '✓ Confirmado', cls: 'bg-emerald-500 text-white border-emerald-500' },
-              ].map(opt => (
-                <button type="button" key={String(opt.v)}
-                  onClick={() => set('pagamento_confirmado', opt.v)}
-                  className={`flex-1 py-2 rounded-xl text-xs font-bold border-2 transition-all ${
-                    form.pagamento_confirmado === opt.v
-                      ? opt.cls
-                      : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'
-                  }`}>
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Agendamento de videoconferência */}
-          <div>
-            <label className="text-xs font-bold uppercase tracking-wide text-slate-500 block mb-1.5">
-              🎥 Videoconferência Agendada
-            </label>
-            <input type="datetime-local" className="input w-full" value={form.data_agendamento}
-              onChange={e => set('data_agendamento', e.target.value)} />
-          </div>
-
-          {/* Certificado emitido/finalizado */}
-          <div>
-            <label className="text-xs font-bold uppercase tracking-wide text-slate-500 block mb-1.5">
-              ✅ Certificado Emitido / Finalizado
-            </label>
-            <div className="flex gap-2">
-              {[
-                { v: false, label: 'Não emitido ainda', cls: 'bg-slate-200 text-slate-600 border-slate-200' },
-                { v: true,  label: '✓ Emitido e Finalizado', cls: 'bg-emerald-500 text-white border-emerald-500' },
-              ].map(opt => (
-                <button type="button" key={String(opt.v)}
-                  onClick={() => set('certificado_finalizado', opt.v)}
-                  className={`flex-1 py-2 rounded-xl text-xs font-bold border-2 transition-all ${
-                    form.certificado_finalizado === opt.v
-                      ? opt.cls
-                      : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'
-                  }`}>
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-        </div>
+        <pre className="m-0 px-4 py-3 text-[0.8rem] leading-relaxed whitespace-pre-wrap font-mono text-slate-900">{mensagem}</pre>
       </div>
 
       {/* Observações */}
       <div>
-        <label className="label">Observações</label>
-        <textarea className="input resize-none" rows={2} value={form.observacoes}
+        <label className="label" htmlFor="cf-obs">Observações</label>
+        <textarea id="cf-obs" className="input resize-none" rows={2} value={form.observacoes}
           onChange={e => set('observacoes', e.target.value)} />
       </div>
 
+      <p className="text-sm text-slate-600">
+        As datas de emissão e de validade são registradas quando o certificado for concluído, na etapa “Certificado emitido”.
+      </p>
+
       <div className="flex gap-3 pt-1">
         <button type="submit" className="btn-primary" disabled={loading}>
-          {loading ? 'Salvando...' : certificado ? 'Salvar Alterações' : 'Cadastrar Certificado'}
+          {loading ? 'Salvando...' : certificado ? 'Salvar alterações' : 'Cadastrar certificado'}
         </button>
       </div>
     </form>

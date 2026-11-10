@@ -13,6 +13,7 @@ import { registrarAcao, diaLocal } from '@/lib/atividade'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Download, FileText, Search, Ellipsis } from 'lucide-react'
+import { mensagemCertificadora, enderecoEmpresa, mesesValidade } from '@/lib/certificadoMensagem'
 import { useOrg } from '@/lib/org-context'
 
 type Aba = 'processo' | 'renovar' | 'emitidos' | 'quinzena'
@@ -23,7 +24,7 @@ const MESES_ABREV = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SE
 // ── Etapas do processo (da venda à emissão) ──────────────────────────────────
 const ETAPAS = [
   { nome: 'Cliente pagou',                  acao: 'Confirmar pagamento', parado: 'Confirmar pagamento' },
-  { nome: 'Dados enviados à certificadora', acao: 'Copiar dados',        parado: 'Enviar dados' },
+  { nome: 'Dados enviados à certificadora', acao: 'Copiar mensagem',     parado: 'Enviar dados' },
   { nome: 'Boleto recebido',                acao: 'Registrar boleto',    parado: 'Aguardando boleto' },
   { nome: 'Boleto pago',                    acao: 'Marcar boleto pago',  parado: 'Pagar boleto' },
   { nome: 'Voucher emitido',                acao: 'Informar voucher',    parado: 'Emitir voucher' },
@@ -82,8 +83,9 @@ function toLocalDatetimeInput(iso: string): string {
   const p = (n: number) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
 }
-function somarAnos(iso: string, anos: number) {
-  const d = new Date(iso + 'T12:00:00'); d.setFullYear(d.getFullYear() + anos)
+// Validade a partir da emissão: A1 = 1 ano · A3 = 2 anos e 6 meses
+function validadePadrao(emissao: string, tipo?: string | null) {
+  const d = new Date(emissao + 'T12:00:00'); d.setMonth(d.getMonth() + mesesValidade(tipo))
   return diaLocal(d)
 }
 
@@ -192,7 +194,7 @@ function CertificadosPageInner() {
       supabase.from('certificados_digitais')
         .select('*, empresas(razao_social, cnpj, email, telefone, logradouro, numero, complemento, bairro, cidade, uf, cep, org_id)')
         .order('data_vencimento', { ascending: true }),
-      supabase.from('empresas').select('id, razao_social, cnpj').eq('org_id', orgId).order('razao_social'),
+      supabase.from('empresas').select('id, razao_social, cnpj, logradouro, numero, complemento, bairro, cidade, uf, cep').eq('org_id', orgId).order('razao_social'),
       supabase.from('organizations').select('*').eq('id', orgId).maybeSingle(),
     ])
     // Só certificados da organização selecionada: de empresas dela ou avulsos cadastrados nela
@@ -234,7 +236,7 @@ function CertificadosPageInner() {
       agenda: c.data_agendamento ? toLocalDatetimeInput(c.data_agendamento) : '',
       modalidade: c.agendamento_modalidade || 'video',
       emissao: hoje,
-      validade: somarAnos(hoje, c.tipo === 'A3' ? 3 : 1),
+      validade: validadePadrao(hoje, c.tipo),
     })
     setEditando(null)
   }, [selectedId])
@@ -252,7 +254,7 @@ function CertificadosPageInner() {
       agenda: c.data_agendamento ? toLocalDatetimeInput(c.data_agendamento) : '',
       modalidade: c.agendamento_modalidade || 'video',
       emissao,
-      validade: c.certificado_finalizado && c.data_vencimento ? c.data_vencimento : somarAnos(emissao, c.tipo === 'A3' ? 3 : 1),
+      validade: c.certificado_finalizado && c.data_vencimento ? c.data_vencimento : validadePadrao(emissao, c.tipo),
     })
     setEditando(i)
   }
@@ -321,24 +323,16 @@ function CertificadosPageInner() {
 
   // ── Dados para a certificadora e mensagens ───────────────────────────────
   function textoDados(c: any) {
-    const e = c.empresas || {}
-    const endereco = [[e.logradouro, e.numero].filter(Boolean).join(', '), e.complemento, e.bairro, [e.cidade, e.uf].filter(Boolean).join('/'), e.cep]
-      .filter(Boolean).join(' · ')
-    return [
-      `Tipo: ${c.uso} ${c.tipo}`,
-      `Razão social: ${(c.razao_social || '').toUpperCase()}`,
-      `CNPJ: ${c.cnpj ? formatCNPJ(c.cnpj) : '—'}`,
-      `Titular: ${(c.titular || '').toUpperCase()}`,
-      `E-mail: ${c.titular_email || e.email || '—'}`,
-      `Telefone: ${c.titular_telefone || e.telefone || '—'}`,
-      `Endereço: ${endereco || '—'}`,
-    ].join('\n')
+    return mensagemCertificadora({
+      tipo: c.tipo, uso: c.uso, cnpj: c.cnpj, razaoSocial: c.razao_social, titular: c.titular,
+      endereco: enderecoEmpresa(c.empresas), email: c.titular_email, telefone: c.titular_telefone,
+    })
   }
 
   async function copiarDados(c: any) {
     try {
       await navigator.clipboard.writeText(textoDados(c))
-      toast.success('Dados copiados: é só colar no e-mail ou no site da certificadora.')
+      toast.success('Mensagem copiada: é só colar para a certificadora.')
       return true
     } catch {
       toast.error('Não foi possível copiar. Selecione o texto e copie manualmente.')
@@ -686,7 +680,7 @@ function CertificadosPageInner() {
       case 1:
         return (
           <div className={caixa}>
-            <button onClick={() => copiarDados(c)} className={btnSec}>Copiar dados</button>
+            <button onClick={() => copiarDados(c)} className={btnSec}>Copiar mensagem</button>
             <button onClick={() => abrirEmail(c)} className={btnSec}>Abrir e-mail</button>
             <div><label className={rotulo} htmlFor="et-envio">Enviados em</label>
               <input id="et-envio" type="date" value={passo.data} onChange={e => set('data', e.target.value)} className={inputCls} /></div>
@@ -729,7 +723,7 @@ function CertificadosPageInner() {
           <div className={caixa}>
             <div><label className={rotulo} htmlFor="et-emissao">Emitido em</label>
               <input id="et-emissao" type="date" value={passo.emissao}
-                onChange={e => { const v = e.target.value; setPasso(p => ({ ...p, emissao: v, validade: v ? somarAnos(v, c.tipo === 'A3' ? 3 : 1) : p.validade })) }}
+                onChange={e => { const v = e.target.value; setPasso(p => ({ ...p, emissao: v, validade: v ? validadePadrao(v, c.tipo) : p.validade })) }}
                 className={inputCls} /></div>
             <div><label className={rotulo} htmlFor="et-validade">Válido até</label>
               <input id="et-validade" type="date" value={passo.validade} onChange={e => set('validade', e.target.value)} className={inputCls} /></div>
@@ -829,11 +823,11 @@ function CertificadosPageInner() {
 
           <div className="flex-[1_1_22rem] min-w-0 space-y-5">
             <section aria-label="Dados para a certificadora" className="bg-white border border-slate-200 rounded-xl p-5 space-y-3">
-              <h2 className="text-base font-bold text-slate-900">Dados para a certificadora</h2>
-              <p className="text-sm text-slate-600">Montado com o cadastro. Um clique copia tudo para colar no e-mail ou no site da certificadora.</p>
+              <h2 className="text-base font-bold text-slate-900">Mensagem para a certificadora</h2>
+              <p className="text-sm text-slate-600">Montada com os dados do cadastro. O valor muda conforme o tipo de certificado.</p>
               <pre className="m-0 p-3 bg-slate-50 border border-slate-200 rounded-lg text-[0.8rem] leading-relaxed whitespace-pre-wrap font-mono text-slate-900">{textoDados(c)}</pre>
               <div className="flex flex-wrap gap-2">
-                <button onClick={() => copiarDados(c)} className={btnPri}>Copiar dados</button>
+                <button onClick={() => copiarDados(c)} className={btnPri}>Copiar mensagem</button>
                 <button onClick={() => abrirEmail(c)} className={btnSec}>Abrir e-mail para a certificadora</button>
               </div>
             </section>
