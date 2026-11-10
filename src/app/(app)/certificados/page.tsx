@@ -192,9 +192,9 @@ function CertificadosPageInner() {
     setLoading(true)
     const [{ data: cs }, { data: emps }, { data: org }] = await Promise.all([
       supabase.from('certificados_digitais')
-        .select('*, empresas(razao_social, cnpj, email, telefone, logradouro, numero, complemento, bairro, cidade, uf, cep, org_id)')
+        .select('*, empresas(razao_social, cnpj, email, telefone, logradouro, numero, complemento, bairro, cidade, municipio, uf, cep, org_id)')
         .order('data_vencimento', { ascending: true }),
-      supabase.from('empresas').select('id, razao_social, cnpj, logradouro, numero, complemento, bairro, cidade, uf, cep').eq('org_id', orgId).order('razao_social'),
+      supabase.from('empresas').select('id, razao_social, cnpj, logradouro, numero, complemento, bairro, cidade, municipio, uf, cep').eq('org_id', orgId).order('razao_social'),
       supabase.from('organizations').select('*').eq('id', orgId).maybeSingle(),
     ])
     // Só certificados da organização selecionada: de empresas dela ou avulsos cadastrados nela
@@ -325,7 +325,7 @@ function CertificadosPageInner() {
   function textoDados(c: any) {
     return mensagemCertificadora({
       tipo: c.tipo, uso: c.uso, cnpj: c.cnpj, razaoSocial: c.razao_social, titular: c.titular,
-      endereco: enderecoEmpresa(c.empresas), email: c.titular_email, telefone: c.titular_telefone,
+      endereco: c.endereco_boleto || enderecoEmpresa(c.empresas), email: c.titular_email, telefone: c.titular_telefone,
     })
   }
 
@@ -400,7 +400,7 @@ function CertificadosPageInner() {
       titular: c.titular, tipo: c.tipo, uso: c.uso, autoridade_certificadora: c.autoridade_certificadora,
       localizacao_fisica: c.localizacao_fisica, pagamento_confirmado: true, certificado_finalizado: false,
     }
-    const novos = { cliente_pagou_em: diaLocal(), renovacao_de: c.id, titular_email: c.titular_email, titular_telefone: c.titular_telefone }
+    const novos = { cliente_pagou_em: diaLocal(), renovacao_de: c.id, endereco_boleto: c.endereco_boleto, titular_email: c.titular_email, titular_telefone: c.titular_telefone }
     let { data, error } = await supabase.from('certificados_digitais').insert({ ...base, ...novos }).select('id').single()
     if (erroDeColuna(error)) {
       ;({ data, error } = await supabase.from('certificados_digitais').insert(base).select('id').single())

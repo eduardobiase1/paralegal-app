@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { CertificadoDigital, Empresa } from '@/types'
 import { useOrg } from '@/lib/org-context'
@@ -8,8 +8,8 @@ import toast from 'react-hot-toast'
 import { registrarAcao, diaLocal } from '@/lib/atividade'
 import { mensagemCertificadora, enderecoEmpresa, valorCertificado } from '@/lib/certificadoMensagem'
 
-// Colunas da migration_v16 — se ainda não existirem, salva sem elas
-const COLUNAS_V16 = ['titular_email', 'titular_telefone', 'cliente_pagou_em']
+// Colunas das migrations v16/v17 — se ainda não existirem, salva sem elas
+const COLUNAS_V16 = ['titular_email', 'titular_telefone', 'cliente_pagou_em', 'endereco_boleto']
 
 const ACS = ['Serasa', 'Certisign', 'Valid', 'Soluti', 'Safeweb', 'VRSafe', 'Outro']
 
@@ -28,8 +28,15 @@ export default function CertificadoForm({ empresas, certificado, defaultEmpresaI
   const modoInicial = certificado?.empresa_nome_livre ? 'avulsa' : 'cadastrada'
   const [modoEmpresa, setModoEmpresa] = useState<'cadastrada' | 'avulsa'>(modoInicial)
 
+  const empresaInicial = certificado?.empresa_id ?? (defaultEmpresaId && defaultEmpresaId !== '__avulsa__' ? defaultEmpresaId : '')
+  const enderecoInicial = (certificado as any)?.endereco_boleto
+    ?? enderecoEmpresa(empresas.find(e => e.id === empresaInicial))
+  // Último endereço preenchido automaticamente pela empresa — se o usuário não mexeu, troca junto com a empresa
+  const enderecoAuto = useRef((certificado as any)?.endereco_boleto ? '' : enderecoInicial)
+
   const [form, setForm] = useState({
-    empresa_id:               certificado?.empresa_id ?? (defaultEmpresaId && defaultEmpresaId !== '__avulsa__' ? defaultEmpresaId : ''),
+    empresa_id:               empresaInicial,
+    endereco:                 enderecoInicial || '',
     empresa_nome_livre:       certificado?.empresa_nome_livre ?? '',
     empresa_cnpj_livre:       certificado?.empresa_cnpj_livre ?? '',
     titular:                  certificado?.titular ?? '',
@@ -54,10 +61,20 @@ export default function CertificadoForm({ empresas, certificado, defaultEmpresaI
     cnpj: modoEmpresa === 'cadastrada' ? empresaSel?.cnpj : form.empresa_cnpj_livre,
     razaoSocial: modoEmpresa === 'cadastrada' ? empresaSel?.razao_social : form.empresa_nome_livre,
     titular: form.titular,
-    endereco: modoEmpresa === 'cadastrada' ? enderecoEmpresa(empresaSel) : '',
+    endereco: form.endereco,
     email: form.titular_email,
     telefone: form.titular_telefone,
   })
+
+  // Ao escolher a empresa, traz o endereço do cadastro (se o campo não foi editado à mão)
+  function escolherEmpresa(id: string) {
+    const novo = enderecoEmpresa(empresas.find(e => e.id === id))
+    setForm(prev => {
+      const manual = prev.endereco && prev.endereco !== enderecoAuto.current
+      enderecoAuto.current = novo
+      return { ...prev, empresa_id: id, endereco: manual ? prev.endereco : novo }
+    })
+  }
 
   async function copiarMensagem() {
     try {
@@ -85,6 +102,7 @@ export default function CertificadoForm({ empresas, certificado, defaultEmpresaI
       titular:                  form.titular,
       titular_email:            form.titular_email.trim() || null,
       titular_telefone:         form.titular_telefone.trim() || null,
+      endereco_boleto:          form.endereco.trim() || null,
       tipo:                     form.tipo,
       uso:                      form.uso,
       autoridade_certificadora: form.autoridade_certificadora,
@@ -119,7 +137,7 @@ export default function CertificadoForm({ empresas, certificado, defaultEmpresaI
     if (error && COLUNAS_V16.some(c => error!.message?.includes(c))) {
       const semNovas = Object.fromEntries(Object.entries(payload).filter(([k]) => !COLUNAS_V16.includes(k)))
       ;({ error } = await gravar(semNovas))
-      if (!error) toast('Salvo sem e-mail/telefone — rode a migration_v16 no Supabase.')
+      if (!error) toast('Salvo sem e-mail, telefone ou endereço — rode as migrations v16 e v17 no Supabase.')
     }
 
     setLoading(false)
@@ -157,7 +175,7 @@ export default function CertificadoForm({ empresas, certificado, defaultEmpresaI
         </div>
 
         {modoEmpresa === 'cadastrada' ? (
-          <select className="input" aria-label="Empresa" value={form.empresa_id} onChange={e => set('empresa_id', e.target.value)}>
+          <select className="input" aria-label="Empresa" value={form.empresa_id} onChange={e => escolherEmpresa(e.target.value)}>
             <option value="">Selecione uma empresa...</option>
             {empresas.map(e => <option key={e.id} value={e.id}>{e.razao_social}</option>)}
           </select>
@@ -190,6 +208,15 @@ export default function CertificadoForm({ empresas, certificado, defaultEmpresaI
           <input id="cf-tel" className="input" placeholder="(11) 90000-0000"
             value={form.titular_telefone} onChange={e => set('titular_telefone', e.target.value)} />
         </div>
+      </div>
+
+      <div>
+        <label className="label" htmlFor="cf-end">Endereço</label>
+        <input id="cf-end" className="input" placeholder="Rua, número, complemento, bairro, cidade/UF, CEP"
+          value={form.endereco} onChange={e => set('endereco', e.target.value)} />
+        {modoEmpresa === 'cadastrada' && (
+          <p className="text-xs text-slate-500 mt-1">Preenchido com o endereço da empresa; pode ser alterado.</p>
+        )}
       </div>
 
       {/* Tipo e certificadora */}
