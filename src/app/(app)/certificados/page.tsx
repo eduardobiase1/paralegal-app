@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Empresa, AC_URLS } from '@/types'
 import { formatDate, formatCNPJ } from '@/lib/utils'
@@ -15,43 +15,17 @@ import Link from 'next/link'
 import { Download, FileText, Search, Ellipsis } from 'lucide-react'
 import { mensagemCertificadora, enderecoEmpresa, mesesValidade } from '@/lib/certificadoMensagem'
 import { useOrg } from '@/lib/org-context'
+import { ETAPAS, etapasFeitas, etapaAtual, alertaEtapa } from '@/lib/certificadoFluxo'
 
 type Aba = 'processo' | 'renovar' | 'emitidos' | 'quinzena'
 
 const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro']
 const MESES_ABREV = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ']
 
-// ── Etapas do processo (da venda à emissão) ──────────────────────────────────
-const ETAPAS = [
-  { nome: 'Cliente pagou',                  acao: 'Confirmar pagamento', parado: 'Confirmar pagamento' },
-  { nome: 'Dados enviados à certificadora', acao: 'Copiar mensagem',     parado: 'Enviar dados' },
-  { nome: 'Boleto recebido',                acao: 'Registrar boleto',    parado: 'Aguardando boleto' },
-  { nome: 'Boleto pago',                    acao: 'Marcar boleto pago',  parado: 'Pagar boleto' },
-  { nome: 'Voucher emitido',                acao: 'Informar voucher',    parado: 'Emitir voucher' },
-  { nome: 'Atendimento agendado',           acao: 'Agendar',             parado: 'Agendar atendimento' },
-  { nome: 'Certificado emitido',            acao: 'Marcar emitido',      parado: 'Aguardando atendimento' },
-]
-
 const MODELO_OFERTA_PADRAO =
   'Olá, {titular}! O certificado digital {certificado} de {empresa} vence em {vencimento}. ' +
   'Para não ficar sem emitir notas e acessar o e-CAC, podemos renovar agora. Valor: R$ [VALOR]. ' +
   'Posso seguir com a renovação?'
-
-function etapasFeitas(c: any): boolean[] {
-  return [
-    !!(c.cliente_pagou_em || c.pagamento_confirmado),
-    !!c.dados_enviados_em,
-    !!c.boleto_recebido_em,
-    !!c.boleto_pago_em,
-    !!(c.voucher_emitido_em || c.voucher_numero),
-    !!c.data_agendamento,
-    !!c.certificado_finalizado,
-  ]
-}
-function etapaAtual(c: any): number {
-  const i = etapasFeitas(c).indexOf(false)
-  return i === -1 ? 6 : i
-}
 
 function diasAte(d?: string | null): number | null {
   if (!d) return null
@@ -113,23 +87,6 @@ function contextoAtual(c: any, i: number): string {
     case 5: return c.voucher_numero ? `voucher ${c.voucher_numero}` : ''
     case 6: return fmtAgenda(c)
   }
-  return ''
-}
-
-// Avisos de atraso, em laranja
-function alertaEtapa(c: any, i: number): string {
-  const desde = (d?: string | null) => { const x = diasAte(d); return x === null ? null : -x }
-  if (i === 1) { const n = desde(c.cliente_pagou_em); if (n !== null && n >= 2) return `Cliente pagou há ${n} dias e os dados ainda não foram enviados` }
-  if (i === 3) {
-    const n = diasAte(c.boleto_vencimento)
-    if (n !== null && n < 0) return `Boleto vencido há ${-n} dia${n === -1 ? '' : 's'}`
-    if (n === 0) return 'Boleto vence hoje'
-    if (n === 1) return 'Boleto vence amanhã'
-    if (n === 2) return 'Boleto vence depois de amanhã'
-  }
-  if (i === 4) { const n = desde(c.boleto_pago_em); if (n !== null && n >= 2) return `Boleto pago há ${n} dias, voucher ainda não emitido` }
-  if (i === 5) { const n = desde(c.voucher_emitido_em); if (n !== null && n >= 3) return `Voucher emitido há ${n} dias sem agendamento` }
-  if (i === 6 && c.data_agendamento && new Date(c.data_agendamento).getTime() < Date.now()) return 'O atendimento já passou: o certificado foi emitido?'
   return ''
 }
 
@@ -215,6 +172,14 @@ function CertificadosPageInner() {
   }
 
   useEffect(() => { load() }, [orgId])
+
+  // Vindo do Briefing com ?abrir=ID: abre direto o certificado
+  const abrirId = searchParams.get('abrir')
+  const abrirFeito = useRef(false)
+  useEffect(() => {
+    if (!abrirId || abrirFeito.current || certs.length === 0) return
+    if (certs.some(c => c.id === abrirId)) { abrirFeito.current = true; setSelectedId(abrirId) }
+  }, [abrirId, certs])
 
   useEffect(() => {
     if (!menuAberto) return
@@ -881,7 +846,7 @@ function CertificadosPageInner() {
               {selecionados.size > 0 ? `Exportar Excel (${selecionados.size})` : 'Exportar Excel'}
             </button>
           )}
-          <button onClick={() => { setEditItem(null); setModalOpen(true) }} className={btnPri}>Cliente pagou · novo certificado</button>
+          <button data-atalho="novo" onClick={() => { setEditItem(null); setModalOpen(true) }} className={btnPri}>Cliente pagou · novo certificado</button>
         </div>
       </header>
 

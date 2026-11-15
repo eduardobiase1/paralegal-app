@@ -1,12 +1,18 @@
 'use client'
 
-import { useEffect, useState, useCallback, Suspense } from 'react'
+import { useEffect, useState, useCallback, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
-import { useOrg } from '@/lib/org-context'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
-import { registrarAcao } from '@/lib/atividade'
+import { Search, ExternalLink } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
+import { useOrg } from '@/lib/org-context'
+import { registrarAcao, diaLocal } from '@/lib/atividade'
+import { dataBR, prazoTexto } from '@/lib/prazo'
+import AgendaVencimentos from '@/components/ui/AgendaVencimentos'
+import MenuAcoes from '@/components/ui/MenuAcoes'
+import Modal from '@/components/ui/Modal'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 
 const FORM_EMPTY = {
   empresa_id: '',
@@ -18,40 +24,20 @@ const FORM_EMPTY = {
   observacoes: '',
 }
 
-function diasParaVencer(data?: string): number | null {
-  if (!data) return null
-  const hoje = new Date(); hoje.setHours(0, 0, 0, 0)
-  return Math.round((new Date(data + 'T00:00:00').getTime() - hoje.getTime()) / 86400000)
-}
-
-function urgBorder(dias: number | null): string {
-  if (dias === null) return '3px solid transparent'
-  if (dias < 0)    return '3px solid #ef4444'
-  if (dias <= 30)  return '3px solid #f97316'
-  if (dias <= 60)  return '3px solid #eab308'
-  return '3px solid #10b981'
-}
-
-function PrazoBadge({ dias }: { dias: number | null }) {
-  if (dias === null) return <span className="text-xs text-slate-400">—</span>
-  if (dias < 0) return <span className="inline-flex items-center text-xs font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700">Vencida há {Math.abs(dias)}d</span>
-  if (dias <= 30) return <span className="inline-flex items-center text-xs font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">{dias}d</span>
-  if (dias <= 60) return <span className="inline-flex items-center text-xs font-bold px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">{dias}d</span>
-  return <span className="inline-flex items-center text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">{dias}d</span>
-}
+const ORGAO_LABEL: Record<string, string> = { VISA_MUNICIPAL: 'VISA municipal', ANVISA: 'ANVISA' }
 
 function LicencasPage() {
-  const { orgName, orgId } = useOrg()
+  const { orgId } = useOrg()
   const searchParams = useSearchParams()
   const empresaFiltro = searchParams.get('empresa')
-  const [supabase] = useState(createClient())
+  const [supabase] = useState(createClient)
   const [dados, setDados] = useState<any[]>([])
   const [empresas, setEmpresas] = useState<any[]>([])
-  const [modal, setModal] = useState(false)
+  const [modal, setModal] = useState<'novo' | 'editar' | 'renovar' | null>(null)
   const [editItem, setEditItem] = useState<any | null>(null)
+  const [excluirItem, setExcluirItem] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [filterPrazo, setFilterPrazo] = useState<'todas' | 'vencidas' | 'alerta' | 'ok'>('todas')
   const [search, setSearch] = useState('')
   const [form, setForm] = useState(FORM_EMPTY)
 
@@ -59,15 +45,27 @@ function LicencasPage() {
     if (!orgId) return
     const [res, empRes] = await Promise.all([
       // só licenças de empresas da organização selecionada
-      supabase.from('licencas_sanitarias').select('*, empresas!inner(razao_social, org_id)').eq('empresas.org_id', orgId).order('data_vencimento', { ascending: true }),
+      supabase.from('licencas_sanitarias').select('*, empresas!inner(razao_social, cnpj, url_portal_visa, org_id)').eq('empresas.org_id', orgId).order('data_vencimento', { ascending: true }),
       supabase.from('empresas').select('id, razao_social').eq('org_id', orgId).order('razao_social'),
     ])
+    if (res.error) toast.error('Erro ao carregar licenças: ' + res.error.message)
     setDados(res.data || [])
     setEmpresas(empRes.data || [])
     setLoading(false)
   }, [supabase, orgId])
 
   useEffect(() => { load() }, [load])
+
+  // Vindo do Briefing ou da ficha da empresa com ?renovar=ID: abre direto a renovação
+  const renovarId = searchParams.get('renovar')
+  const renovarAberto = useRef(false)
+  useEffect(() => {
+    if (!renovarId || renovarAberto.current || dados.length === 0) return
+    const item = dados.find(d => d.id === renovarId)
+    if (item) { renovarAberto.current = true; abrir(item, 'renovar') }
+  }, [renovarId, dados])
+
+  function fechar() { setModal(null); setEditItem(null); setForm(FORM_EMPTY) }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
@@ -85,262 +83,185 @@ function LicencasPage() {
       ? await supabase.from('licencas_sanitarias').update(payload).eq('id', editItem.id)
       : await supabase.from('licencas_sanitarias').insert([payload])
     setSaving(false)
-    if (!error) {
-      toast.success(editItem ? 'Licença atualizada!' : 'Licença cadastrada!')
-      registrarAcao(editItem ? 'Atualização' : 'Cadastro', `Licença Sanitária (${form.orgao}) ${editItem ? 'atualizada' : 'cadastrada'}`, { empresaId: form.empresa_id })
-      setModal(false)
-      setEditItem(null)
-      setForm(FORM_EMPTY)
-      load()
-    } else {
-      toast.error(`Erro: ${error.message}`)
-    }
+    if (error) { toast.error(`Erro: ${error.message}`); return }
+    const acao = modal === 'renovar' ? 'Renovação' : editItem ? 'Atualização' : 'Cadastro'
+    toast.success(modal === 'renovar' ? 'Renovação registrada!' : editItem ? 'Licença atualizada!' : 'Licença cadastrada!')
+    registrarAcao(acao, `Licença sanitária (${ORGAO_LABEL[form.orgao] || form.orgao}) ${modal === 'renovar' ? 'renovada' : editItem ? 'atualizada' : 'cadastrada'}`, { empresaId: form.empresa_id })
+    fechar()
+    load()
   }
 
-  function openEdit(item: any) {
+  function abrir(item: any, modo: 'editar' | 'renovar') {
     setForm({
       empresa_id: item.empresa_id,
       orgao: item.orgao || 'VISA_MUNICIPAL',
       numero_licenca: item.numero_licenca || '',
       atividade_sanitaria: item.atividade_sanitaria || '',
-      data_emissao: item.data_emissao || '',
-      data_vencimento: item.data_vencimento || '',
+      // ao renovar: emissão hoje e vencimento em branco, para informar a nova validade
+      data_emissao: modo === 'renovar' ? diaLocal() : item.data_emissao || '',
+      data_vencimento: modo === 'renovar' ? '' : item.data_vencimento || '',
       observacoes: item.observacoes || '',
     })
     setEditItem(item)
-    setModal(true)
+    setModal(modo)
   }
 
   function openNovo() {
     setForm({ ...FORM_EMPTY, empresa_id: empresaFiltro || '' })
     setEditItem(null)
-    setModal(true)
+    setModal('novo')
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm('Excluir esta licença?')) return
-    await supabase.from('licencas_sanitarias').delete().eq('id', id)
-    setDados(prev => prev.filter(i => i.id !== id))
+  async function handleDelete() {
+    if (!excluirItem) return
+    const { error } = await supabase.from('licencas_sanitarias').delete().eq('id', excluirItem.id)
+    if (error) { toast.error('Erro ao excluir: ' + error.message); return }
+    setDados(prev => prev.filter(i => i.id !== excluirItem.id))
+    setExcluirItem(null)
     toast.success('Licença excluída.')
   }
 
+  function abrirPortal(item: any) {
+    const cnpj = (item.empresas?.cnpj || '').replace(/\D/g, '')
+    if (cnpj) navigator.clipboard?.writeText(cnpj).then(() => toast.success('CNPJ copiado: é só colar no portal')).catch(() => {})
+  }
+
   const empresaNome = empresaFiltro ? (empresas.find(e => e.id === empresaFiltro)?.razao_social || '') : ''
-  const dadosBase = empresaFiltro ? dados.filter(i => i.empresa_id === empresaFiltro) : dados
-
-  // Métricas
-  const totalVencidas = dadosBase.filter(i => { const d = diasParaVencer(i.data_vencimento); return d !== null && d < 0 }).length
-  const totalAlerta   = dadosBase.filter(i => { const d = diasParaVencer(i.data_vencimento); return d !== null && d >= 0 && d <= 30 }).length
-  const totalOk       = dadosBase.filter(i => { const d = diasParaVencer(i.data_vencimento); return d === null || d > 30 }).length
-
-  const dadosFiltrados = dadosBase.filter(i => {
-    if (search) {
-      const q = search.toLowerCase()
-      if (!(i.empresas?.razao_social || '').toLowerCase().includes(q) &&
-          !(i.orgao || '').toLowerCase().includes(q) &&
-          !(i.atividade_sanitaria || '').toLowerCase().includes(q)) return false
-    }
-    const d = diasParaVencer(i.data_vencimento)
-    if (filterPrazo === 'vencidas') return d !== null && d < 0
-    if (filterPrazo === 'alerta')   return d !== null && d >= 0 && d <= 30
-    if (filterPrazo === 'ok')       return d === null || d > 30
-    return true
+  const filtrados = dados.filter(i => {
+    if (empresaFiltro && i.empresa_id !== empresaFiltro) return false
+    if (!search) return true
+    const q = search.toLowerCase()
+    return [i.empresas?.razao_social, ORGAO_LABEL[i.orgao] || i.orgao, i.atividade_sanitaria, i.numero_licenca].join(' ').toLowerCase().includes(q)
   })
 
-  if (loading) return <div className="p-10 font-sans text-slate-400">Carregando...</div>
+  const btnSec = 'h-10 px-4 rounded-lg border border-slate-300 bg-white text-sm font-semibold text-slate-900 hover:bg-slate-50'
 
   return (
-    <div className="p-4 md:p-6 xl:p-8 space-y-4">
-
+    <div className="p-4 md:p-6 xl:p-8 space-y-5">
       {empresaFiltro && (
-        <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-2xl px-5 py-3">
-          <Link href={`/empresas/${empresaFiltro}`} className="flex items-center gap-1.5 text-blue-600 hover:text-blue-800 text-sm font-semibold transition-colors">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg>
-            Voltar para empresa
-          </Link>
-          <span className="text-blue-300">|</span>
-          <span className="text-sm text-blue-800 font-bold break-words">{empresaNome}</span>
+        <div className="flex items-center gap-3 text-sm">
+          <Link href={`/empresas/${empresaFiltro}`} className="font-semibold text-blue-700 hover:underline">← Voltar para a empresa</Link>
+          <span className="text-slate-600">{empresaNome}</span>
         </div>
       )}
 
-      {/* Header */}
-      <header className="flex flex-wrap justify-between items-center gap-3 bg-white p-4 md:p-6 rounded-2xl border border-slate-200 shadow-sm">
+      <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-slate-900">Licenças Sanitárias</h1>
-          <p className="text-xs font-bold uppercase text-blue-600 tracking-wide mt-1">{empresaNome || orgName}</p>
+          <h1 className="text-2xl font-bold text-slate-900">Licenças sanitárias</h1>
+          <p className="text-sm text-slate-600 mt-1">
+            {filtrados.length} {filtrados.length === 1 ? 'licença' : 'licenças'}{empresaNome ? ` de ${empresaNome}` : ''}, organizadas pela data em que vencem
+          </p>
         </div>
-        <button onClick={openNovo}
-          className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-800 transition-all whitespace-nowrap">
-          + Nova Licença
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="flex items-center gap-2 h-11 px-3 bg-white border border-slate-300 rounded-lg text-slate-500">
+            <Search className="w-4 h-4" aria-hidden="true" />
+            <input value={search} onChange={e => setSearch(e.target.value)}
+              aria-label="Buscar empresa, órgão ou atividade" placeholder="Buscar empresa, órgão ou atividade"
+              className="w-56 bg-transparent outline-none text-sm text-slate-900 placeholder:text-slate-500" />
+          </label>
+          <button data-atalho="novo" onClick={openNovo} className="h-11 px-4 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 whitespace-nowrap">
+            Nova licença
+          </button>
+        </div>
       </header>
 
-      {/* Métricas */}
-      {!empresaFiltro && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <button onClick={() => setFilterPrazo('todas')}
-            className={`text-left p-4 rounded-xl border transition-all ${filterPrazo === 'todas' ? 'bg-slate-900 border-slate-900' : 'bg-white border-slate-200 hover:border-slate-300'}`}>
-            <p className="text-xs font-bold uppercase tracking-wide mb-1 text-slate-400">Total</p>
-            <p className={`text-2xl font-bold ${filterPrazo === 'todas' ? 'text-white' : 'text-slate-800'}`}>{dadosBase.length}</p>
-            <p className="text-xs mt-0.5 text-slate-400">licenças cadastradas</p>
-          </button>
-          <button onClick={() => setFilterPrazo(filterPrazo === 'vencidas' ? 'todas' : 'vencidas')}
-            className={`text-left p-4 rounded-xl border transition-all ${filterPrazo === 'vencidas' ? 'bg-red-600 border-red-600' : 'bg-white border-slate-200 hover:border-red-200'}`}>
-            <p className={`text-xs font-bold uppercase tracking-wide mb-1 ${filterPrazo === 'vencidas' ? 'text-red-200' : 'text-slate-400'}`}>Vencidas</p>
-            <p className={`text-2xl font-bold ${filterPrazo === 'vencidas' ? 'text-white' : totalVencidas > 0 ? 'text-red-600' : 'text-slate-800'}`}>{totalVencidas}</p>
-            <p className={`text-xs mt-0.5 ${filterPrazo === 'vencidas' ? 'text-red-200' : 'text-slate-400'}`}>exigem ação imediata</p>
-          </button>
-          <button onClick={() => setFilterPrazo(filterPrazo === 'alerta' ? 'todas' : 'alerta')}
-            className={`text-left p-4 rounded-xl border transition-all ${filterPrazo === 'alerta' ? 'bg-orange-500 border-orange-500' : 'bg-white border-slate-200 hover:border-orange-200'}`}>
-            <p className={`text-xs font-bold uppercase tracking-wide mb-1 ${filterPrazo === 'alerta' ? 'text-orange-100' : 'text-slate-400'}`}>Vencendo em 30d</p>
-            <p className={`text-2xl font-bold ${filterPrazo === 'alerta' ? 'text-white' : totalAlerta > 0 ? 'text-orange-500' : 'text-slate-800'}`}>{totalAlerta}</p>
-            <p className={`text-xs mt-0.5 ${filterPrazo === 'alerta' ? 'text-orange-100' : 'text-slate-400'}`}>requerem atenção</p>
-          </button>
-          <button onClick={() => setFilterPrazo(filterPrazo === 'ok' ? 'todas' : 'ok')}
-            className={`text-left p-4 rounded-xl border transition-all ${filterPrazo === 'ok' ? 'bg-emerald-600 border-emerald-600' : 'bg-white border-slate-200 hover:border-emerald-200'}`}>
-            <p className={`text-xs font-bold uppercase tracking-wide mb-1 ${filterPrazo === 'ok' ? 'text-emerald-100' : 'text-slate-400'}`}>Regulares</p>
-            <p className={`text-2xl font-bold ${filterPrazo === 'ok' ? 'text-white' : 'text-emerald-600'}`}>{totalOk}</p>
-            <p className={`text-xs mt-0.5 ${filterPrazo === 'ok' ? 'text-emerald-100' : 'text-slate-400'}`}>dentro do prazo</p>
-          </button>
-        </div>
-      )}
-
-      {/* Busca */}
-      <div className="relative">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none">🔍</span>
-        <input
-          placeholder="Buscar por empresa, órgão ou atividade..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 pl-9 text-sm outline-none focus:border-slate-400 transition-all"
+      {loading ? (
+        <div className="space-y-2">{[...Array(4)].map((_, k) => <div key={k} className="h-16 bg-white rounded-xl border border-slate-200 animate-pulse" />)}</div>
+      ) : (
+        <AgendaVencimentos
+          itens={filtrados}
+          nome={{ um: 'licença', varios: 'licenças', feminino: true }}
+          mostrarEmDia={!!search || !!empresaFiltro}
+          vazio={dados.length === 0 ? 'Nenhuma licença sanitária cadastrada.' : 'Nenhuma licença encontrada com esses filtros.'}
+          linha={(item, dias) => (
+            <>
+              <div className="flex-1 min-w-[16rem]">
+                <Link href={`/empresas/${item.empresa_id}`} className="font-semibold text-slate-900 hover:underline underline-offset-2 break-words">
+                  {item.empresas?.razao_social || '—'}
+                </Link>
+                <p className="text-sm text-slate-600">
+                  {ORGAO_LABEL[item.orgao] || item.orgao}
+                  {item.numero_licenca ? ` · nº ${item.numero_licenca}` : ''}
+                  {item.atividade_sanitaria ? ` · ${item.atividade_sanitaria}` : ''} · {prazoTexto(dias)}
+                </p>
+                {item.observacoes && <p className="text-sm text-slate-500 break-words">{item.observacoes}</p>}
+              </div>
+              <div className="flex items-center gap-1 ml-auto">
+                {item.empresas?.url_portal_visa && (
+                  <a href={item.empresas.url_portal_visa} target="_blank" rel="noopener noreferrer" onClick={() => abrirPortal(item)}
+                    className="inline-flex items-center gap-1.5 h-10 px-3 rounded-lg text-sm font-semibold text-blue-700 hover:bg-blue-50">
+                    Abrir portal<span className="sr-only"> da licença de {item.empresas?.razao_social}</span>
+                    <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
+                  </a>
+                )}
+                <button onClick={() => abrir(item, 'renovar')} className={btnSec}>Renovar</button>
+                <MenuAcoes acoes={[
+                  { label: 'Editar', onClick: () => abrir(item, 'editar') },
+                  { label: 'Excluir', onClick: () => setExcluirItem(item), perigo: true },
+                ]} />
+              </div>
+            </>
+          )}
         />
-      </div>
-
-      {/* Tabela */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left min-w-[640px]">
-            <thead className="bg-slate-50 border-b border-slate-200 text-xs font-bold uppercase text-slate-500 tracking-wide">
-              <tr>
-                <th className="px-5 py-4">Empresa</th>
-                <th className="px-5 py-4">Órgão</th>
-                <th className="px-5 py-4">Nº Licença</th>
-                <th className="px-5 py-4">Atividade</th>
-                <th className="px-5 py-4">Vencimento</th>
-                <th className="px-5 py-4">Prazo</th>
-                <th className="px-5 py-4 text-right">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {dadosFiltrados.map(item => {
-                const dias = diasParaVencer(item.data_vencimento)
-                return (
-                  <tr key={item.id}
-                    className="hover:bg-slate-50 transition-colors group"
-                    style={{ borderLeft: urgBorder(dias) }}
-                  >
-                    <td className="px-5 py-3.5 text-sm font-bold text-slate-800 break-words">{item.empresas?.razao_social || '—'}</td>
-                    <td className="px-5 py-3.5 text-xs font-bold uppercase text-slate-600">{item.orgao}</td>
-                    <td className="px-5 py-3.5 text-xs font-mono text-slate-600">{item.numero_licenca || '—'}</td>
-                    <td className="px-5 py-3.5 text-xs text-slate-500 break-words">{item.atividade_sanitaria || '—'}</td>
-                    <td className="px-5 py-3.5 text-xs font-mono font-bold text-slate-700">
-                      {item.data_vencimento ? new Date(item.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <PrazoBadge dias={dias} />
-                    </td>
-                    <td className="px-5 py-3.5 text-right">
-                      <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => openEdit(item)} title="Editar licença"
-                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-yellow-100 text-slate-500 hover:text-yellow-700 text-xs font-bold uppercase transition-all">
-                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
-                          Editar
-                        </button>
-                        <button onClick={() => handleDelete(item.id)} title="Excluir"
-                          className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-red-100 text-slate-400 hover:text-red-600 flex items-center justify-center text-xs transition-all">✕</button>
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-              {dadosFiltrados.length === 0 && (
-                <tr><td colSpan={7} className="px-6 py-12 text-center text-slate-400 italic text-sm">
-                  {dados.length === 0 ? 'Nenhuma licença sanitária cadastrada.' : 'Nenhum resultado para os filtros aplicados.'}
-                </td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Modal Novo / Editar */}
-      {modal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white w-full max-w-lg rounded-3xl p-6 md:p-8 border border-slate-200 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-bold text-slate-900">
-                {editItem ? 'Editar Licença Sanitária' : 'Nova Licença Sanitária'}
-              </h2>
-              <button onClick={() => { setModal(false); setEditItem(null) }} className="text-slate-400 hover:text-slate-700 font-bold text-lg leading-none">✕</button>
-            </div>
-            <form onSubmit={handleSave} className="space-y-4">
-              <div>
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-wide block mb-1">Empresa *</label>
-                <select required value={form.empresa_id} onChange={e => setForm({ ...form, empresa_id: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-slate-400">
-                  <option value="">Selecione...</option>
-                  {empresas.map(e => <option key={e.id} value={e.id}>{e.razao_social}</option>)}
-                </select>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide block mb-1">Órgão *</label>
-                  <select required value={form.orgao} onChange={e => setForm({ ...form, orgao: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-slate-400">
-                    <option value="VISA_MUNICIPAL">VISA Municipal</option>
-                    <option value="ANVISA">ANVISA</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide block mb-1">Nº da Licença</label>
-                  <input value={form.numero_licenca} onChange={e => setForm({ ...form, numero_licenca: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-slate-400" />
-                </div>
-                <div className="col-span-2">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide block mb-1">Atividade Sanitária</label>
-                  <input value={form.atividade_sanitaria} onChange={e => setForm({ ...form, atividade_sanitaria: e.target.value })}
-                    placeholder="Ex: Manipulação de alimentos"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-slate-400" />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide block mb-1">Data de Emissão</label>
-                  <input type="date" value={form.data_emissao} onChange={e => setForm({ ...form, data_emissao: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-slate-400" />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide block mb-1">Data de Vencimento</label>
-                  <input type="date" value={form.data_vencimento} onChange={e => setForm({ ...form, data_vencimento: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-slate-400" />
-                </div>
-              </div>
-              <div>
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-wide block mb-1">Observações</label>
-                <input value={form.observacoes} onChange={e => setForm({ ...form, observacoes: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-slate-400" />
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => { setModal(false); setEditItem(null) }}
-                  className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-bold text-sm hover:bg-slate-200 transition-all">Cancelar</button>
-                <button type="submit" disabled={saving}
-                  className="flex-1 bg-slate-900 text-white py-3 rounded-xl font-bold text-sm hover:bg-slate-800 transition-all disabled:opacity-50">
-                  {saving ? 'Salvando...' : editItem ? '✓ Salvar Alterações' : '✓ Cadastrar'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
       )}
+
+      <Modal open={!!modal} onClose={fechar}
+        title={modal === 'renovar' ? `Renovar licença · ${editItem?.empresas?.razao_social || ''}` : modal === 'editar' ? 'Editar licença sanitária' : 'Nova licença sanitária'}>
+        <form onSubmit={handleSave} className="space-y-4">
+          {modal === 'renovar' && editItem && (
+            <p className="text-sm text-slate-600">Vencimento atual: {dataBR(editItem.data_vencimento)}. Informe a nova validade.</p>
+          )}
+          {modal !== 'renovar' && (
+            <div>
+              <label className="label" htmlFor="li-emp">Empresa *</label>
+              <select id="li-emp" required value={form.empresa_id} onChange={e => setForm({ ...form, empresa_id: e.target.value })} className="input">
+                <option value="">Selecione...</option>
+                {empresas.map(e => <option key={e.id} value={e.id}>{e.razao_social}</option>)}
+              </select>
+            </div>
+          )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="label" htmlFor="li-org">Órgão *</label>
+              <select id="li-org" required value={form.orgao} onChange={e => setForm({ ...form, orgao: e.target.value })} className="input">
+                <option value="VISA_MUNICIPAL">VISA municipal</option>
+                <option value="ANVISA">ANVISA</option>
+              </select>
+            </div>
+            <div>
+              <label className="label" htmlFor="li-num">Nº da licença</label>
+              <input id="li-num" value={form.numero_licenca} onChange={e => setForm({ ...form, numero_licenca: e.target.value })} className="input" />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="label" htmlFor="li-atv">Atividade sanitária</label>
+              <input id="li-atv" value={form.atividade_sanitaria} onChange={e => setForm({ ...form, atividade_sanitaria: e.target.value })}
+                placeholder="Ex.: manipulação de alimentos" className="input" />
+            </div>
+            <div>
+              <label className="label" htmlFor="li-em">Data de emissão</label>
+              <input id="li-em" type="date" value={form.data_emissao} onChange={e => setForm({ ...form, data_emissao: e.target.value })} className="input" />
+            </div>
+            <div>
+              <label className="label" htmlFor="li-ve">{modal === 'renovar' ? 'Novo vencimento *' : 'Data de vencimento'}</label>
+              <input id="li-ve" type="date" required={modal === 'renovar'} value={form.data_vencimento} onChange={e => setForm({ ...form, data_vencimento: e.target.value })} className="input" />
+            </div>
+          </div>
+          <div>
+            <label className="label" htmlFor="li-obs">Observações</label>
+            <input id="li-obs" value={form.observacoes} onChange={e => setForm({ ...form, observacoes: e.target.value })} className="input" />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <button type="button" onClick={fechar} className="btn-secondary">Cancelar</button>
+            <button type="submit" disabled={saving} className="btn-primary">
+              {saving ? 'Salvando...' : modal === 'renovar' ? 'Confirmar renovação' : modal === 'editar' ? 'Salvar alterações' : 'Cadastrar'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <ConfirmDialog open={!!excluirItem} title="Excluir licença" danger
+        message={`Excluir a licença sanitária de "${excluirItem?.empresas?.razao_social || ''}"? Esta ação não pode ser desfeita.`}
+        onConfirm={handleDelete} onCancel={() => setExcluirItem(null)} />
     </div>
   )
 }

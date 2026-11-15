@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useOrg } from '@/lib/org-context'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
-import { registrarAcao } from '@/lib/atividade'
+import { registrarAcao, diaLocal } from '@/lib/atividade'
 import { Search, ExternalLink, Ellipsis } from 'lucide-react'
 import { SEFAZ_URLS } from '@/types'
 
@@ -127,6 +127,15 @@ function CertidoesPage() {
     if (item) { renovarAberto.current = true; openRenovar(item) }
   }, [renovarId, data])
 
+  // Vindo do Briefing com ?comunicar=ID: abre direto o comunicado ao cliente
+  const comunicarId = searchParams.get('comunicar')
+  const comunicarAberto = useRef(false)
+  useEffect(() => {
+    if (!comunicarId || comunicarAberto.current || data.length === 0) return
+    const item = data.find((d: any) => d.id === comunicarId)
+    if (item) { comunicarAberto.current = true; setComunicandoItem(item) }
+  }, [comunicarId, data])
+
   function openNovo() {
     setForm({ ...EMPTY_FORM, empresa_id: empresaFiltro || '' })
     setModalMode('novo')
@@ -154,7 +163,7 @@ function CertidoesPage() {
       empresa_id: item.empresa_id,
       tipo: item.tipo || '',
       orgao_emissor: item.orgao_emissor || '',
-      data_emissao: new Date().toISOString().split('T')[0],
+      data_emissao: diaLocal(),
       data_vencimento: '',
       observacoes: '',
       pendencia_status: 'nenhuma',
@@ -246,7 +255,7 @@ function CertidoesPage() {
     if (!comunicandoItem) return
     const agora = new Date().toISOString()
     const followupDate = new Date(); followupDate.setDate(followupDate.getDate() + 30)
-    const followup_em = followupDate.toISOString().slice(0, 10)
+    const followup_em = diaLocal(followupDate)
     const novoCount = (comunicandoItem.comunicado_count || 0) + 1
     const ordinal = novoCount === 1 ? '1ª' : novoCount === 2 ? '2ª' : novoCount === 3 ? '3ª' : `${novoCount}ª`
 
@@ -500,7 +509,7 @@ function CertidoesPage() {
             <option value="todas">Todas as situações</option>
             {PENDENCIA_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
-          <button onClick={openNovo} className="h-11 px-4 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 whitespace-nowrap">
+          <button data-atalho="novo" onClick={openNovo} className="h-11 px-4 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 whitespace-nowrap">
             Nova certidão
           </button>
         </div>

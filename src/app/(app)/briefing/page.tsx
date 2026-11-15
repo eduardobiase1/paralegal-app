@@ -1,1117 +1,541 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
+import toast from 'react-hot-toast'
+import { Search } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useOrg } from '@/lib/org-context'
-import Link from 'next/link'
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-const DIAS_PT  = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado']
-const MESES_PT = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro']
-
-function daysRemaining(d: string) {
-  const a = new Date(d + 'T00:00:00'); a.setHours(0,0,0,0)
-  const b = new Date();                b.setHours(0,0,0,0)
-  return Math.round((a.getTime() - b.getTime()) / 86_400_000)
-}
-function daysSinceMs(ms: number) {
-  return Math.round((Date.now() - ms) / 86_400_000)
-}
-function vencTxt(dias: number, fem = false) {
-  if (dias < 0)   return `${fem ? 'vencida' : 'vencido'} há ${Math.abs(dias)}d`
-  if (dias === 0)  return 'vence hoje'
-  return `vence em ${dias}d`
-}
-function getInitials(name: string) {
-  const skip = new Set(['LTDA','EIRELI','MEI','ME','EPP','SA','EI','DE','DA','DO','DOS','DAS','E','EM','A'])
-  const w = name.split(/\s+/).filter(x => x.length > 1 && !skip.has(x.toUpperCase().replace(/[.,]/g, '')))
-  return w.length >= 2 ? (w[0][0] + w[1][0]).toUpperCase() : name.substring(0, 2).toUpperCase()
-}
-function getCompType(name: string) {
-  const n = name.toUpperCase()
-  if (n.includes('LTDA'))   return 'LTDA'
-  if (n.includes('EIRELI')) return 'EIRELI'
-  if (n.includes('MEI'))    return 'MEI'
-  if (/ ME($| )/.test(n))  return 'ME'
-  if (n.includes('EPP'))    return 'EPP'
-  if (n.includes('S/A') || / SA($| )/.test(n)) return 'S/A'
-  if (/ EI($| )/.test(n))  return 'EI'
-  return ''
-}
+import { diaLocal } from '@/lib/atividade'
+import { apenasVigentes, chaveAlvara, dataBR, diasParaVencer, prazoTexto } from '@/lib/prazo'
+import { ETAPAS, etapaAtual, alertaEtapa } from '@/lib/certificadoFluxo'
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
-type Tier = 'critico' | 'urgente' | 'atencao' | 'controle'
+type Tier = 'critico' | 'urgente' | 'atencao'
+type Aba = Tier | 'nao_comunicados' | 'revisao' | 'cadastro'
 
-interface PriorityDoc {
-  key: string; tipo: 'certidao' | 'alvara' | 'licenca'
-  empresaNome: string; empresaId: string; docId: string
-  descricao: string; dataVencimento: string | null
-  diasRestantes: number | null; href: string
+interface Item {
+  key: string
+  tier: Tier
+  tipo: string            // "Certidão negativa", "Alvará"...
+  empresaId: string
+  empresaNome: string
+  doc: string             // descrição do documento
+  venc: string | null     // data de vencimento, quando houver
+  prazo: string           // "venceu há 3 dias", "boleto vence amanhã"...
+  vencido: boolean
+  acao: { label: string; href: string }
+  comunicar?: string      // link para comunicar o cliente (só certidões)
 }
 
-interface WorkItem {
-  key: string; tier: Tier; icon: React.ReactNode
-  badge: string; empresaNome: string; empresaId: string
-  href: string; descricao: string; detalhe: string
-  detalheColor: 'red' | 'orange' | 'amber' | 'blue' | 'gray'
-  score: number; subList?: string[]
+interface RevisaoDoc {
+  key: string; tabela: 'certidoes' | 'alvaras' | 'licencas_sanitarias'; id: string
+  empresaId: string; empresaNome: string; doc: string; venc: string | null
 }
 
-interface CompanyGroup {
-  empresaNome: string; empresaId: string; worstTier: Tier
-  items: WorkItem[]; initials: string; compType: string
+const ORDEM: Record<Tier, number> = { critico: 0, urgente: 1, atencao: 2 }
+
+// Faixas do briefing: vencido ou até 5 dias = crítico · até 15 = urgente · até 30 = atenção
+function tierPorDias(dias: number): Tier | null {
+  if (dias <= 5) return 'critico'
+  if (dias <= 15) return 'urgente'
+  if (dias <= 30) return 'atencao'
+  return null
 }
 
-// ── Cores por tier ─────────────────────────────────────────────────────────────
-const TS = {
-  critico: {
-    border: 'border-l-red-500',
-    av: 'bg-red-100 text-red-700 border border-red-200',
-    chip: 'bg-red-50 text-red-700 border border-red-200',
-    chipDot: 'bg-red-500',
-    strip: '#EF4444',
-    led: '#EF4444', glow: 'rgba(239,68,68,.4)',
-    days: 'bg-red-100 text-red-700',
-    text: 'text-red-700',
-  },
-  urgente: {
-    border: 'border-l-orange-400',
-    av: 'bg-orange-100 text-orange-700 border border-orange-200',
-    chip: 'bg-orange-50 text-orange-700 border border-orange-200',
-    chipDot: 'bg-orange-500',
-    strip: '#F97316',
-    led: '#F97316', glow: 'rgba(249,115,22,.4)',
-    days: 'bg-orange-100 text-orange-700',
-    text: 'text-orange-700',
-  },
-  atencao: {
-    border: 'border-l-amber-400',
-    av: 'bg-amber-100 text-amber-800 border border-amber-200',
-    chip: 'bg-amber-50 text-amber-800 border border-amber-200',
-    chipDot: 'bg-amber-500',
-    strip: '#F59E0B',
-    led: '#D97706', glow: 'rgba(217,119,6,.4)',
-    days: 'bg-amber-100 text-amber-800',
-    text: 'text-amber-700',
-  },
-  controle: {
-    border: 'border-l-blue-400',
-    av: 'bg-blue-100 text-blue-700 border border-blue-200',
-    chip: 'bg-blue-50 text-blue-700 border border-blue-200',
-    chipDot: 'bg-blue-400',
-    strip: '#60A5FA',
-    led: '#3B82F6', glow: 'rgba(59,130,246,.4)',
-    days: 'bg-blue-50 text-blue-700',
-    text: 'text-blue-700',
-  },
-}
+const SNOOZE_KEY = 'briefing_snoozed'
 
-// ── Badge do tipo de documento ────────────────────────────────────────────────
-function DocTypeBadge({ badge }: { badge: string }) {
-  const cls =
-    badge === 'Alvará'            ? 'bg-emerald-50 border-emerald-200 text-emerald-700' :
-    badge === 'Licença Sanitária' ? 'bg-purple-50  border-purple-200  text-purple-700'  :
-    badge === 'Processo Societário' ? 'bg-slate-100 border-slate-200 text-slate-600'    :
-    'bg-sky-50 border-sky-200 text-sky-700'
-  return (
-    <span className={`text-xs font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border flex-shrink-0 whitespace-nowrap ${cls}`}>
-      {badge}
-    </span>
-  )
-}
-
-// ── Ícones ────────────────────────────────────────────────────────────────────
-const IcoCertidao = () => <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-const IcoAlvara   = () => <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138z" /></svg>
-const IcoLicenca  = () => <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
-const IcoCertDig  = () => <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>
-const IcoWarning  = () => <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-
-// ── Agrupa itens por empresa ───────────────────────────────────────────────────
-function buildCompanyGroups(g: Record<Tier, WorkItem[]>): CompanyGroup[] {
-  const map = new Map<string, CompanyGroup>()
-  for (const tier of ['critico', 'urgente', 'atencao'] as Tier[]) {
-    for (const item of g[tier]) {
-      if (!map.has(item.empresaNome)) {
-        map.set(item.empresaNome, {
-          empresaNome: item.empresaNome,
-          empresaId:   item.empresaId,
-          worstTier:   tier,
-          items:       [],
-          initials:    getInitials(item.empresaNome),
-          compType:    getCompType(item.empresaNome),
-        })
-      }
-      map.get(item.empresaNome)!.items.push(item)
-    }
-  }
-  const ord = { critico: 0, urgente: 1, atencao: 2, controle: 3 }
-  return Array.from(map.values()).sort((a, b) => {
-    if (ord[a.worstTier] !== ord[b.worstTier]) return ord[a.worstTier] - ord[b.worstTier]
-    return b.items.filter(i => i.tier === 'critico').length - a.items.filter(i => i.tier === 'critico').length
-  })
-}
-
-// ── Seção Revisão Mensal ──────────────────────────────────────────────────────
-function MensalCard({ docs, expanded, onToggle }: {
-  docs: PriorityDoc[]; expanded: boolean; onToggle: () => void
-}) {
-  if (docs.length === 0) return null
-  const tipoLabel = { certidao: 'Certidão', alvara: 'Alvará', licenca: 'Licença Sanitária' }
-
-  return (
-    <div className="bg-white rounded-xl border border-slate-200 border-l-4 border-l-violet-500 shadow-sm overflow-hidden">
-      <button onClick={onToggle}
-        className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-violet-50 transition-colors text-left">
-        <div className="w-9 h-9 rounded-xl bg-violet-100 border border-violet-200 flex items-center justify-center text-base flex-shrink-0">⭐</div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-violet-700 leading-tight">Revisão Mensal</p>
-          <p className="text-xs text-violet-500 mt-0.5">Empresas prioritárias · ciclo de 30 dias</p>
-        </div>
-        <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-violet-100 text-violet-700 border border-violet-200 flex-shrink-0">
-          {docs.length} {docs.length === 1 ? 'item' : 'itens'}
-        </span>
-        <svg className={`w-4 h-4 text-violet-400 flex-shrink-0 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
-          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
-
-      {expanded && (
-        <div className="border-t border-violet-100">
-          {docs.map(doc => {
-            const diasCls = doc.diasRestantes === null ? 'bg-slate-100 text-slate-500'
-              : doc.diasRestantes < 0   ? 'bg-red-100 text-red-700'
-              : doc.diasRestantes <= 15  ? 'bg-orange-100 text-orange-700'
-              : 'bg-violet-50 text-violet-700'
-            const diasTxt = doc.diasRestantes === null ? 'sem data'
-              : doc.diasRestantes < 0   ? `vencida há ${Math.abs(doc.diasRestantes)}d`
-              : doc.diasRestantes === 0  ? 'vence hoje'
-              : `vence em ${doc.diasRestantes}d`
-            return (
-              <Link key={doc.key} href={doc.href}
-                className="flex items-center gap-2.5 px-4 py-2.5 border-b border-violet-50 last:border-0 hover:bg-violet-50 transition-colors group">
-                <span className="w-1.5 h-1.5 rounded-full bg-violet-400 flex-shrink-0" />
-                <span className={`text-xs font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border flex-shrink-0 whitespace-nowrap
-                  ${doc.tipo === 'alvara'  ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                  : doc.tipo === 'licenca' ? 'bg-purple-50  border-purple-200  text-purple-700'
-                  : 'bg-sky-50 border-sky-200 text-sky-700'}`}>
-                  {tipoLabel[doc.tipo]}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-slate-900 break-words group-hover:text-violet-700 transition-colors">{doc.descricao}</p>
-                  <p className="text-xs text-slate-400 break-words">{doc.empresaNome}</p>
-                </div>
-                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0 whitespace-nowrap ${diasCls}`}>{diasTxt}</span>
-                <svg className="w-3.5 h-3.5 text-slate-300 group-hover:text-violet-400 flex-shrink-0 transition-colors"
-                  fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </Link>
-            )
-          })}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ── Card de empresa ───────────────────────────────────────────────────────────
-function CompanyCard({ group, expanded, onToggle, onSnooze, subListExpanded, onToggleSubList }: {
-  group: CompanyGroup; expanded: boolean; onToggle: () => void; onSnooze: () => void
-  subListExpanded: Record<string, boolean>; onToggleSubList: (key: string) => void
-}) {
-  const ts   = TS[group.worstTier]
-  const crit = group.items.filter(i => i.tier === 'critico').length
-  const urg  = group.items.filter(i => i.tier === 'urgente').length
-  const att  = group.items.filter(i => i.tier === 'atencao').length
-  const tot  = group.items.length
-
-  return (
-    <div className={`bg-white rounded-2xl border border-slate-200 border-l-[3px] ${ts.border} shadow-sm hover:shadow-lg hover:-translate-y-px transition-all duration-200`}>
-      {/* Header */}
-      <button onClick={onToggle}
-        className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50/60 transition-colors text-left rounded-t-2xl">
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 tracking-tight ${ts.av}`}>
-          {group.initials}
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-bold text-slate-900 leading-tight break-words tracking-tight">{group.empresaNome}</p>
-          <div className="flex items-center gap-1.5 mt-0.5">
-            {group.compType && (
-              <span className="text-xs font-bold uppercase tracking-wide text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
-                {group.compType}
-              </span>
-            )}
-            <span className="text-xs text-slate-400 font-medium">
-              {tot} {tot === 1 ? 'pendência' : 'pendências'}
-            </span>
-          </div>
-        </div>
-        <div className="hidden sm:flex items-center gap-1.5 flex-shrink-0">
-          {crit > 0 && (
-            <span className={`flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full border ${TS.critico.chip}`}>
-              <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-              {crit} {crit === 1 ? 'crítico' : 'críticos'}
-            </span>
-          )}
-          {urg > 0 && (
-            <span className={`flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full border ${TS.urgente.chip}`}>
-              <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
-              {urg} {urg === 1 ? 'urgente' : 'urgentes'}
-            </span>
-          )}
-          {att > 0 && crit === 0 && urg === 0 && (
-            <span className={`flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full border ${TS.atencao.chip}`}>
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-              {att} atenção
-            </span>
-          )}
-        </div>
-        <svg className={`w-4 h-4 text-slate-400 flex-shrink-0 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
-          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
-
-      {expanded && (
-        <>
-          {/* Urgency strip */}
-          <div className="flex h-[3px]">
-            {crit > 0 && <div style={{ width: `${(crit/tot*100).toFixed(1)}%`, background: TS.critico.strip }} />}
-            {urg  > 0 && <div style={{ width: `${(urg /tot*100).toFixed(1)}%`, background: TS.urgente.strip }} />}
-            {att  > 0 && <div style={{ width: `${(att /tot*100).toFixed(1)}%`, background: TS.atencao.strip }} />}
-          </div>
-
-          {/* Doc rows */}
-          <div className="border-t border-slate-50">
-            {group.items.map(item => {
-              const its    = TS[item.tier]
-              const hasSub = (item.subList?.length ?? 0) > 0
-              const subOpen = subListExpanded[item.key]
-              return (
-                <div key={item.key} className="border-b border-slate-50 last:border-0">
-                  <div className="flex items-center gap-2.5 px-4 py-2.5 hover:bg-slate-50 transition-colors group/row">
-                    <span className="w-2 h-2 rounded-full flex-shrink-0"
-                      style={{ background: its.led, boxShadow: `0 0 6px ${its.glow}` }} />
-                    <DocTypeBadge badge={item.badge} />
-                    <Link href={item.href} className="flex-1 min-w-0">
-                      <span className="text-[13px] font-medium text-slate-900 break-words block hover:text-blue-700 transition-colors">
-                        {item.descricao}
-                      </span>
-                    </Link>
-                    <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full flex-shrink-0 whitespace-nowrap ${its.days}`}>
-                      {item.detalhe}
-                    </span>
-                    {!hasSub ? (
-                      <Link href={item.href}
-                        className="opacity-0 group-hover/row:opacity-100 transition-opacity text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-2.5 py-0.5 rounded-full flex-shrink-0 whitespace-nowrap">
-                        Renovar →
-                      </Link>
-                    ) : (
-                      <button onClick={() => onToggleSubList(item.key)}
-                        className={`text-xs font-semibold flex items-center gap-1 flex-shrink-0 ${its.text}`}>
-                        {subOpen ? 'ocultar' : 'ver lista'}
-                        <svg className={`w-3 h-3 transition-transform ${subOpen ? 'rotate-180' : ''}`}
-                          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </button>
-                    )}
-                  </div>
-                  {hasSub && subOpen && (
-                    <div className="px-12 pb-3 border-t border-slate-50">
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mt-3 mb-2">Empresas</p>
-                      <div className="space-y-1 max-h-40 overflow-y-auto">
-                        {item.subList!.map((nome, i) => (
-                          <p key={i} className="text-xs text-slate-600 flex items-center gap-1.5">
-                            <span className="w-1 h-1 rounded-full bg-slate-300 flex-shrink-0" />{nome}
-                          </p>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-
-          {/* Footer */}
-          <div className="flex items-center gap-1 px-4 py-2 bg-slate-50 border-t border-slate-100">
-            <Link href={`/certidoes?empresa=${group.empresaId}`}
-              className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg transition-colors">
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-              </svg>
-              Ver empresa
-            </Link>
-            <div className="w-px h-3.5 bg-slate-200 mx-0.5" />
-            <button onClick={onSnooze}
-              className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 hover:bg-slate-100 px-2.5 py-1.5 rounded-lg transition-colors">
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              Adiar hoje
-            </button>
-          </div>
-        </>
-      )}
-    </div>
-  )
-}
-
-// ── Card de controle ──────────────────────────────────────────────────────────
-function ControleCard({ item, subListExpanded, onToggleSubList }: {
-  item: WorkItem; subListExpanded: Record<string, boolean>; onToggleSubList: (key: string) => void
-}) {
-  const subOpen = subListExpanded[item.key]
-  return (
-    <div className="bg-white rounded-xl border border-slate-200 border-l-4 border-l-blue-400 shadow-sm hover:shadow-md transition-shadow">
-      <div className="flex items-center gap-3 px-4 py-3.5">
-        <div className="w-9 h-9 rounded-xl bg-blue-100 border border-blue-200 flex items-center justify-center flex-shrink-0 text-blue-600">
-          <IcoWarning />
-        </div>
-        <div className="flex-1 min-w-0">
-          <Link href={item.href} className="group">
-            <p className="text-sm font-bold text-slate-900 leading-tight group-hover:text-blue-700 transition-colors">{item.empresaNome}</p>
-            <p className="text-xs text-slate-500 mt-0.5">{item.descricao}</p>
-          </Link>
-        </div>
-        <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 flex-shrink-0 whitespace-nowrap">
-          {item.detalhe}
-        </span>
-        {(item.subList?.length ?? 0) > 0 && (
-          <button onClick={() => onToggleSubList(item.key)}
-            className="text-xs font-semibold text-blue-700 flex items-center gap-1 flex-shrink-0">
-            {subOpen ? 'ocultar' : 'ver lista'}
-            <svg className={`w-3 h-3 transition-transform ${subOpen ? 'rotate-180' : ''}`}
-              fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-        )}
-      </div>
-      {subOpen && item.subList && (
-        <div className="px-14 pb-3 border-t border-slate-50">
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mt-3 mb-2">Empresas</p>
-          <div className="space-y-1 max-h-40 overflow-y-auto">
-            {item.subList.map((nome, i) => (
-              <p key={i} className="text-xs text-slate-600 flex items-center gap-1.5">
-                <span className="w-1 h-1 rounded-full bg-slate-300 flex-shrink-0" />{nome}
-              </p>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ── Componente principal ──────────────────────────────────────────────────────
 export default function BriefingPage() {
-  const { orgId, orgName } = useOrg()
-  const [groups,       setGroups]       = useState<Record<Tier, WorkItem[]>>({ critico: [], urgente: [], atencao: [], controle: [] })
-  const [compGroups,   setCompGroups]   = useState<CompanyGroup[]>([])
-  const [priorityDocs, setPriorityDocs] = useState<PriorityDoc[]>([])
-  const [loading,      setLoading]      = useState(true)
-  const [updatedAt,    setUpdatedAt]    = useState<Date | null>(null)
-  const [subExpanded,  setSubExpanded]  = useState<Record<string, boolean>>({})
-  const [coExpanded,   setCoExpanded]   = useState<Record<string, boolean>>({})
-  const [searchQ,      setSearchQ]      = useState('')
-  const [activeTab,    setActiveTab]    = useState<'critico' | 'urgente' | 'atencao' | 'nao_comunicados' | 'revisao' | 'controle'>('critico')
-  const [snoozed, setSnoozed] = useState<Set<string>>(() => {
-    try {
-      const stored = localStorage.getItem('briefing_snoozed')
-      if (!stored) return new Set()
-      const { date, items } = JSON.parse(stored)
-      const today = new Date().toISOString().slice(0, 10)
-      if (date !== today) return new Set()
-      return new Set<string>(items)
-    } catch { return new Set() }
-  })
+  const { orgId } = useOrg()
+  const [supabase] = useState(createClient)
+
+  const [itens, setItens] = useState<Item[]>([])
   const [naoComunicados, setNaoComunicados] = useState<any[]>([])
+  const [revisao, setRevisao] = useState<RevisaoDoc[]>([])
+  const [semCertidao, setSemCertidao] = useState<Array<{ id: string; nome: string }>>([])
+  const [semAlvara, setSemAlvara] = useState<Array<{ id: string; nome: string }>>([])
   const [processosParados, setProcessosParados] = useState(0)
-  const [supabase]                      = useState(createClient)
-  const [modoFoco,     setModoFoco]     = useState(false)
-  const [focoIdx,      setFocoIdx]      = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [updatedAt, setUpdatedAt] = useState<Date | null>(null)
 
-  const hoje     = new Date()
-  const diaLabel = DIAS_PT[hoje.getDay()]
-  const dateLbl  = `${hoje.getDate()} de ${MESES_PT[hoje.getMonth()]} de ${hoje.getFullYear()}`
+  const [aba, setAba] = useState<Aba>('critico')
+  const [busca, setBusca] = useState('')
+  const [foco, setFoco] = useState<number | null>(null)
 
-  useEffect(() => { load() }, [])
-
-  const isFirstSnoozeRender = useRef(true)
+  // Empresas adiadas — valem só para o dia de hoje
+  const [adiadas, setAdiadas] = useState<Set<string>>(new Set())
   useEffect(() => {
-    if (isFirstSnoozeRender.current) { isFirstSnoozeRender.current = false; return }
     try {
-      const today = new Date().toISOString().slice(0, 10)
-      localStorage.setItem('briefing_snoozed', JSON.stringify({ date: today, items: [...snoozed] }))
+      const salvo = JSON.parse(localStorage.getItem(SNOOZE_KEY) || 'null')
+      if (salvo?.date === diaLocal()) setAdiadas(new Set<string>(salvo.items))
     } catch {}
-  }, [snoozed])
-
-  function tierForDias(dias: number): Tier | null {
-    if (dias < 0 || dias <= 5) return 'critico'
-    if (dias <= 15)            return 'urgente'
-    if (dias <= 30)            return 'atencao'
-    return null
-  }
-  function tierForProcDias(dias: number): Tier | null {
-    if (dias > 30)  return 'critico'
-    if (dias > 15)  return 'urgente'
-    if (dias >= 7)  return 'atencao'
-    return null
+  }, [])
+  function adiar(empresaKey: string, desfazer = false) {
+    setAdiadas(prev => {
+      const n = new Set(prev)
+      if (desfazer) n.delete(empresaKey); else n.add(empresaKey)
+      try { localStorage.setItem(SNOOZE_KEY, JSON.stringify({ date: diaLocal(), items: [...n] })) } catch {}
+      return n
+    })
   }
 
   async function load() {
+    if (!orgId) return
     setLoading(true)
     try {
-      // Passo 1: buscar SOMENTE as empresas desta organização
       const { data: orgEmpresas } = await supabase
-        .from('empresas')
-        .select('id, razao_social, situacao, status')
-        .eq('org_id', orgId)
+        .from('empresas').select('id, razao_social, situacao, status, prioritaria').eq('org_id', orgId)
+      const empresasOrg = orgEmpresas || []
+      const ids = empresasOrg.map(e => e.id)
+      const nomeDe: Record<string, string> = {}
+      for (const e of empresasOrg) nomeDe[e.id] = e.razao_social
+      const vazio = Promise.resolve({ data: [] as any[] })
 
-      const orgEmpresaIds = (orgEmpresas || []).map(e => e.id)
-
-      // Passo 2: buscar documentos filtrando pelos IDs das empresas do org
-      const hoje = new Date().toISOString().slice(0, 10)
-      const [
-        { data: processos },
-        { data: certidoes },
-        { data: alvaras },
-        { data: licencas },
-        { data: certificados },
-        { data: empComCert },
-        { data: empComAlvara },
-        { data: followups },
-        { data: procNotas },
-      ] = await Promise.all([
-        // Processos podem não ter empresa vinculada (cliente_nome), por isso filtra por org_id
-        supabase.from('processos_societarios')
-          .select('id, titulo, tipo, updated_at, created_at, empresa_id, cliente_nome, empresa:empresas(razao_social)')
-          .eq('org_id', orgId)
-          .eq('status', 'Andamento'),
-        orgEmpresaIds.length === 0 ? Promise.resolve({ data: [] }) :
-        supabase.from('certidoes')
-          .select('id, tipo, data_vencimento, updated_at, empresa_id, empresa:empresas(razao_social)')
-          .in('empresa_id', orgEmpresaIds)
-          .not('data_vencimento', 'is', null),
-        orgEmpresaIds.length === 0 ? Promise.resolve({ data: [] }) :
-        supabase.from('alvaras')
-          .select('id, tipo, data_vencimento, empresa_id, empresa:empresas(razao_social)')
-          .in('empresa_id', orgEmpresaIds)
-          .not('data_vencimento', 'is', null),
-        orgEmpresaIds.length === 0 ? Promise.resolve({ data: [] }) :
-        supabase.from('licencas_sanitarias')
-          .select('id, data_vencimento, empresa_id, empresa:empresas(razao_social)')
-          .in('empresa_id', orgEmpresaIds)
-          .not('data_vencimento', 'is', null),
-        orgEmpresaIds.length === 0 ? Promise.resolve({ data: [] }) :
-        supabase.from('certificados_digitais')
-          .select('id, tipo, uso, data_vencimento, empresa_id, empresa:empresas(razao_social)')
-          .in('empresa_id', orgEmpresaIds)
-          .not('data_vencimento', 'is', null),
-        orgEmpresaIds.length === 0 ? Promise.resolve({ data: [] }) :
-        supabase.from('certidoes').select('empresa_id').in('empresa_id', orgEmpresaIds),
-        orgEmpresaIds.length === 0 ? Promise.resolve({ data: [] }) :
-        supabase.from('alvaras').select('empresa_id').in('empresa_id', orgEmpresaIds),
-        orgEmpresaIds.length === 0 ? Promise.resolve({ data: [] }) :
-        supabase.from('certidoes')
-          .select('id, tipo, orgao_emissor, data_vencimento, comunicado_em, comunicado_para, comunicado_count, followup_em, empresa_id, empresa:empresas(razao_social)')
-          .in('empresa_id', orgEmpresaIds)
-          .not('followup_em', 'is', null)
-          .lte('followup_em', hoje),
-        supabase.from('processo_notas')
-          .select('processo_id, created_at')
-          .eq('org_id', orgId)
-          .order('created_at', { ascending: false }),
+      const [procRes, certRes, alvRes, licRes, cdRes, notasRes] = await Promise.all([
+        supabase.from('processos_societarios').select('id, updated_at, created_at').eq('org_id', orgId).eq('status', 'Andamento'),
+        ids.length ? supabase.from('certidoes').select('*').in('empresa_id', ids) : vazio,
+        ids.length ? supabase.from('alvaras').select('*').in('empresa_id', ids) : vazio,
+        ids.length ? supabase.from('licencas_sanitarias').select('*').in('empresa_id', ids) : vazio,
+        supabase.from('certificados_digitais').select('*, empresas(razao_social, org_id)'),
+        supabase.from('processo_notas').select('processo_id, created_at').eq('org_id', orgId).order('created_at', { ascending: false }),
       ])
 
-      const result: Record<Tier, WorkItem[]> = { critico: [], urgente: [], atencao: [], controle: [] }
+      const certidoes = (certRes.data || []) as any[]
+      // Alvarás: cada renovação cria um registro novo, então só o vigente conta
+      const alvaras = apenasVigentes((alvRes.data || []) as any[], chaveAlvara)
+      const licencas = (licRes.data || []) as any[]
+      const certificados = ((cdRes.data || []) as any[])
+        .filter(c => c.empresa_id ? c.empresas?.org_id === orgId : c.org_id === orgId)
 
-      // Mapa: processo_id → data da última anotação
-      const ultimaNotaMs: Record<string, number> = {}
-      for (const n of procNotas || []) {
-        if (!ultimaNotaMs[n.processo_id]) ultimaNotaMs[n.processo_id] = new Date(n.created_at).getTime()
-      }
+      const lista: Item[] = []
+      const hoje = diaLocal()
+      const agora = Date.now()
 
-      let procParados = 0
-      for (const p of processos || []) {
-        // Última movimentação: alteração no processo (etapas/documentos) ou última anotação
-        const lastMs = Math.max(
-          new Date(p.updated_at || p.created_at).getTime(),
-          ultimaNotaMs[p.id] || 0,
-        )
-        // Processos têm briefing próprio (/societario/painel) — aqui só contamos os parados
-        if (tierForProcDias(daysSinceMs(lastMs))) procParados++
-      }
-      setProcessosParados(procParados)
+      // ── Certidões ───────────────────────────────────────────────────────────
+      for (const c of certidoes) {
+        const nome = nomeDe[c.empresa_id] || '—'
+        const base = `/certidoes?empresa=${c.empresa_id}`
 
-      for (const f of followups || []) {
-        const diasDesdeComun = f.comunicado_em
-          ? Math.round((Date.now() - new Date(f.comunicado_em).getTime()) / 86_400_000)
-          : 30
-        const ordinal = (f.comunicado_count || 1) === 1 ? '1ª' : (f.comunicado_count || 1) === 2 ? '2ª' : `${f.comunicado_count}ª`
-        result['critico'].push({
-          key: `followup-${f.id}`, tier: 'critico', icon: <IcoCertidao />,
-          badge: '⏰ Follow-up',
-          empresaNome: (f as any).empresa?.razao_social || '—', empresaId: f.empresa_id || '',
-          href: `/certidoes?empresa=${f.empresa_id}`,
-          descricao: `${f.tipo || 'Certidão'} · ${f.orgao_emissor || ''} · ${ordinal} comunicação`,
-          detalhe: `sem retorno há ${diasDesdeComun}d`,
-          detalheColor: 'red',
-          score: 500 + diasDesdeComun,
-        })
-      }
-
-      for (const c of certidoes || []) {
-        const dias = daysRemaining(c.data_vencimento)
-        const tier = tierForDias(dias)
-        if (!tier) continue
-        if (c.updated_at && dias > 5) {
-          if (daysSinceMs(new Date(c.updated_at).getTime()) < 7) continue
+        // Follow-up: cliente comunicado e sem retorno
+        if (c.followup_em && c.followup_em <= hoje) {
+          const dias = c.comunicado_em ? Math.round((agora - new Date(c.comunicado_em).getTime()) / 86_400_000) : 30
+          lista.push({
+            key: `fu-${c.id}`, tier: 'critico', tipo: 'Retorno do cliente', empresaId: c.empresa_id, empresaNome: nome,
+            doc: `Certidão ${c.tipo}${c.orgao_emissor ? ` · ${c.orgao_emissor}` : ''} · ${c.comunicado_count || 1}ª comunicação`,
+            venc: c.data_vencimento, prazo: `sem retorno há ${dias} dias`, vencido: true,
+            acao: { label: 'Registrar contato', href: `${base}&comunicar=${c.id}` },
+          })
+          continue
         }
-        result[tier].push({
-          key: `cert-${c.id}`, tier, icon: <IcoCertidao />, badge: 'Certidão Negativa',
-          empresaNome: (c as any).empresa?.razao_social || '—', empresaId: c.empresa_id || '',
-          href: `/certidoes?empresa=${c.empresa_id}`,
-          descricao: c.tipo || 'Certidão', detalhe: vencTxt(dias, true),
-          detalheColor: dias < 0 ? 'red' : tier === 'urgente' ? 'orange' : 'amber',
-          score: dias < 0 ? 200 + Math.abs(dias) * 3 : tier === 'critico' ? 150 - dias * 10 : tier === 'urgente' ? 80 - dias * 2 : 50 - dias,
-        })
-      }
 
-      for (const a of alvaras || []) {
-        const dias = daysRemaining(a.data_vencimento)
-        const tier = tierForDias(dias)
+        const dias = diasParaVencer(c.data_vencimento)
+        if (dias === null) continue
+        const tier = tierPorDias(dias)
         if (!tier) continue
-        result[tier].push({
-          key: `alv-${a.id}`, tier, icon: <IcoAlvara />, badge: 'Alvará',
-          empresaNome: (a as any).empresa?.razao_social || '—', empresaId: a.empresa_id || '',
-          href: `/alvaras?empresa=${a.empresa_id}`,
-          descricao: `Alvará ${(a as any).tipo || ''}`.trim(), detalhe: vencTxt(dias),
-          detalheColor: dias < 0 ? 'red' : tier === 'urgente' ? 'orange' : 'amber',
-          score: dias < 0 ? 195 + Math.abs(dias) * 3 : tier === 'critico' ? 145 - dias * 10 : tier === 'urgente' ? 78 - dias * 2 : 48 - dias,
+        // Mexida há menos de 7 dias e ainda sem urgência: alguém já está cuidando
+        if (c.updated_at && dias > 5 && (agora - new Date(c.updated_at).getTime()) / 86_400_000 < 7) continue
+        const pendente = c.pendencia_status === 'impossivel_renovar'
+        lista.push({
+          key: `cert-${c.id}`, tier, tipo: 'Certidão negativa', empresaId: c.empresa_id, empresaNome: nome,
+          doc: `${c.tipo}${c.orgao_emissor ? ` · ${c.orgao_emissor}` : ''}${pendente ? ' · pendente, não foi possível renovar' : ''}`,
+          venc: c.data_vencimento, prazo: prazoTexto(dias), vencido: dias < 0,
+          acao: { label: 'Renovar', href: `${base}&renovar=${c.id}` },
+          comunicar: `${base}&comunicar=${c.id}`,
         })
       }
 
-      for (const l of licencas || []) {
-        const dias = daysRemaining(l.data_vencimento)
-        const tier = tierForDias(dias)
-        if (!tier) continue
-        result[tier].push({
-          key: `lic-${l.id}`, tier, icon: <IcoLicenca />, badge: 'Licença Sanitária',
-          empresaNome: (l as any).empresa?.razao_social || '—', empresaId: l.empresa_id || '',
-          href: `/licencas?empresa=${l.empresa_id}`,
-          descricao: 'Licença Sanitária', detalhe: vencTxt(dias, true),
-          detalheColor: dias < 0 ? 'red' : tier === 'urgente' ? 'orange' : 'amber',
-          score: dias < 0 ? 190 + Math.abs(dias) * 3 : tier === 'critico' ? 140 - dias * 10 : tier === 'urgente' ? 76 - dias * 2 : 46 - dias,
+      // ── Alvarás e licenças ──────────────────────────────────────────────────
+      for (const a of alvaras) {
+        const dias = diasParaVencer(a.data_vencimento)
+        const tier = dias === null ? null : tierPorDias(dias)
+        if (dias === null || !tier) continue
+        lista.push({
+          key: `alv-${a.id}`, tier, tipo: 'Alvará', empresaId: a.empresa_id, empresaNome: nomeDe[a.empresa_id] || '—',
+          doc: `Alvará ${a.tipo || ''}${a.orgao_emissor ? ` · ${a.orgao_emissor}` : ''}`.replace(/\s+/g, ' ').trim(),
+          venc: a.data_vencimento, prazo: prazoTexto(dias), vencido: dias < 0,
+          acao: { label: 'Renovar', href: `/alvaras?empresa=${a.empresa_id}&renovar=${a.id}` },
+        })
+      }
+      for (const l of licencas) {
+        const dias = diasParaVencer(l.data_vencimento)
+        const tier = dias === null ? null : tierPorDias(dias)
+        if (dias === null || !tier) continue
+        lista.push({
+          key: `lic-${l.id}`, tier, tipo: 'Licença sanitária', empresaId: l.empresa_id, empresaNome: nomeDe[l.empresa_id] || '—',
+          doc: l.orgao === 'ANVISA' ? 'ANVISA' : 'VISA municipal',
+          venc: l.data_vencimento, prazo: prazoTexto(dias), vencido: dias < 0,
+          acao: { label: 'Renovar', href: `/licencas?empresa=${l.empresa_id}&renovar=${l.id}` },
         })
       }
 
-      for (const cd of certificados || []) {
-        const dias = daysRemaining(cd.data_vencimento)
-        const tier = tierForDias(dias)
-        if (!tier) continue
-        result[tier].push({
-          key: `certdig-${cd.id}`, tier, icon: <IcoCertDig />, badge: 'Certificado Digital',
-          empresaNome: (cd as any).empresa?.razao_social || '—', empresaId: cd.empresa_id || '',
-          href: `/certificados?empresa=${cd.empresa_id}`,
-          descricao: [(cd as any).tipo, (cd as any).uso].filter(Boolean).join(' ') || 'Certificado Digital',
-          detalhe: vencTxt(dias),
-          detalheColor: dias < 0 ? 'red' : tier === 'urgente' ? 'orange' : 'amber',
-          score: dias < 0 ? 185 + Math.abs(dias) * 3 : tier === 'critico' ? 135 - dias * 10 : tier === 'urgente' ? 74 - dias * 2 : 44 - dias,
+      // ── Certificados digitais ───────────────────────────────────────────────
+      const emRenovacao = new Set(certificados.filter(c => c.renovacao_de).map(c => c.renovacao_de))
+      for (const cd of certificados) {
+        const nome = cd.empresas?.razao_social || cd.empresa_nome_livre || '—'
+        const empresaId = cd.empresa_id || `avulsa-${cd.id}`
+
+        // Em processo: entra no briefing quando alguma etapa está atrasada
+        if (!cd.certificado_finalizado && !cd.data_vencimento) {
+          const etapa = etapaAtual(cd)
+          const alerta = alertaEtapa(cd, etapa)
+          if (alerta) {
+            lista.push({
+              key: `cdp-${cd.id}`, tier: /vencido|hoje|amanhã/.test(alerta) ? 'critico' : 'urgente',
+              tipo: 'Certificado em processo', empresaId, empresaNome: nome,
+              doc: `${cd.uso} ${cd.tipo} · ${ETAPAS[etapa].parado}`,
+              venc: etapa === 3 ? cd.boleto_vencimento : null, prazo: alerta.charAt(0).toLowerCase() + alerta.slice(1), vencido: /vencido/.test(alerta),
+              acao: { label: 'Abrir', href: `/certificados?abrir=${cd.id}` },
+            })
+          }
+          continue
+        }
+
+        const dias = diasParaVencer(cd.data_vencimento)
+        const tier = dias === null ? null : tierPorDias(dias)
+        if (dias === null || !tier || emRenovacao.has(cd.id)) continue
+        lista.push({
+          key: `cd-${cd.id}`, tier, tipo: 'Certificado digital', empresaId, empresaNome: nome,
+          doc: `${cd.uso} ${cd.tipo}${cd.titular ? ` · ${cd.titular}` : ''}`,
+          venc: cd.data_vencimento, prazo: prazoTexto(dias), vencido: dias < 0,
+          acao: { label: 'Ver certificado', href: `/certificados?abrir=${cd.id}` },
         })
       }
+      setItens(lista)
 
-      const comCertIds   = new Set((empComCert   || []).map((r: any) => r.empresa_id))
-      const comAlvaraIds = new Set((empComAlvara || []).map((r: any) => r.empresa_id))
-      const semCertNomes:   string[] = []
-      const semAlvaraNomes: string[] = []
-      // Apenas empresas ativas desta organização sem documentos cadastrados
-      const ativas = (orgEmpresas || []).filter(e => {
-        const sit = (e.situacao || '').toUpperCase()
-        const sta = (e.status || '').toLowerCase()
-        return sit === 'ativa' || sit === 'ATIVA' || sit === '' || sta === 'ativa'
+      // ── Processos parados (têm briefing próprio; aqui só o contador) ────────
+      const ultimaNota: Record<string, number> = {}
+      for (const n of notasRes.data || []) if (!ultimaNota[n.processo_id]) ultimaNota[n.processo_id] = new Date(n.created_at).getTime()
+      setProcessosParados((procRes.data || []).filter((p: any) => {
+        const ultima = Math.max(new Date(p.updated_at || p.created_at).getTime(), ultimaNota[p.id] || 0)
+        return Math.round((agora - ultima) / 86_400_000) >= 7
+      }).length)
+
+      // ── Não comunicados: certidões que não puderam ser renovadas e o cliente não foi avisado ──
+      setNaoComunicados(certidoes
+        .filter(c => c.pendencia_status === 'impossivel_renovar' && !c.comunicado_em)
+        .map(c => ({ ...c, empresaNome: nomeDe[c.empresa_id] || '—' })))
+
+      // ── Revisão mensal: documentos de empresas prioritárias sem revisão há 30 dias ──
+      const prioritarias = new Set(empresasOrg.filter(e => (e as any).prioritaria).map(e => e.id))
+      const limite = new Date(agora - 30 * 86_400_000).toISOString()
+      const precisaRevisar = (d: any) => prioritarias.has(d.empresa_id) && (!d.briefing_revisado_em || d.briefing_revisado_em < limite)
+      const rev: RevisaoDoc[] = [
+        ...certidoes.filter(precisaRevisar).map(c => ({ key: `r-cert-${c.id}`, tabela: 'certidoes' as const, id: c.id, empresaId: c.empresa_id, empresaNome: nomeDe[c.empresa_id] || '—', doc: `Certidão ${c.tipo || ''}`.trim(), venc: c.data_vencimento })),
+        ...alvaras.filter(precisaRevisar).map(a => ({ key: `r-alv-${a.id}`, tabela: 'alvaras' as const, id: a.id, empresaId: a.empresa_id, empresaNome: nomeDe[a.empresa_id] || '—', doc: `Alvará ${a.tipo || ''}`.trim(), venc: a.data_vencimento })),
+        ...licencas.filter(precisaRevisar).map(l => ({ key: `r-lic-${l.id}`, tabela: 'licencas_sanitarias' as const, id: l.id, empresaId: l.empresa_id, empresaNome: nomeDe[l.empresa_id] || '—', doc: 'Licença sanitária', venc: l.data_vencimento })),
+      ].sort((a, b) => a.empresaNome.localeCompare(b.empresaNome, 'pt-BR') || a.doc.localeCompare(b.doc))
+      setRevisao(rev)
+
+      // ── Cadastro pendente: empresas ativas sem certidão ou sem alvará ───────
+      const ativas = empresasOrg.filter(e => {
+        const sit = String(e.situacao || '').toUpperCase()
+        return sit === 'ATIVA' || sit === '' || String(e.status || '').toLowerCase() === 'ativa'
       })
-      for (const e of ativas) {
-        if (!comCertIds.has(e.id))   semCertNomes.push(e.razao_social)
-        if (!comAlvaraIds.has(e.id)) semAlvaraNomes.push(e.razao_social)
-      }
-      if (semCertNomes.length > 0) {
-        result.controle.push({
-          key: 'gap-cert', tier: 'controle', icon: <IcoWarning />, badge: 'Cadastro Pendente',
-          empresaNome: 'Certidões Negativas', empresaId: '', href: '/certidoes',
-          descricao: `${semCertNomes.length} empresa${semCertNomes.length !== 1 ? 's' : ''} ativa${semCertNomes.length !== 1 ? 's' : ''} sem certidão cadastrada`,
-          detalhe: `${semCertNomes.length} empresa${semCertNomes.length !== 1 ? 's' : ''}`,
-          detalheColor: 'blue', score: semCertNomes.length * 5, subList: semCertNomes.sort(),
-        })
-      }
-      if (semAlvaraNomes.length > 0) {
-        result.controle.push({
-          key: 'gap-alv', tier: 'controle', icon: <IcoWarning />, badge: 'Cadastro Pendente',
-          empresaNome: 'Alvarás de Funcionamento', empresaId: '', href: '/alvaras',
-          descricao: `${semAlvaraNomes.length} empresa${semAlvaraNomes.length !== 1 ? 's' : ''} ativa${semAlvaraNomes.length !== 1 ? 's' : ''} sem alvará cadastrado`,
-          detalhe: `${semAlvaraNomes.length} empresa${semAlvaraNomes.length !== 1 ? 's' : ''}`,
-          detalheColor: 'blue', score: semAlvaraNomes.length * 4, subList: semAlvaraNomes.sort(),
-        })
-      }
-
-      for (const tier of Object.keys(result) as Tier[]) {
-        result[tier].sort((a, b) => b.score - a.score)
-      }
-      setGroups(result)
-      setCompGroups(buildCompanyGroups(result))
-
-      // ── Revisão Mensal ────────────────────────────────────────────────────
-      const trintaDiasAtras = new Date(Date.now() - 30 * 86_400_000).toISOString()
-      const { data: empPriori } = await supabase
-        .from('empresas')
-        .select('id, razao_social')
-        .eq('org_id', orgId)
-        .eq('prioritaria', true)
-
-      if (empPriori && empPriori.length > 0) {
-        const ids = empPriori.map((e: any) => e.id)
-        const nomeMap: Record<string, string> = {}
-        for (const e of empPriori) nomeMap[(e as any).id] = (e as any).razao_social
-
-        const [{ data: certPriori }, { data: alvPriori }, { data: licPriori }] = await Promise.all([
-          supabase.from('certidoes').select('id, tipo, data_vencimento, briefing_revisado_em, empresa_id')
-            .in('empresa_id', ids).or(`briefing_revisado_em.is.null,briefing_revisado_em.lt.${trintaDiasAtras}`),
-          supabase.from('alvaras').select('id, tipo, data_vencimento, briefing_revisado_em, empresa_id')
-            .in('empresa_id', ids).or(`briefing_revisado_em.is.null,briefing_revisado_em.lt.${trintaDiasAtras}`),
-          supabase.from('licencas_sanitarias').select('id, data_vencimento, briefing_revisado_em, empresa_id')
-            .in('empresa_id', ids).or(`briefing_revisado_em.is.null,briefing_revisado_em.lt.${trintaDiasAtras}`),
-        ])
-
-        const docs: PriorityDoc[] = []
-        for (const c of certPriori || []) {
-          docs.push({ key: `priori-cert-${c.id}`, tipo: 'certidao', empresaNome: nomeMap[c.empresa_id] || '—',
-            empresaId: c.empresa_id, docId: c.id, descricao: c.tipo || 'Certidão Negativa',
-            dataVencimento: c.data_vencimento, diasRestantes: c.data_vencimento ? daysRemaining(c.data_vencimento) : null,
-            href: `/certidoes?empresa=${c.empresa_id}` })
-        }
-        for (const a of alvPriori || []) {
-          docs.push({ key: `priori-alv-${a.id}`, tipo: 'alvara', empresaNome: nomeMap[a.empresa_id] || '—',
-            empresaId: a.empresa_id, docId: a.id, descricao: `Alvará ${(a as any).tipo || ''}`.trim(),
-            dataVencimento: a.data_vencimento, diasRestantes: a.data_vencimento ? daysRemaining(a.data_vencimento) : null,
-            href: `/alvaras?empresa=${a.empresa_id}` })
-        }
-        for (const l of licPriori || []) {
-          docs.push({ key: `priori-lic-${l.id}`, tipo: 'licenca', empresaNome: nomeMap[l.empresa_id] || '—',
-            empresaId: l.empresa_id, docId: l.id, descricao: 'Licença Sanitária',
-            dataVencimento: l.data_vencimento, diasRestantes: l.data_vencimento ? daysRemaining(l.data_vencimento) : null,
-            href: `/licencas?empresa=${l.empresa_id}` })
-        }
-        docs.sort((a, b) => a.empresaNome.localeCompare(b.empresaNome) || a.tipo.localeCompare(b.tipo))
-        setPriorityDocs(docs)
-      } else {
-        setPriorityDocs([])
-      }
-
-      // ── Certidões impossíveis não comunicadas ─────────────────────────────
-      try {
-        if (orgEmpresaIds.length > 0) {
-          const { data: naoComData } = await supabase
-            .from('certidoes')
-            .select('id, tipo, orgao_emissor, data_vencimento, observacoes, empresa_id, empresa:empresas(razao_social)')
-            .in('empresa_id', orgEmpresaIds)
-            .eq('pendencia_status', 'impossivel_renovar')
-            .is('comunicado_em', null)
-          setNaoComunicados(naoComData || [])
-        }
-      } catch {
-        // coluna pode não existir ainda (migration_v10 pendente)
-        setNaoComunicados([])
-      }
+      const comCert = new Set(certidoes.map(c => c.empresa_id))
+      const comAlv = new Set(alvaras.map(a => a.empresa_id))
+      const porNome = (a: { nome: string }, b: { nome: string }) => a.nome.localeCompare(b.nome, 'pt-BR')
+      setSemCertidao(ativas.filter(e => !comCert.has(e.id)).map(e => ({ id: e.id, nome: e.razao_social })).sort(porNome))
+      setSemAlvara(ativas.filter(e => !comAlv.has(e.id)).map(e => ({ id: e.id, nome: e.razao_social })).sort(porNome))
 
       setUpdatedAt(new Date())
-    } catch (e) {
+    } catch (e: any) {
       console.error('Briefing error:', e)
+      toast.error('Não foi possível carregar o briefing.')
     }
     setLoading(false)
   }
 
-  const totalCritico  = groups.critico.length
-  const totalUrgente  = groups.urgente.length
-  const totalAtencao  = groups.atencao.length
-  const totalControle = groups.controle.length
-  const totalGeral    = totalCritico + totalUrgente + totalAtencao + totalControle
-  const tudoEmDia     = !loading && totalGeral === 0
+  useEffect(() => { load() }, [orgId])
 
-  // Empresas filtradas por aba ativa
-  const groupsForTab = (tier: Tier) =>
-    compGroups.filter(g =>
-      !snoozed.has(g.empresaNome) &&
-      g.worstTier === tier &&
-      (!searchQ || g.empresaNome.toLowerCase().includes(searchQ.toLowerCase()))
-    )
-
-  function expandAll()  { const m: Record<string, boolean> = {}; compGroups.forEach(g => { m[g.empresaNome] = true  }); setCoExpanded(m) }
-  function collapseAll(){ const m: Record<string, boolean> = {}; compGroups.forEach(g => { m[g.empresaNome] = false }); setCoExpanded(m) }
-
-  // Modo Foco — itens ordenados: críticos → urgentes → atenção, excluindo snoozed
-  const focoItems: WorkItem[] = [
-    ...groups.critico.filter(i => !snoozed.has(i.empresaNome)),
-    ...groups.urgente.filter(i => !snoozed.has(i.empresaNome)),
-    ...groups.atencao.filter(i => !snoozed.has(i.empresaNome)),
-  ]
-  function abrirFoco() { setFocoIdx(0); setModoFoco(true) }
-  function nextFoco()  { setFocoIdx(i => i + 1) }
-  function focoSnooze(item: WorkItem) {
-    setSnoozed(p => new Set([...p, item.empresaNome]))
-    nextFoco()
+  async function marcarRevisado(docs: RevisaoDoc[]) {
+    const agora = new Date().toISOString()
+    for (const tabela of ['certidoes', 'alvaras', 'licencas_sanitarias'] as const) {
+      const idsTabela = docs.filter(d => d.tabela === tabela).map(d => d.id)
+      if (idsTabela.length === 0) continue
+      const { error } = await supabase.from(tabela).update({ briefing_revisado_em: agora }).in('id', idsTabela)
+      if (error) { toast.error('Erro ao marcar como revisado: ' + error.message); return }
+    }
+    const feitos = new Set(docs.map(d => d.key))
+    setRevisao(prev => prev.filter(d => !feitos.has(d.key)))
+    toast.success(docs.length === 1 ? 'Documento marcado como revisado.' : `${docs.length} documentos marcados como revisados.`)
   }
 
-  // Definição das abas — Pill Tabs
-  const TABS = [
-    { id: 'critico'         as const, label: 'Críticos',        count: totalCritico,          hex: '#EF4444', glow: 'rgba(239,68,68,0.25)',   dot: 'bg-red-500',     hover: 'hover:bg-red-50'      },
-    { id: 'urgente'         as const, label: 'Urgentes',        count: totalUrgente,          hex: '#F97316', glow: 'rgba(249,115,22,0.25)',  dot: 'bg-orange-500',  hover: 'hover:bg-orange-50'   },
-    { id: 'atencao'         as const, label: 'Atenção',         count: totalAtencao,          hex: '#EAB308', glow: 'rgba(234,179,8,0.25)',   dot: 'bg-yellow-500',  hover: 'hover:bg-yellow-50'   },
-    { id: 'nao_comunicados' as const, label: 'Não comunicados', count: naoComunicados.length, hex: '#D946EF', glow: 'rgba(217,70,239,0.25)',  dot: 'bg-fuchsia-500', hover: 'hover:bg-fuchsia-50'  },
-    { id: 'revisao'         as const, label: 'Revisão Mensal',  count: priorityDocs.length,   hex: '#8B5CF6', glow: 'rgba(139,92,246,0.25)',  dot: 'bg-violet-500',  hover: 'hover:bg-violet-50'   },
-    { id: 'controle'        as const, label: 'Controle',        count: totalControle,         hex: '#3B82F6', glow: 'rgba(59,130,246,0.25)',  dot: 'bg-blue-500',    hover: 'hover:bg-blue-50'     },
+  // ── Agrupamento por empresa ────────────────────────────────────────────────
+  const grupos = useMemo(() => {
+    const mapa = new Map<string, { key: string; empresaId: string; nome: string; pior: Tier; itens: Item[] }>()
+    for (const i of itens) {
+      const key = i.empresaId || i.empresaNome
+      const g = mapa.get(key)
+      if (!g) mapa.set(key, { key, empresaId: i.empresaId, nome: i.empresaNome, pior: i.tier, itens: [i] })
+      else { g.itens.push(i); if (ORDEM[i.tier] < ORDEM[g.pior]) g.pior = i.tier }
+    }
+    const dias = (i: Item) => diasParaVencer(i.venc) ?? -9999
+    const lista = Array.from(mapa.values())
+    lista.forEach(g => g.itens.sort((a, b) => dias(a) - dias(b)))
+    return lista.sort((a, b) => dias(a.itens[0]) - dias(b.itens[0]) || a.nome.localeCompare(b.nome, 'pt-BR'))
+  }, [itens])
+
+  const q = busca.trim().toLowerCase()
+  const visiveis = grupos.filter(g => !q || g.nome.toLowerCase().includes(q))
+  const ativos = visiveis.filter(g => !adiadas.has(g.key))
+  const gruposDaAba = (t: Tier) => ativos.filter(g => g.pior === t)
+  const gruposAdiados = visiveis.filter(g => adiadas.has(g.key))
+
+  // Resumo por prazo (só documentos com data)
+  const comData = itens.filter(i => i.venc && i.tipo !== 'Certificado em processo' && i.tipo !== 'Retorno do cliente')
+  const conta = (teste: (d: number) => boolean) => comData.filter(i => { const d = diasParaVencer(i.venc); return d !== null && teste(d) }).length
+  const resumo = [
+    { label: 'Vencidos',              n: conta(d => d < 0),            cor: 'bg-red-700' },
+    { label: 'Vencem em até 5 dias',  n: conta(d => d >= 0 && d <= 5),  cor: 'bg-orange-600' },
+    { label: 'Vencem em até 15 dias', n: conta(d => d > 5 && d <= 15),  cor: 'bg-amber-600' },
+    { label: 'Vencem em até 30 dias', n: conta(d => d > 15 && d <= 30), cor: 'bg-slate-400' },
   ]
 
-  return (
-    <div className="p-4 md:p-6 space-y-4">
+  const ABAS: Array<{ id: Aba; label: string; n: number }> = [
+    { id: 'critico',         label: 'Críticos',          n: gruposDaAba('critico').length },
+    { id: 'urgente',         label: 'Urgentes',          n: gruposDaAba('urgente').length },
+    { id: 'atencao',         label: 'Atenção',           n: gruposDaAba('atencao').length },
+    { id: 'nao_comunicados', label: 'Não comunicados',   n: naoComunicados.length },
+    { id: 'revisao',         label: 'Revisão mensal',    n: revisao.length },
+    { id: 'cadastro',        label: 'Cadastro pendente', n: semCertidao.length + semAlvara.length },
+  ]
 
-      {/* ── Header ───────────────────────────────────────────────────────── */}
-      <header className="flex flex-wrap justify-between items-center gap-3 bg-white p-4 md:p-5 rounded-2xl border border-slate-200 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center flex-shrink-0">
-            <svg className="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1M4.22 4.22l.707.707m12.02 12.02l.707.707M1 12h2m18 0h2M4.22 19.78l.707-.707M18.95 5.05l.707-.707M12 7a5 5 0 100 10A5 5 0 0012 7z" />
-            </svg>
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-slate-900">
-              {(() => {
-                const h = new Date().getHours()
-                const sauda = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite'
-                return `${sauda}${orgName ? `, ${orgName.split(' ')[0]}` : ''}!`
-              })()}
-            </h1>
-            <p className="text-xs text-slate-500 mt-0.5">{diaLabel} · {dateLbl}</p>
-          </div>
+  // Modo foco: um item por vez, do mais urgente ao menos urgente
+  const filaFoco = ativos.slice().sort((a, b) => ORDEM[a.pior] - ORDEM[b.pior]).flatMap(g => g.itens.map(i => ({ ...i, grupoKey: g.key })))
+  useEffect(() => {
+    if (foco === null) return
+    const tecla = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setFoco(null)
+      if (e.key === 'ArrowRight') setFoco(i => (i === null ? null : i + 1))
+      if (e.key === 'ArrowLeft') setFoco(i => (i === null ? null : Math.max(0, i - 1)))
+    }
+    window.addEventListener('keydown', tecla)
+    return () => window.removeEventListener('keydown', tecla)
+  }, [foco])
+
+  const hojeTxt = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  const btnSec = 'inline-flex items-center h-10 px-4 rounded-lg border border-slate-300 bg-white text-sm font-semibold text-slate-900 hover:bg-slate-50 whitespace-nowrap'
+  const linkAcao = 'inline-flex items-center h-10 px-3 rounded-lg text-sm font-semibold hover:bg-slate-100 whitespace-nowrap'
+
+  function seloPrazo(i: Item) {
+    return (
+      <span className={`inline-block text-sm font-semibold px-2 py-0.5 rounded-md border ${
+        i.vencido ? 'text-red-800 bg-red-50 border-red-200' : 'text-orange-800 bg-orange-50 border-orange-200'}`}>
+        {i.prazo.charAt(0).toUpperCase() + i.prazo.slice(1)}
+      </span>
+    )
+  }
+
+  function blocoEmpresa(g: typeof grupos[number], adiado = false) {
+    return (
+      <div key={g.key}>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-5 py-3 bg-slate-50 border-t border-slate-200 first:border-t-0">
+          {g.empresaId && !g.empresaId.startsWith('avulsa-')
+            ? <Link href={`/empresas/${g.empresaId}`} className="font-semibold text-slate-900 hover:underline">{g.nome}</Link>
+            : <span className="font-semibold text-slate-900">{g.nome}</span>}
+          <span className="text-sm text-slate-600">{g.itens.length} {g.itens.length === 1 ? 'pendência' : 'pendências'}</span>
+          <button onClick={() => adiar(g.key, adiado)} className="ml-auto text-sm font-semibold text-slate-600 hover:text-slate-900 hover:underline">
+            {adiado ? 'Voltar para a lista' : 'Adiar para amanhã'}
+          </button>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          {!loading && totalCritico > 0 && (
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
+        {g.itens.map(i => (
+          <div key={i.key} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-2.5 border-t border-slate-100">
+            <span className="w-40 flex-shrink-0 text-sm text-slate-600">{i.tipo}</span>
+            <span className="flex-[1_1_14rem] min-w-0 font-medium text-slate-900 break-words">{i.doc}</span>
+            <span className="w-24 flex-shrink-0 text-sm text-slate-700">{i.venc ? dataBR(i.venc) : ''}</span>
+            <span className="w-52 flex-shrink-0">{seloPrazo(i)}</span>
+            <span className="flex items-center gap-1 ml-auto">
+              <Link href={i.acao.href} className={btnSec}>{i.acao.label}</Link>
+              {i.comunicar && <Link href={i.comunicar} className={`${linkAcao} text-blue-700`}>Comunicar</Link>}
             </span>
-          )}
-          {!loading && (
-            <span className="text-xs text-slate-500">
-              {totalGeral === 0 ? '✓ Tudo em dia' : `${totalGeral} ${totalGeral === 1 ? 'pendência' : 'pendências'}`}
-            </span>
-          )}
-          {!loading && processosParados > 0 && (
-            <Link href="/societario/painel"
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-100 transition-all">
-              {processosParados} {processosParados === 1 ? 'processo parado' : 'processos parados'} há 7+ dias
-              <span className="text-slate-400">→</span>
-            </Link>
-          )}
-          {!loading && focoItems.length > 0 && (
-            <button onClick={abrirFoco}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-700 transition-all shadow-sm">
-              ⚡ Modo Foco
-              <span className="bg-white/20 text-white text-xs font-bold px-1.5 py-0.5 rounded-full leading-none">
-                {focoItems.length}
-              </span>
-            </button>
-          )}
-          <button onClick={load} title="Atualizar" className="btn-secondary px-3">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  const vazioAba = (texto: string) => (
+    <div className="bg-white border border-slate-200 rounded-xl px-6 py-12 text-center text-sm text-slate-600">{texto}</div>
+  )
+
+  return (
+    <div className="p-4 md:p-6 xl:p-8 space-y-5">
+
+      {/* Cabeçalho */}
+      <header className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Briefing do dia</h1>
+          <p className="text-sm text-slate-600 mt-1 first-letter:uppercase">{hojeTxt} · documentos que pedem ação</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="flex items-center gap-2 h-11 px-3 bg-white border border-slate-300 rounded-lg text-slate-500">
+            <Search className="w-4 h-4" aria-hidden="true" />
+            <input value={busca} onChange={e => setBusca(e.target.value)} aria-label="Buscar empresa" placeholder="Buscar empresa"
+              className="w-48 bg-transparent outline-none text-sm text-slate-900 placeholder:text-slate-500" />
+          </label>
+          <button onClick={load} className={btnSec + ' h-11'}>Atualizar</button>
+          <button data-atalho="foco" disabled={filaFoco.length === 0} onClick={() => setFoco(0)}
+            className="h-11 px-4 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 disabled:opacity-50 whitespace-nowrap">
+            Modo foco · {filaFoco.length} {filaFoco.length === 1 ? 'item' : 'itens'}
           </button>
         </div>
       </header>
 
-      {/* ── Pill Tabs ─────────────────────────────────────────────────────── */}
+      {/* Resumo */}
       {!loading && (
-        <div className="bg-white/80 backdrop-blur-sm border border-slate-200/80 rounded-2xl p-2 shadow-sm overflow-x-auto">
-          <div className="flex gap-1 min-w-max">
-            {TABS.map(tab => {
-              const isActive = activeTab === tab.id
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  style={isActive
-                    ? { background: tab.hex, boxShadow: `0 4px 16px ${tab.glow}, 0 1px 3px rgba(0,0,0,0.1)` }
-                    : {}
-                  }
-                  className={[
-                    'flex items-center gap-2 px-4 py-2 rounded-full text-[13px] font-semibold',
-                    'whitespace-nowrap select-none outline-none',
-                    'transition-all duration-200 ease-in-out',
-                    isActive
-                      ? 'text-white -translate-y-px'
-                      : `text-slate-500 bg-[#F3F4F6] ${tab.hover} hover:-translate-y-px hover:shadow-md`,
-                  ].join(' ')}
-                >
-                  {/* Dot indicador */}
-                  <span
-                    className={`w-2 h-2 rounded-full flex-shrink-0 transition-colors duration-200 ${!isActive ? (tab.count > 0 ? tab.dot : 'bg-slate-300') : ''}`}
-                    style={isActive ? { background: 'rgba(255,255,255,0.65)' } : {}}
-                  />
-
-                  {tab.label}
-
-                  {/* Badge contador */}
-                  {tab.count > 0 && (
-                    <span
-                      className="text-xs font-bold px-2 py-0.5 rounded-full leading-none transition-all duration-200"
-                      style={isActive
-                        ? { background: 'rgba(255,255,255,0.25)', color: 'white' }
-                        : { background: '#F1F5F9', color: '#64748B' }
-                      }
-                    >
-                      {tab.count}
-                    </span>
-                  )}
-                </button>
-              )
-            })}
-          </div>
-        </div>
+        <section aria-label="Resumo" className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
+          {resumo.map(r => (
+            <div key={r.label} className="bg-white border border-slate-200 rounded-xl p-4">
+              <div className="flex items-center gap-2 text-sm text-slate-600"><span className={`w-2 h-2 rounded-full ${r.cor}`} />{r.label}</div>
+              <div className="text-2xl font-bold text-slate-900 mt-1">{r.n}</div>
+            </div>
+          ))}
+          <Link href="/societario/painel" className="bg-white border border-slate-200 rounded-xl p-4 hover:border-slate-300">
+            <div className="text-sm text-slate-600">Processos parados há 7+ dias</div>
+            <div className="flex items-baseline justify-between mt-1">
+              <span className="text-2xl font-bold text-slate-900">{processosParados}</span>
+              <span className="text-sm font-semibold text-blue-700">Ver processos →</span>
+            </div>
+          </Link>
+        </section>
       )}
 
-      {/* ── Conteúdo ─────────────────────────────────────────────────────── */}
-      <div>
-        {loading ? (
-          <div className="space-y-2">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-16 bg-white rounded-xl animate-pulse border border-slate-200" />
-            ))}
-          </div>
-        ) : tudoEmDia ? (
-          <div className="text-center py-24 bg-white rounded-2xl border border-slate-200 shadow-sm">
-            <p className="text-5xl mb-4">🎉</p>
-            <p className="text-lg font-bold text-slate-900">100% sob controle!</p>
-            <p className="text-sm text-slate-500 mt-1">Nenhuma pendência encontrada. Continue assim!</p>
-          </div>
-        ) : (
-          <>
-            {/* ── Aba: Críticos / Urgentes / Atenção ── */}
-            {(activeTab === 'critico' || activeTab === 'urgente' || activeTab === 'atencao') && (
-              <>
-                {/* Barra de busca + expandir/recolher */}
-                <div className="flex flex-wrap gap-2 items-center bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
-                  <div className="relative flex-1 min-w-[160px]">
-                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"
-                      fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                    <input type="text" value={searchQ} onChange={e => setSearchQ(e.target.value)}
-                      placeholder="Buscar empresa…"
-                      className="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-primary-400 transition-all placeholder:text-slate-400" />
-                  </div>
-                  <div className="flex gap-1.5 ml-auto">
-                    <button onClick={expandAll}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 8h16M4 16h16"/></svg>
-                      Expandir tudo
-                    </button>
-                    <button onClick={collapseAll}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7"/></svg>
-                      Recolher tudo
-                    </button>
-                  </div>
-                </div>
-
-                {/* Cards de empresa */}
-                {(() => {
-                  const tier = activeTab as Tier
-                  const list = groupsForTab(tier)
-                  if (list.length === 0) return (
-                    <div className="text-center py-16 bg-white rounded-2xl border border-slate-200">
-                      <p className="text-3xl mb-2">✓</p>
-                      <p className="text-sm font-medium text-slate-500">
-                        {searchQ ? 'Nenhuma empresa encontrada.' : `Nenhuma pendência ${activeTab === 'critico' ? 'crítica' : activeTab === 'urgente' ? 'urgente' : 'de atenção'}.`}
-                      </p>
-                    </div>
-                  )
-                  return (
-                    <div className="space-y-2">
-                      {list.map(g => (
-                        <CompanyCard
-                          key={g.empresaNome}
-                          group={g}
-                          expanded={coExpanded[g.empresaNome] ?? false}
-                          onToggle={() => setCoExpanded(p => ({ ...p, [g.empresaNome]: !(p[g.empresaNome] ?? false) }))}
-                          onSnooze={() => setSnoozed(p => new Set([...p, g.empresaNome]))}
-                          subListExpanded={subExpanded}
-                          onToggleSubList={key => setSubExpanded(p => ({ ...p, [key]: !p[key] }))}
-                        />
-                      ))}
-                    </div>
-                  )
-                })()}
-              </>
-            )}
-
-            {/* ── Aba: Não comunicados ── */}
-            {activeTab === 'nao_comunicados' && (
-              naoComunicados.length === 0 ? (
-                <div className="text-center py-16 bg-white rounded-2xl border border-slate-200">
-                  <p className="text-3xl mb-2">✓</p>
-                  <p className="text-sm font-medium text-slate-500">Todos os clientes já foram comunicados.</p>
-                </div>
-              ) : (
-                <div className="bg-white border border-fuchsia-200 rounded-2xl overflow-hidden shadow-sm">
-                  <div className="px-4 py-3 border-b border-fuchsia-100 bg-fuchsia-50">
-                    <p className="text-sm font-bold text-fuchsia-800">Certidões "impossível renovar" sem comunicação registrada</p>
-                    <p className="text-xs text-fuchsia-600 mt-0.5">Clique em uma linha para ir até a certidão e comunicar</p>
-                  </div>
-                  {naoComunicados.map((c: any) => (
-                    <Link key={c.id} href={`/certidoes?empresa=${c.empresa_id}`}
-                      className="flex items-center gap-2.5 px-4 py-3 border-b border-fuchsia-50 last:border-0 hover:bg-fuchsia-50 transition-colors group">
-                      <span className="text-xs font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border bg-fuchsia-100 border-fuchsia-200 text-fuchsia-700 flex-shrink-0 whitespace-nowrap">
-                        {c.tipo}
-                      </span>
-                      <span className="text-sm font-semibold text-slate-900 flex-1 min-w-0 break-words">
-                        {(c as any).empresa?.razao_social || '—'}
-                      </span>
-                      <span className="text-xs text-slate-500 hidden sm:block flex-shrink-0">{c.orgao_emissor}</span>
-                      <span className="text-xs font-bold text-fuchsia-600 flex-shrink-0 whitespace-nowrap group-hover:underline">Comunicar →</span>
-                    </Link>
-                  ))}
-                </div>
-              )
-            )}
-
-            {/* ── Aba: Revisão Mensal ── */}
-            {activeTab === 'revisao' && (
-              priorityDocs.length === 0 ? (
-                <div className="text-center py-16 bg-white rounded-2xl border border-slate-200">
-                  <p className="text-3xl mb-2">✓</p>
-                  <p className="text-sm font-medium text-slate-500">Nenhuma revisão pendente para empresas prioritárias.</p>
-                </div>
-              ) : (
-                <MensalCard docs={priorityDocs} expanded={true} onToggle={() => {}} />
-              )
-            )}
-
-            {/* ── Aba: Controle ── */}
-            {activeTab === 'controle' && (
-              groups.controle.length === 0 ? (
-                <div className="text-center py-16 bg-white rounded-2xl border border-slate-200">
-                  <p className="text-3xl mb-2">✓</p>
-                  <p className="text-sm font-medium text-slate-500">Nenhum item de controle de cadastro.</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {groups.controle.map(item => (
-                    <ControleCard key={item.key} item={item} subListExpanded={subExpanded}
-                      onToggleSubList={key => setSubExpanded(p => ({ ...p, [key]: !p[key] }))} />
-                  ))}
-                </div>
-              )
-            )}
-
-            {updatedAt && (
-              <p className="text-xs text-slate-400 text-center mt-4">
-                Atualizado às {updatedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-              </p>
-            )}
-          </>
-        )}
+      {/* Abas */}
+      <div role="tablist" aria-label="Briefing" className="flex flex-wrap gap-x-6 border-b border-slate-200">
+        {ABAS.map(t => (
+          <button key={t.id} role="tab" aria-selected={aba === t.id} onClick={() => setAba(t.id)}
+            className={`h-11 -mb-px border-b-2 text-sm transition-colors ${aba === t.id ? 'border-slate-900 text-slate-900 font-semibold' : 'border-transparent text-slate-600 font-medium hover:text-slate-900'}`}>
+            {t.label}<span className="ml-1.5 font-normal text-slate-500">{t.n}</span>
+          </button>
+        ))}
       </div>
 
-      {/* ── Modo Foco — overlay ───────────────────────────────────────────── */}
-      {modoFoco && (
-        <div className="fixed inset-0 bg-slate-900/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden">
+      {loading ? (
+        <div className="space-y-2">{[...Array(4)].map((_, k) => <div key={k} className="h-16 bg-white rounded-xl border border-slate-200 animate-pulse" />)}</div>
+      ) : (
+        <>
+          {(aba === 'critico' || aba === 'urgente' || aba === 'atencao') && (() => {
+            const lista = gruposDaAba(aba)
+            return (
+              <div className="space-y-4">
+                {lista.length === 0
+                  ? vazioAba(q ? 'Nenhuma empresa encontrada.' : aba === 'critico' ? 'Nada vencido nem vencendo nos próximos 5 dias.' : aba === 'urgente' ? 'Nada vence entre 6 e 15 dias.' : 'Nada vence entre 16 e 30 dias.')
+                  : <section aria-label="Pendências" className="bg-white border border-slate-200 rounded-xl overflow-hidden">{lista.map(g => blocoEmpresa(g))}</section>}
 
-            {focoIdx >= focoItems.length ? (
-              /* Concluído */
-              <div className="p-10 text-center">
-                <p className="text-5xl mb-4">🎉</p>
-                <p className="text-lg font-bold text-slate-900">Triagem concluída!</p>
-                <p className="text-sm text-slate-500 mt-1">Você revisou todos os {focoItems.length} itens.</p>
-                <button onClick={() => setModoFoco(false)}
-                  className="mt-6 px-6 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-bold hover:bg-slate-700 transition-all">
-                  Fechar
-                </button>
+                {gruposAdiados.length > 0 && (
+                  <section aria-label="Adiadas para amanhã" className="space-y-2">
+                    <h2 className="text-sm font-semibold text-slate-600">Adiadas para amanhã · {gruposAdiados.length} {gruposAdiados.length === 1 ? 'empresa' : 'empresas'}</h2>
+                    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden opacity-80">{gruposAdiados.map(g => blocoEmpresa(g, true))}</div>
+                  </section>
+                )}
+              </div>
+            )
+          })()}
+
+          {aba === 'nao_comunicados' && (
+            naoComunicados.length === 0 ? vazioAba('Todos os clientes com certidão pendente já foram comunicados.') : (
+              <section className="bg-white border border-slate-200 rounded-xl overflow-hidden" aria-label="Não comunicados">
+                <p className="px-5 py-3 text-sm text-slate-600 border-b border-slate-100">Certidões que não puderam ser renovadas e o cliente ainda não foi avisado.</p>
+                {naoComunicados.map(c => (
+                  <div key={c.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-2.5 border-t border-slate-100 first:border-t-0">
+                    <Link href={`/empresas/${c.empresa_id}`} className="flex-[1_1_16rem] min-w-0 font-semibold text-slate-900 hover:underline break-words">{c.empresaNome}</Link>
+                    <span className="flex-[1_1_12rem] text-sm text-slate-700">Certidão {c.tipo}{c.orgao_emissor ? ` · ${c.orgao_emissor}` : ''}</span>
+                    <span className="w-28 text-sm text-slate-600">{c.data_vencimento ? `venc. ${dataBR(c.data_vencimento)}` : ''}</span>
+                    <Link href={`/certidoes?empresa=${c.empresa_id}&comunicar=${c.id}`} className={btnSec + ' ml-auto'}>Comunicar cliente</Link>
+                  </div>
+                ))}
+              </section>
+            )
+          )}
+
+          {aba === 'revisao' && (
+            revisao.length === 0 ? vazioAba('Nenhuma revisão pendente nas empresas prioritárias.') : (
+              <section className="bg-white border border-slate-200 rounded-xl overflow-hidden" aria-label="Revisão mensal">
+                <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 border-b border-slate-100">
+                  <p className="text-sm text-slate-600">Documentos de empresas prioritárias sem conferência nos últimos 30 dias.</p>
+                  <button onClick={() => marcarRevisado(revisao)} className={btnSec}>Marcar todos como revisados</button>
+                </div>
+                {revisao.map(d => {
+                  const dias = diasParaVencer(d.venc)
+                  return (
+                    <div key={d.key} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-2.5 border-t border-slate-100 first:border-t-0">
+                      <Link href={`/empresas/${d.empresaId}`} className="flex-[1_1_16rem] min-w-0 font-semibold text-slate-900 hover:underline break-words">{d.empresaNome}</Link>
+                      <span className="flex-[1_1_10rem] text-sm text-slate-700">{d.doc}</span>
+                      <span className="w-56 text-sm text-slate-600">{d.venc ? `${dataBR(d.venc)} · ${prazoTexto(dias)}` : 'sem data'}</span>
+                      <button onClick={() => marcarRevisado([d])} className={btnSec + ' ml-auto'}>Revisado</button>
+                    </div>
+                  )
+                })}
+              </section>
+            )
+          )}
+
+          {aba === 'cadastro' && (
+            semCertidao.length + semAlvara.length === 0 ? vazioAba('Todas as empresas ativas têm certidão e alvará cadastrados.') : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+                {[
+                  { titulo: 'Sem certidão cadastrada', lista: semCertidao, href: (id: string) => `/certidoes?empresa=${id}` },
+                  { titulo: 'Sem alvará cadastrado', lista: semAlvara, href: (id: string) => `/alvaras?empresa=${id}` },
+                ].map(b => (
+                  <section key={b.titulo} className="bg-white border border-slate-200 rounded-xl overflow-hidden" aria-label={b.titulo}>
+                    <h2 className="px-5 py-3 text-sm font-bold text-slate-900 border-b border-slate-100">{b.titulo} · {b.lista.length} {b.lista.length === 1 ? 'empresa' : 'empresas'}</h2>
+                    {b.lista.length === 0 ? <p className="px-5 py-4 text-sm text-slate-600">Nenhuma.</p> : (
+                      <div className="max-h-[28rem] overflow-y-auto">
+                        {b.lista.map(e => (
+                          <div key={e.id} className="flex items-center gap-3 px-5 py-2 border-t border-slate-100 first:border-t-0">
+                            <Link href={`/empresas/${e.id}`} className="flex-1 min-w-0 text-sm text-slate-900 hover:underline break-words">{e.nome}</Link>
+                            <Link href={b.href(e.id)} className="text-sm font-semibold text-blue-700 hover:underline whitespace-nowrap">Cadastrar</Link>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </section>
+                ))}
+              </div>
+            )
+          )}
+
+          {updatedAt && (
+            <p className="text-xs text-slate-500 text-right">
+              Atualizado às {updatedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+            </p>
+          )}
+        </>
+      )}
+
+      {/* Modo foco */}
+      {foco !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Modo foco">
+          <div className="absolute inset-0 bg-slate-900/60" onClick={() => setFoco(null)} />
+          <div className="relative bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
+            {foco >= filaFoco.length ? (
+              <div className="text-center py-6">
+                <p className="text-lg font-bold text-slate-900">Fila concluída</p>
+                <p className="text-sm text-slate-600 mt-1">Você passou por todos os itens de hoje.</p>
+                <button onClick={() => setFoco(null)} className="mt-5 h-10 px-5 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800">Fechar</button>
               </div>
             ) : (() => {
-              const item = focoItems[focoIdx]
-              const ts   = TS[item.tier]
-              const pct  = Math.round((focoIdx / focoItems.length) * 100)
-              const tierLabel = item.tier === 'critico' ? '🔴 Crítico' : item.tier === 'urgente' ? '🟠 Urgente' : '🟡 Atenção'
-              const comunicarHref = item.badge === 'Alvará'
-                ? `/alvaras?empresa=${item.empresaId}`
-                : item.badge === 'Licença Sanitária'
-                ? `/licencas?empresa=${item.empresaId}`
-                : `/certidoes?empresa=${item.empresaId}`
+              const i = filaFoco[foco]
               return (
                 <>
-                  {/* Header */}
-                  <div className="flex items-center justify-between px-5 pt-5 pb-3">
-                    <div className="flex-1 mr-4">
-                      <p className="text-xs font-bold uppercase tracking-wide text-slate-400 mb-2">
-                        ⚡ Modo Foco · {focoIdx + 1} / {focoItems.length}
-                      </p>
-                      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-slate-800 rounded-full transition-all duration-300"
-                          style={{ width: `${pct}%` }} />
-                      </div>
-                    </div>
-                    <button onClick={() => setModoFoco(false)}
-                      className="text-slate-300 hover:text-slate-700 text-xl font-bold leading-none transition-colors flex-shrink-0">
-                      ✕
-                    </button>
+                  <div className="flex items-center justify-between gap-4">
+                    <p className="text-sm font-semibold text-slate-600">Item {foco + 1} de {filaFoco.length}</p>
+                    <button onClick={() => setFoco(null)} className="text-sm font-semibold text-slate-600 hover:text-slate-900">Fechar</button>
                   </div>
-
-                  {/* Card do item */}
-                  <div className="px-5 pb-5">
-                    {/* Tier + tipo */}
-                    <div className="flex items-center gap-2 mb-3">
-                      <span className={`text-xs font-bold uppercase tracking-wide px-2.5 py-1 rounded-full border ${ts.chip}`}>
-                        {tierLabel}
-                      </span>
-                      <DocTypeBadge badge={item.badge} />
-                    </div>
-
-                    {/* Empresa */}
-                    <h2 className="text-[18px] font-bold text-slate-900 leading-snug">{item.empresaNome}</h2>
-
-                    {/* Documento */}
-                    <p className="text-sm text-slate-600 mt-1">{item.descricao}</p>
-
-                    {/* Prazo */}
-                    <span className={`inline-block mt-3 px-3 py-1.5 rounded-lg text-sm font-bold ${ts.days}`}>
-                      {item.detalhe}
-                    </span>
-
-                    {/* Ações */}
-                    <div className="grid grid-cols-2 gap-2 mt-5">
-                      <Link href={item.href} onClick={() => setModoFoco(false)}
-                        className="flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl bg-slate-900 text-white text-sm font-bold hover:bg-slate-700 transition-all">
-                        Renovar →
-                      </Link>
-                      <Link href={comunicarHref} onClick={() => setModoFoco(false)}
-                        className="flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl bg-blue-50 text-blue-700 border border-blue-200 text-sm font-bold hover:bg-blue-100 transition-all">
-                        Comunicar
-                      </Link>
-                      <button onClick={() => focoSnooze(item)}
-                        className="flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-500 text-sm font-bold hover:bg-slate-100 transition-all">
-                        ⏰ Adiar hoje
-                      </button>
-                      <button onClick={nextFoco}
-                        className="flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 text-sm font-bold hover:bg-slate-100 transition-all">
-                        Próximo →
-                      </button>
-                    </div>
+                  <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden mt-2">
+                    <div className="h-full bg-slate-900 rounded-full" style={{ width: `${Math.round((foco / filaFoco.length) * 100)}%` }} />
                   </div>
+                  <p className="text-sm text-slate-600 mt-5">{i.tipo}</p>
+                  <h2 className="text-xl font-bold text-slate-900 leading-snug">{i.empresaNome}</h2>
+                  <p className="text-slate-700 mt-1">{i.doc}{i.venc ? ` · ${dataBR(i.venc)}` : ''}</p>
+                  <div className="mt-3">{seloPrazo(i)}</div>
+                  <div className="flex flex-wrap gap-2 mt-6">
+                    <Link href={i.acao.href} className="inline-flex items-center h-10 px-4 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800">{i.acao.label}</Link>
+                    {i.comunicar && <Link href={i.comunicar} className={btnSec}>Comunicar</Link>}
+                    <button onClick={() => adiar(i.grupoKey)} className={btnSec}>Adiar empresa</button>
+                    <button onClick={() => setFoco(foco + 1)} className={btnSec + ' ml-auto'}>Próximo →</button>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-4">Use as setas ← → para navegar e Esc para fechar.</p>
                 </>
               )
             })()}

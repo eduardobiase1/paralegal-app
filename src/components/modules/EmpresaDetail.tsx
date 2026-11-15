@@ -129,7 +129,7 @@ export default function EmpresaDetail({ empresa: emp }: Props) {
       const licenca = maisRecente(lic.data || [])
       novas.push(licenca
         ? { chave: 'licenca', nome: 'Licença sanitária', orgao: licenca.orgao === 'ANVISA' ? 'ANVISA' : 'VISA municipal', data: licenca.data_vencimento,
-            portal: emp.url_portal_visa || null, acao: { label: 'Atualizar', href: `/licencas?empresa=${emp.id}` } }
+            portal: emp.url_portal_visa || null, acao: { label: 'Renovar', href: `/licencas?empresa=${emp.id}&renovar=${licenca.id}` } }
         : { chave: 'licenca', nome: 'Licença sanitária', orgao: 'VISA municipal ou ANVISA', data: null, naoCadastrado: { href: `/licencas?empresa=${emp.id}` } })
 
       const certs = cd.data || []
