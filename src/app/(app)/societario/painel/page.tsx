@@ -206,7 +206,7 @@ function ProcessoCard({
               transition: 'all 0.15s', whiteSpace: 'nowrap',
             }}
           >
-            {p.prioridade ? '🔥 Prio' : '☆'}
+            {p.prioridade ? 'Prioritário' : 'Priorizar'}
           </button>
         </div>
 
@@ -605,7 +605,7 @@ export default function PainelProcessosPage() {
       .select().single()
     if (!error && data) {
       const agora = new Date().toISOString()
-      await supabase.from('processos_societarios').update({ updated_at: agora }).eq('id', id)
+      { const { error } = await supabase.from('processos_societarios').update({ updated_at: agora }).eq('id', id); if (error) { toast.error('Não foi possível salvar: ' + error.message); return } }
       setProcessos(prev => prev.map(p => p.id === id ? { ...p, updated_at: agora } : p))
       setUltimaNota(prev => ({ ...prev, [id]: agora }))
       setNotasCache(prev => ({ ...prev, [id]: [data, ...(prev[id] || [])] }))
@@ -735,7 +735,7 @@ export default function PainelProcessosPage() {
           </div>
         ) : ativos.length === 0 && snoozed.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '80px 24px' }}>
-            <p style={{ fontSize: '48px', marginBottom: '16px' }}>🎉</p>
+            
             <p style={{ fontSize: '18px', fontWeight: 700, color: '#0F172A' }}>Nenhum processo em andamento!</p>
             <Link href="/societario" style={{ display: 'inline-block', marginTop: '20px', fontSize: '12px', fontWeight: 700, color: '#2563EB', textDecoration: 'none' }}>
               Ver módulo societário →
@@ -746,7 +746,7 @@ export default function PainelProcessosPage() {
 
             <Secao label="Prioritários" sublabel="precisam da sua atenção hoje" dot="#F97316" count={priori.length}>
               {priori.length === 0 ? (
-                <EmptyState>Nenhum prioritário — use <strong>☆</strong> nos cards abaixo para elevar.</EmptyState>
+                <EmptyState>Nenhum prioritário — use <strong>Priorizar</strong> nos cards abaixo para elevar.</EmptyState>
               ) : (
                 <CardGrid>
                   {priori.map(p => (

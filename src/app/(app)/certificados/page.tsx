@@ -173,6 +173,12 @@ function CertificadosPageInner() {
 
   useEffect(() => { load() }, [orgId])
 
+  // Vindo da busca rápida (Ctrl+K) com ?novo=1: abre direto o cadastro
+  const novoAberto = useRef(false)
+  useEffect(() => {
+    if (searchParams.get('novo') && !novoAberto.current && !loading) { novoAberto.current = true; setEditItem(null); setModalOpen(true) }
+  }, [searchParams, loading])
+
   // Vindo do Briefing com ?abrir=ID: abre direto o certificado
   const abrirId = searchParams.get('abrir')
   const abrirFeito = useRef(false)

@@ -84,7 +84,7 @@ export default function BriefingPage() {
     setLoading(true)
     try {
       const { data: orgEmpresas } = await supabase
-        .from('empresas').select('id, razao_social, situacao, status, prioritaria').eq('org_id', orgId)
+        .from('empresas').select('*').eq('org_id', orgId)
       const empresasOrg = orgEmpresas || []
       const ids = empresasOrg.map(e => e.id)
       const nomeDe: Record<string, string> = {}

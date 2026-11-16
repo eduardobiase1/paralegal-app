@@ -4,30 +4,27 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 
 // G + letra → rota
-const GO_MAP: Record<string, string> = {
-  b: '/briefing',
-  v: '/visao-geral',
-  e: '/empresas',
-  c: '/certidoes',
-  a: '/alvaras',
-  d: '/certificados',
-  s: '/societario',
-}
+const GO: Array<{ tecla: string; href: string; desc: string }> = [
+  { tecla: 'h', href: '/briefing',          desc: 'Hoje (Briefing)' },
+  { tecla: 'v', href: '/visao-geral',       desc: 'Visão geral' },
+  { tecla: 'e', href: '/empresas',          desc: 'Carteira de empresas' },
+  { tecla: 'c', href: '/certidoes',         desc: 'Certidões' },
+  { tecla: 'a', href: '/alvaras',           desc: 'Alvarás' },
+  { tecla: 'l', href: '/licencas',          desc: 'Licenças sanitárias' },
+  { tecla: 'd', href: '/certificados',      desc: 'Certificados digitais' },
+  { tecla: 'p', href: '/societario/painel', desc: 'Processos' },
+  { tecla: 'f', href: '/financeiro',        desc: 'Financeiro' },
+]
 
 const ATALHOS = [
-  { grupo: 'Navegação', itens: [
-    { tecla: 'G + B', desc: 'Ir para Briefing' },
-    { tecla: 'G + V', desc: 'Ir para Visão Geral' },
-    { tecla: 'G + E', desc: 'Ir para Empresas' },
-    { tecla: 'G + C', desc: 'Ir para Certidões' },
-    { tecla: 'G + A', desc: 'Ir para Alvarás' },
-    { tecla: 'G + D', desc: 'Ir para Cert. Digitais' },
-    { tecla: 'G + S', desc: 'Ir para Societário' },
-  ]},
-  { grupo: 'Ações', itens: [
-    { tecla: 'Ctrl + K', desc: 'Buscar empresa ou página' },
-    { tecla: 'F', desc: 'Focar na busca da página' },
-    { tecla: 'Esc', desc: 'Fechar modal / overlay' },
+  { grupo: 'Ir para (aperte G e depois a letra)', itens: GO.map(g => ({ tecla: `G  ${g.tecla.toUpperCase()}`, desc: g.desc })) },
+  { grupo: 'Na tela', itens: [
+    { tecla: 'Ctrl  K', desc: 'Buscar empresa, CNPJ, ação ou tela' },
+    { tecla: 'N', desc: 'Novo cadastro da tela (certidão, alvará, certificado...)' },
+    { tecla: '/', desc: 'Ir para a busca da tela' },
+    { tecla: 'M', desc: 'Abrir o modo foco do Briefing' },
+    { tecla: '?', desc: 'Mostrar esta lista de atalhos' },
+    { tecla: 'Esc', desc: 'Fechar janela' },
   ]},
 ]
 
@@ -44,6 +41,11 @@ export default function KeyboardHelpButton() {
       const el = e.target as HTMLElement
       const tag = el.tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable) return
+      // com uma janela aberta, as letras não disparam atalhos da tela de trás
+      if (document.querySelector('[role="dialog"], .fixed.inset-0.z-50')) {
+        if (e.key === '?') setOpen(v => !v)
+        return
+      }
 
       if (e.key === '?') { setOpen(v => !v); return }
 
@@ -52,16 +54,22 @@ export default function KeyboardHelpButton() {
       // Segunda tecla da sequência G + letra (até 1,5s depois do G)
       if (Date.now() - gPressedAt.current < 1500) {
         gPressedAt.current = 0
-        const href = GO_MAP[key]
-        if (href) { e.preventDefault(); setOpen(false); router.push(href) }
+        const destino = GO.find(g => g.tecla === key)
+        if (destino) { e.preventDefault(); router.push(destino.href) }
         return
       }
-
       if (key === 'g') { gPressedAt.current = Date.now(); return }
 
-      if (key === 'f') {
+      if (key === '/') {
         const busca = document.querySelector<HTMLInputElement>('main input[placeholder*="uscar"]')
         if (busca) { e.preventDefault(); busca.focus() }
+        return
+      }
+      // N e M clicam no botão principal da tela, quando ela tiver um
+      const alvo = key === 'n' ? 'novo' : key === 'm' ? 'foco' : null
+      if (alvo) {
+        const botao = document.querySelector<HTMLButtonElement>(`main [data-atalho="${alvo}"]:not([disabled])`)
+        if (botao) { e.preventDefault(); botao.click() }
       }
     }
     window.addEventListener('keydown', onKey)
@@ -73,52 +81,34 @@ export default function KeyboardHelpButton() {
       <button
         onClick={() => setOpen(true)}
         title="Atalhos de teclado (?)"
-        className="fixed bottom-5 right-5 z-40 w-8 h-8 rounded-full bg-slate-800 text-white text-sm font-bold shadow-lg hover:bg-slate-700 hover:shadow-xl hover:-translate-y-px transition-all flex items-center justify-center select-none"
         aria-label="Atalhos de teclado"
+        className="fixed bottom-5 right-5 z-40 w-9 h-9 rounded-full bg-slate-900 text-white text-sm font-bold shadow-lg hover:bg-slate-700 flex items-center justify-center select-none"
       >
         ?
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setOpen(false)}>
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-          <div
-            className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="sticky top-0 bg-white rounded-t-2xl px-6 pt-5 pb-3 border-b border-slate-100 flex items-center justify-between">
-              <div>
-                <h2 className="text-base font-bold text-slate-900">Atalhos de teclado</h2>
-                <p className="text-xs text-slate-400 mt-0.5">Pressione <kbd className="bg-slate-100 px-1.5 py-0.5 rounded text-xs font-mono">?</kbd> a qualquer momento para abrir</p>
-              </div>
-              <button onClick={() => setOpen(false)}
-                className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center text-sm transition-colors">
-                ✕
-              </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Atalhos de teclado" onClick={() => setOpen(false)}>
+          <div className="absolute inset-0 bg-slate-900/50" />
+          <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="sticky top-0 bg-white px-6 pt-5 pb-3 border-b border-slate-200 flex items-center justify-between">
+              <h2 className="text-base font-bold text-slate-900">Atalhos de teclado</h2>
+              <button onClick={() => setOpen(false)} className="text-sm font-semibold text-slate-600 hover:text-slate-900">Fechar</button>
             </div>
-
             <div className="px-6 py-4 space-y-5">
               {ATALHOS.map(grupo => (
                 <div key={grupo.grupo}>
-                  <p className="text-xs font-bold uppercase tracking-wide text-slate-400 mb-2">{grupo.grupo}</p>
-                  <div className="space-y-1">
+                  <p className="text-sm font-semibold text-slate-900 mb-2">{grupo.grupo}</p>
+                  <div>
                     {grupo.itens.map(item => (
-                      <div key={item.tecla} className="flex items-center justify-between py-1.5 px-3 rounded-lg hover:bg-slate-50 transition-colors">
-                        <span className="text-sm text-slate-600">{item.desc}</span>
-                        <kbd className="bg-slate-100 border border-slate-200 text-slate-700 text-xs font-mono px-2 py-0.5 rounded-md shadow-sm whitespace-nowrap">
-                          {item.tecla}
-                        </kbd>
+                      <div key={item.tecla} className="flex items-center justify-between gap-4 py-1.5">
+                        <span className="text-sm text-slate-700">{item.desc}</span>
+                        <kbd className="bg-slate-100 border border-slate-200 text-slate-800 text-xs px-2 py-0.5 rounded-md whitespace-nowrap">{item.tecla}</kbd>
                       </div>
                     ))}
                   </div>
                 </div>
               ))}
-            </div>
-
-            <div className="px-6 pb-5 pt-2 border-t border-slate-100">
-              <p className="text-xs text-slate-400 text-center">
-                Atalhos de navegação (G + letra) funcionam em sequência, sem Shift
-              </p>
             </div>
           </div>
         </div>

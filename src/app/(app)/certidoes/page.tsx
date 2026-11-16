@@ -127,6 +127,12 @@ function CertidoesPage() {
     if (item) { renovarAberto.current = true; openRenovar(item) }
   }, [renovarId, data])
 
+  // Vindo da busca rápida (Ctrl+K) com ?novo=1: abre direto o cadastro
+  const novoAberto = useRef(false)
+  useEffect(() => {
+    if (searchParams.get('novo') && !novoAberto.current && !loading) { novoAberto.current = true; openNovo() }
+  }, [searchParams, loading])
+
   // Vindo do Briefing com ?comunicar=ID: abre direto o comunicado ao cliente
   const comunicarId = searchParams.get('comunicar')
   const comunicarAberto = useRef(false)
@@ -200,7 +206,7 @@ function CertidoesPage() {
     if (error && error.message?.includes('pendencia_status')) {
       const { pendencia_status, ...payloadSemPend } = payload
       ;({ error } = await doSave(payloadSemPend as any))
-      if (!error) toast('⚠️ Salvo sem pendência — rode o SQL no Supabase para habilitar esse campo.')
+      if (!error) toast('Salvo sem pendência — rode o SQL no Supabase para habilitar esse campo.')
     }
 
     if (!error) {
@@ -246,7 +252,7 @@ function CertidoesPage() {
 
   async function handleDelete(id: string) {
     if (!confirm('Excluir esta certidão?')) return
-    await supabase.from('certidoes').delete().eq('id', id)
+    { const { error } = await supabase.from('certidoes').delete().eq('id', id); if (error) { toast.error('Não foi possível salvar: ' + error.message); return } }
     setData(prev => prev.filter(i => i.id !== id))
     toast.success('Certidão excluída.')
   }
@@ -660,7 +666,7 @@ function CertidoesPage() {
                 </button>
                 <button type="submit" disabled={saving}
                   className="flex-1 bg-slate-900 text-white py-3 rounded-xl font-bold text-sm hover:bg-slate-700 transition-all disabled:opacity-50">
-                  {saving ? 'Salvando...' : modalMode === 'renovar' ? '🔄 Confirmar Renovação' : '✓ Salvar'}
+                  {saving ? 'Salvando...' : modalMode === 'renovar' ? 'Confirmar renovação' : 'Salvar'}
                 </button>
               </div>
             </form>
@@ -826,19 +832,18 @@ Solicitamos verificação e providências junto ao cliente para regularização.
         {/* Tabs */}
         <div className="flex gap-1.5 p-4 pb-0">
           {([
-            { id: 'cliente', label: 'Para o cliente', hex: '#3B82F6', glow: 'rgba(59,130,246,0.25)' },
-            { id: 'interno', label: 'Para departamento interno', hex: '#8B5CF6', glow: 'rgba(139,92,246,0.25)' },
+            { id: 'cliente', label: 'Para o cliente' },
+            { id: 'interno', label: 'Para departamento interno' },
           ] as const).map(t => {
             const isActive = tab === t.id
             return (
               <button key={t.id} onClick={() => setTab(t.id)}
-                style={isActive ? { background: t.hex, boxShadow: `0 4px 16px ${t.glow}, 0 1px 3px rgba(0,0,0,0.1)` } : {}}
                 className={[
                   'px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap select-none outline-none',
                   'transition-all duration-200 ease-in-out',
                   isActive
-                    ? 'text-white -translate-y-px'
-                    : 'text-slate-500 bg-[#F3F4F6] hover:-translate-y-px hover:shadow-md',
+                    ? 'bg-slate-900 text-white border border-slate-900'
+                    : 'text-slate-700 bg-white border border-slate-300 hover:bg-slate-50',
                 ].join(' ')}>
                 {t.label}
               </button>
@@ -855,11 +860,10 @@ Solicitamos verificação e providências junto ao cliente para regularização.
                 const isActive = deptsSelecionados.includes(d.id)
                 return (
                   <button key={d.id} onClick={() => toggleDept(d.id)}
-                    style={isActive ? { background: '#1E293B', boxShadow: '0 4px 16px rgba(30,41,59,0.25)' } : {}}
                     className={[
                       'px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap select-none outline-none',
                       'transition-all duration-200 ease-in-out',
-                      isActive ? 'text-white -translate-y-px' : 'text-slate-500 bg-[#F3F4F6] hover:-translate-y-px hover:shadow-md',
+                      isActive ? 'bg-slate-900 text-white border border-slate-900' : 'text-slate-700 bg-white border border-slate-300 hover:bg-slate-50',
                     ].join(' ')}>
                     {isActive ? '✓ ' : ''}{d.label}
                   </button>
@@ -877,13 +881,12 @@ Solicitamos verificação e providências junto ao cliente para regularização.
               const isActive = dpto === d.value
               return (
               <button key={d.value} onClick={() => setDpto(d.value)}
-                style={isActive ? { background: '#1E293B', boxShadow: '0 4px 16px rgba(30,41,59,0.25), 0 1px 3px rgba(0,0,0,0.1)' } : {}}
                 className={[
                   'px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap select-none outline-none',
                   'transition-all duration-200 ease-in-out',
                   isActive
-                    ? 'text-white -translate-y-px'
-                    : 'text-slate-500 bg-[#F3F4F6] hover:-translate-y-px hover:shadow-md',
+                    ? 'bg-slate-900 text-white border border-slate-900'
+                    : 'text-slate-700 bg-white border border-slate-300 hover:bg-slate-50',
                 ].join(' ')}>
                 {d.label}
               </button>

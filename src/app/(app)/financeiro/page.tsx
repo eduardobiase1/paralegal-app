@@ -291,7 +291,7 @@ export default function FinanceiroPage() {
     if (!recebItem) return
     const r = recebItem
     const dt = recebData || today()
-    await supabase.from('bm_contas_receber').update({ status: 'pago', data_pagamento: dt, valor_pago: r.valor }).eq('id', r.id)
+    { const { error } = await supabase.from('bm_contas_receber').update({ status: 'pago', data_pagamento: dt, valor_pago: r.valor }).eq('id', r.id); if (error) { toast.error('Não foi possível salvar: ' + error.message); return } }
     if (contaSel) {
       await supabase.from('bm_extrato').insert([{
         org_id: orgId, conta_bancaria_id: contaSel, data: dt,
@@ -308,8 +308,8 @@ export default function FinanceiroPage() {
 
   async function estornarR(r: any) {
     if (!confirm('Estornar recebimento? O lançamento no extrato será removido.')) return
-    await supabase.from('bm_contas_receber').update({ status: 'aguardando', data_pagamento: null, valor_pago: null }).eq('id', r.id)
-    await supabase.from('bm_extrato').delete().eq('origem', 'contas_receber').eq('origem_id', r.id)
+    { const { error } = await supabase.from('bm_contas_receber').update({ status: 'aguardando', data_pagamento: null, valor_pago: null }).eq('id', r.id); if (error) { toast.error('Não foi possível salvar: ' + error.message); return } }
+    { const { error } = await supabase.from('bm_extrato').delete().eq('origem', 'contas_receber').eq('origem_id', r.id); if (error) { toast.error('Não foi possível salvar: ' + error.message); return } }
     toast.success('Recebimento estornado.')
     fetchAll()
     if (contaSel) fetchExtrato(contaSel)
@@ -317,8 +317,8 @@ export default function FinanceiroPage() {
 
   async function deleteR(id: string) {
     if (!confirm('Excluir este lançamento? O extrato também será atualizado.')) return
-    await supabase.from('bm_extrato').delete().eq('origem', 'contas_receber').eq('origem_id', id)
-    await supabase.from('bm_contas_receber').delete().eq('id', id)
+    { const { error } = await supabase.from('bm_extrato').delete().eq('origem', 'contas_receber').eq('origem_id', id); if (error) { toast.error('Não foi possível salvar: ' + error.message); return } }
+    { const { error } = await supabase.from('bm_contas_receber').delete().eq('id', id); if (error) { toast.error('Não foi possível salvar: ' + error.message); return } }
     setReceber(p => p.filter(x => x.id !== id))
     if (contaSel) fetchExtrato(contaSel)
     toast.success('Excluído.')
@@ -394,8 +394,8 @@ export default function FinanceiroPage() {
 
   async function estornarP(p: any) {
     if (!confirm('Estornar pagamento? O lançamento no extrato será removido.')) return
-    await supabase.from('bm_contas_pagar').update({ status: 'a_pagar', data_pagamento: null, valor_pago: null, juros: null, multa: null }).eq('id', p.id)
-    await supabase.from('bm_extrato').delete().eq('origem', 'contas_pagar').eq('origem_id', p.id)
+    { const { error } = await supabase.from('bm_contas_pagar').update({ status: 'a_pagar', data_pagamento: null, valor_pago: null, juros: null, multa: null }).eq('id', p.id); if (error) { toast.error('Não foi possível salvar: ' + error.message); return } }
+    { const { error } = await supabase.from('bm_extrato').delete().eq('origem', 'contas_pagar').eq('origem_id', p.id); if (error) { toast.error('Não foi possível salvar: ' + error.message); return } }
     toast.success('Pagamento estornado.')
     fetchAll()
     if (contaSel) fetchExtrato(contaSel)
@@ -403,8 +403,8 @@ export default function FinanceiroPage() {
 
   async function deleteP(id: string) {
     if (!confirm('Excluir este lançamento? O extrato também será atualizado.')) return
-    await supabase.from('bm_extrato').delete().eq('origem', 'contas_pagar').eq('origem_id', id)
-    await supabase.from('bm_contas_pagar').delete().eq('id', id)
+    { const { error } = await supabase.from('bm_extrato').delete().eq('origem', 'contas_pagar').eq('origem_id', id); if (error) { toast.error('Não foi possível salvar: ' + error.message); return } }
+    { const { error } = await supabase.from('bm_contas_pagar').delete().eq('id', id); if (error) { toast.error('Não foi possível salvar: ' + error.message); return } }
     setPagar(p => p.filter(x => x.id !== id))
     if (contaSel) fetchExtrato(contaSel)
     toast.success('Excluído.')
@@ -702,11 +702,11 @@ export default function FinanceiroPage() {
               <div className="flex gap-2">
                 <button onClick={handleExportPDF}
                   className="inline-flex items-center gap-2 border border-slate-200 text-slate-700 hover:bg-slate-50 px-4 py-2 rounded-xl text-sm font-semibold transition-colors">
-                  ⬇ PDF
+                  PDF
                 </button>
                 <button onClick={handleExportExcel}
                   className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors shadow-sm">
-                  ⬇ Excel
+                  Excel
                 </button>
               </div>
             )}
@@ -1051,7 +1051,7 @@ export default function FinanceiroPage() {
                           <td className="px-5 py-3.5">
                             <button onClick={async () => {
                               if (!confirm('Excluir este lançamento do extrato?')) return
-                              await supabase.from('bm_extrato').delete().eq('id', e.id)
+                              { const { error } = await supabase.from('bm_extrato').delete().eq('id', e.id); if (error) { toast.error('Não foi possível salvar: ' + error.message); return } }
                               fetchExtrato(contaSel)
                               toast.success('Excluído.')
                             }} className="text-xs font-semibold text-slate-300 hover:text-red-500 transition-colors">Excluir</button>

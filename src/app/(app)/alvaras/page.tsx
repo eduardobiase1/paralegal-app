@@ -85,6 +85,12 @@ function AlvarasPage() {
     if (item) { renovarAberto.current = true; openRenovar(item) }
   }, [renovarId, dados])
 
+  // Vindo da busca rápida (Ctrl+K) com ?novo=1: abre direto o cadastro
+  const novoAberto = useRef(false)
+  useEffect(() => {
+    if (searchParams.get('novo') && !novoAberto.current && !loading) { novoAberto.current = true; setForm({ ...FORM_EMPTY, empresa_id: empresaFiltro || '' }); setModalNovo(true) }
+  }, [searchParams, loading])
+
   // ── Criar novo ───────────────────────────────────────────────────────────────
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()

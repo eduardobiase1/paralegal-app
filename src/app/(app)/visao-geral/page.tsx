@@ -67,12 +67,10 @@ function worstCertidao(certs: Array<{ data_vencimento: string | null; pendencia_
   return { date: sorted[0]?.data_vencimento ?? null, pendente: false }
 }
 
-function worstDate(items: Array<{ data_vencimento: string | null }>): CellInfo {
-  if (!items.length) return EMPTY
-  const sorted = [...items].filter(i => i.data_vencimento).sort((a, b) =>
-    a.data_vencimento! < b.data_vencimento! ? -1 : 1
-  )
-  return { date: sorted[0]?.data_vencimento ?? null, pendente: false }
+// Documento vigente = o de vencimento mais distante (renovações criam um registro novo)
+function latestDate(items: Array<{ data_vencimento: string | null }>): CellInfo {
+  const datas = items.map(i => i.data_vencimento).filter(Boolean).sort() as string[]
+  return { date: datas[datas.length - 1] ?? null, pendente: false }
 }
 
 export default function VisaoGeralPage() {
@@ -117,9 +115,9 @@ export default function VisaoGeralPage() {
         fgts:           worstCertidao(certs.filter(c => c.tipo === 'FGTS')),
         trabalhista:    worstCertidao(certs.filter(c => c.tipo === 'Trabalhista')),
         previdenciaria: worstCertidao(certs.filter(c => c.tipo === 'Previdenciária')),
-        alvara:         worstDate((alvaras || []).filter(a => a.empresa_id === emp.id)),
-        licenca:        worstDate((licencas || []).filter(l => l.empresa_id === emp.id)),
-        certificado:    worstDate((certificados || []).filter(c => c.empresa_id === emp.id)),
+        alvara:         latestDate((alvaras || []).filter(a => a.empresa_id === emp.id)),
+        licenca:        latestDate((licencas || []).filter(l => l.empresa_id === emp.id)),
+        certificado:    latestDate((certificados || []).filter(c => c.empresa_id === emp.id)),
       }
     })
 
@@ -158,54 +156,36 @@ export default function VisaoGeralPage() {
   return (
     <div className="p-4 md:p-6 xl:p-8">
       {/* ── Cabeçalho ─────────────────────────────────────────────── */}
-      <div className="flex items-start justify-between mb-5 flex-wrap gap-4">
+      <div className="flex items-end justify-between mb-5 flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Visão Geral</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Todas as empresas · vencimentos consolidados</p>
+          <h1 className="text-2xl font-bold text-slate-900">Visão geral</h1>
+          <p className="text-sm text-slate-600 mt-1">Todas as empresas e todos os vencimentos em uma só tabela</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <button
-            onClick={() => setSoProblemas(v => !v)}
-            style={soProblemas ? { background: '#EF4444', boxShadow: '0 4px 16px rgba(239,68,68,0.25), 0 1px 3px rgba(0,0,0,0.1)' } : {}}
-            className={[
-              'px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap select-none outline-none',
-              'transition-all duration-200 ease-in-out',
-              soProblemas ? 'text-white -translate-y-px' : 'text-slate-500 bg-[#F3F4F6] hover:-translate-y-px hover:shadow-md',
-            ].join(' ')}>
-            {soProblemas ? '🔴 Só problemas' : 'Só problemas'}
-          </button>
-
-          <div className="flex gap-1.5">
-            {([
-              { id: 'nome',     label: 'A → Z' },
-              { id: 'urgencia', label: '🚨 Por urgência' },
-            ] as const).map(s => {
-              const isActive = sortBy === s.id
-              return (
-                <button key={s.id} onClick={() => setSortBy(s.id)}
-                  style={isActive ? { background: '#1E293B', boxShadow: '0 4px 16px rgba(30,41,59,0.25), 0 1px 3px rgba(0,0,0,0.1)' } : {}}
-                  className={[
-                    'px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap select-none outline-none',
-                    'transition-all duration-200 ease-in-out',
-                    isActive ? 'text-white -translate-y-px' : 'text-slate-500 bg-[#F3F4F6] hover:-translate-y-px hover:shadow-md',
-                  ].join(' ')}>
-                  {s.label}
-                </button>
-              )
-            })}
-          </div>
-          <div className="relative">
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <label className="flex items-center gap-2 h-10 px-3 bg-white border border-slate-300 rounded-lg text-slate-500">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
-            <input value={busca} onChange={e => setBusca(e.target.value)}
-              placeholder="Buscar empresa..."
-              className="pl-9 pr-4 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-blue-300 transition-colors w-52"
-            />
+            <input value={busca} onChange={e => setBusca(e.target.value)} aria-label="Buscar empresa" placeholder="Buscar empresa"
+              className="w-48 bg-transparent outline-none text-sm text-slate-900 placeholder:text-slate-500" />
+          </label>
+          <div className="flex rounded-lg border border-slate-300 overflow-hidden" role="group" aria-label="Ordenar">
+            {([
+              { id: 'nome',     label: 'A → Z' },
+              { id: 'urgencia', label: 'Por urgência' },
+            ] as const).map(o => (
+              <button key={o.id} onClick={() => setSortBy(o.id)} aria-pressed={sortBy === o.id}
+                className={`h-10 px-3 text-sm font-semibold ${sortBy === o.id ? 'bg-slate-900 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'}`}>
+                {o.label}
+              </button>
+            ))}
           </div>
-          <button onClick={load}
-            className="text-xs font-bold text-slate-500 hover:text-slate-700 border border-slate-200 rounded-lg px-3 py-2 hover:bg-slate-50 transition-all">
-            ↻ Atualizar
+          <button onClick={() => setSoProblemas(v => !v)} aria-pressed={soProblemas}
+            className={`h-10 px-3 rounded-lg border text-sm font-semibold ${soProblemas ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-300 text-slate-900 hover:bg-slate-50'}`}>
+            Só com problema
+          </button>
+          <button onClick={load} className="h-10 px-3 rounded-lg border border-slate-300 bg-white text-sm font-semibold text-slate-900 hover:bg-slate-50">
+            Atualizar
           </button>
         </div>
       </div>

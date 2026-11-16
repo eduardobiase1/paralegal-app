@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useOrg } from '@/lib/org-context'
+import { apenasVigentes, chaveAlvara } from '@/lib/prazo'
 import Link from 'next/link'
 
 function diasParaVencer(data?: string): number | null {
@@ -43,7 +44,7 @@ export default function DashboardPage() {
           .order('created_at', { ascending: false }),
         supabase.from('bm_contas_receber').select('id', { count: 'exact', head: true }).eq('org_id', orgId).eq('status', 'aguardando'),
         supabase.from('certidoes').select('id, tipo, orgao_emissor, data_vencimento, empresas!inner(razao_social, org_id)').eq('empresas.org_id', orgId).order('data_vencimento'),
-        supabase.from('alvaras').select('id, tipo, orgao_emissor, data_vencimento, empresas!inner(razao_social, org_id)').eq('empresas.org_id', orgId).order('data_vencimento'),
+        supabase.from('alvaras').select('id, tipo, orgao_emissor, data_vencimento, empresa_id, empresas!inner(razao_social, org_id)').eq('empresas.org_id', orgId).order('data_vencimento'),
         supabase.from('licencas_sanitarias').select('id, orgao, atividade_sanitaria, data_vencimento, empresas!inner(razao_social, org_id)').eq('empresas.org_id', orgId).order('data_vencimento'),
         supabase.from('certificados_digitais').select('id, tipo, uso, titular, data_vencimento, empresa_id, org_id, empresas(razao_social, org_id)').order('data_vencimento'),
         supabase.from('processo_notas').select('processo_id, created_at').eq('org_id', orgId).order('created_at', { ascending: false }),
@@ -66,7 +67,7 @@ export default function DashboardPage() {
 
       const todos = [
         ...(certRes.data || []).map((i: any) => ({ ...i, categoria: 'Certidão',    desc: [i.tipo, i.orgao_emissor].filter(Boolean).join(' — '), href: '/certidoes' })),
-        ...(alvRes.data  || []).map((i: any) => ({ ...i, categoria: 'Alvará',      desc: [i.tipo, i.orgao_emissor].filter(Boolean).join(' — '), href: '/alvaras' })),
+        ...apenasVigentes(alvRes.data || [], chaveAlvara).map((i: any) => ({ ...i, categoria: 'Alvará',      desc: [i.tipo, i.orgao_emissor].filter(Boolean).join(' — '), href: '/alvaras' })),
         ...(licRes.data  || []).map((i: any) => ({ ...i, categoria: 'Licença',     desc: [i.orgao, i.atividade_sanitaria].filter(Boolean).join(' — '), href: '/licencas' })),
         ...(cerRes.data  || []).filter((i: any) => i.empresa_id ? i.empresas?.org_id === orgId : i.org_id === orgId).map((i: any) => ({ ...i, categoria: 'Certificado', desc: [i.tipo, i.uso, i.titular].filter(Boolean).join(' · '), href: '/certificados' })),
       ].sort((a, b) => {

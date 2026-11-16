@@ -100,7 +100,7 @@ export default function SimuladorPage() {
   }
 
   async function deleteTaxa(id: string) {
-    await supabase.from('taxas').update({ ativo: false }).eq('id', id)
+    { const { error } = await supabase.from('taxas').update({ ativo: false }).eq('id', id); if (error) { toast.error('Não foi possível salvar: ' + error.message); return } }
     toast.success('Taxa removida')
     load()
   }

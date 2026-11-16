@@ -203,7 +203,6 @@ export default function UsuariosPage() {
 
       {/* Aviso de isolamento */}
       <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800 flex gap-3">
-        <span className="text-lg flex-shrink-0">🔐</span>
         <div>
           <strong>Isolamento de dados ativo.</strong> Esta organização vê apenas seus próprios dados.
           {' '}<span className="font-semibold">Administrador</span> gerencia usuários e configurações.
@@ -267,7 +266,7 @@ export default function UsuariosPage() {
                             onClick={() => { setResetTarget(m); setResetPassword(''); setShowResetPass(false) }}
                             className="text-xs px-2 py-1 rounded border text-amber-600 border-amber-200 hover:bg-amber-50 transition-colors"
                           >
-                            🔑 Redefinir Senha
+                            Redefinir senha
                           </button>
                           <button
                             onClick={() => handleRemove(m)}
@@ -413,7 +412,6 @@ export default function UsuariosPage() {
 
             {/* Info do usuário */}
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center gap-3">
-              <span className="text-2xl">🔑</span>
               <div>
                 <p className="text-sm font-semibold text-slate-800">{getProfile(resetTarget.profiles)?.nome ?? '—'}</p>
                 <p className="text-xs text-slate-500">{getProfile(resetTarget.profiles)?.email ?? '—'}</p>

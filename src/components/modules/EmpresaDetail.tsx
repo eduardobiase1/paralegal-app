@@ -6,6 +6,7 @@ import toast from 'react-hot-toast'
 import { Empresa, SEFAZ_URLS } from '@/types'
 import HistoricoEmpresa from '@/components/modules/HistoricoEmpresa'
 import { createClient } from '@/lib/supabase/client'
+import { lembrarEmpresa } from '@/components/layout/CommandPalette'
 import { formatCNPJ, formatCEP, formatDate } from '@/lib/utils'
 import { capitalExtenso, formatarReais, calcularCapitalSocial } from '@/lib/formatters'
 
@@ -76,6 +77,8 @@ export default function EmpresaDetail({ empresa: emp }: Props) {
   const enderecoMapa = [endereco, emp.bairro, cidadeUf, emp.cep].filter(Boolean).join(', ')
   const nomeFantasia = emp.nome_fantasia && /[^*\s]/.test(emp.nome_fantasia) ? emp.nome_fantasia : ''
   const telDigitos = String(e.telefone || '').replace(/\D/g, '')
+
+  useEffect(() => { lembrarEmpresa({ id: emp.id, razao_social: emp.razao_social, cnpj: emp.cnpj }) }, [emp.id])
 
   useEffect(() => {
     async function carregar() {

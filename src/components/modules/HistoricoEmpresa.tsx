@@ -16,22 +16,6 @@ interface Evento {
   criado_por?: string
 }
 
-const ICONE: Record<string, string> = {
-  comunicado_enviado: '📨',
-  certidao_renovada:  '✅',
-  status_alterado:    '🔄',
-  anotacao:           '📝',
-  alerta:             '⚠️',
-}
-
-const COR: Record<string, string> = {
-  comunicado_enviado: 'bg-violet-50 border-violet-200',
-  certidao_renovada:  'bg-emerald-50 border-emerald-200',
-  status_alterado:    'bg-blue-50 border-blue-200',
-  anotacao:           'bg-amber-50 border-amber-200',
-  alerta:             'bg-red-50 border-red-200',
-}
-
 const LABEL: Record<string, string> = {
   comunicado_enviado: 'Comunicado enviado',
   certidao_renovada:  'Certidão renovada',
@@ -98,100 +82,59 @@ export default function HistoricoEmpresa({ empresaId }: { empresaId: string }) {
   }
 
   return (
-    <div className="card">
-      <div className="card-header flex items-center justify-between">
-        <div>
-          <h2 className="font-semibold text-slate-900">Histórico & Caixa Postal</h2>
-          <p className="text-xs text-slate-500 mt-0.5">Comunicados enviados, renovações e anotações internas</p>
-        </div>
-        <button
-          onClick={() => setExibirForm(v => !v)}
-          className="text-xs font-bold bg-slate-900 text-white px-3 py-1.5 rounded-lg hover:bg-slate-700 transition-all"
-        >
-          + Anotação
+    <section aria-label="Histórico e comunicações" className="bg-white border border-slate-200 rounded-xl p-5 space-y-3">
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="text-base font-bold text-slate-900">Histórico e comunicações</h2>
+        <button onClick={() => setExibirForm(v => !v)} className="text-sm font-semibold text-blue-700 hover:underline">
+          Adicionar anotação
         </button>
       </div>
 
-      {/* Formulário anotação */}
       {exibirForm && (
-        <div className="px-4 pb-2 pt-1">
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
-            <p className="text-xs font-bold uppercase tracking-wide text-amber-700 mb-2">📝 Nova anotação manual</p>
-            <textarea
-              rows={3}
-              value={texto}
-              onChange={e => setTexto(e.target.value)}
-              placeholder="Descreva o evento, retorno do cliente, orientação dada, decisão tomada..."
-              className="w-full bg-white border border-amber-200 rounded-lg p-2.5 text-sm outline-none focus:border-amber-400 resize-none"
-              autoFocus
-            />
-            <div className="flex gap-2 mt-2">
-              <button
-                onClick={() => { setExibirForm(false); setTexto('') }}
-                className="flex-1 text-xs font-bold bg-white border border-slate-200 text-slate-600 py-2 rounded-lg hover:bg-slate-50 transition-all"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={salvarAnotacao}
-                disabled={salvando || !texto.trim()}
-                className="flex-1 text-xs font-bold bg-slate-900 text-white py-2 rounded-lg hover:bg-slate-700 disabled:opacity-50 transition-all"
-              >
-                {salvando ? 'Salvando...' : 'Salvar anotação'}
-              </button>
-            </div>
+        <div className="space-y-2">
+          <textarea
+            rows={3}
+            value={texto}
+            onChange={e => setTexto(e.target.value)}
+            aria-label="Nova anotação"
+            placeholder="Retorno do cliente, orientação dada, decisão tomada..."
+            className="w-full border border-slate-300 rounded-lg p-2.5 text-sm text-slate-900 outline-none focus:border-slate-500 resize-none"
+            autoFocus
+          />
+          <div className="flex justify-end gap-2">
+            <button onClick={() => { setExibirForm(false); setTexto('') }} className="btn-secondary">Cancelar</button>
+            <button onClick={salvarAnotacao} disabled={salvando || !texto.trim()} className="btn-primary">
+              {salvando ? 'Salvando...' : 'Salvar anotação'}
+            </button>
           </div>
         </div>
       )}
 
-      <div className="card-body">
-        {loading ? (
-          <p className="text-sm text-slate-400 italic text-center py-6">Carregando histórico...</p>
-        ) : eventos.length === 0 ? (
-          <div className="text-center py-10">
-            <p className="text-4xl mb-2">📭</p>
-            <p className="text-sm text-slate-400 italic">Nenhum registro ainda.</p>
-            <p className="text-xs text-slate-400 mt-1">Comunicados enviados, renovações e anotações aparecerão aqui automaticamente.</p>
-          </div>
-        ) : (
-          <div className="relative">
-            {/* Linha vertical da timeline */}
-            <div className="absolute left-5 top-0 bottom-0 w-px bg-slate-200" />
-            <div className="space-y-3">
-              {eventos.map(ev => (
-                <div key={ev.id} className="flex gap-4 group">
-                  {/* Ícone na timeline */}
-                  <div className={`relative z-10 w-10 h-10 rounded-full border-2 flex items-center justify-center text-base flex-shrink-0 ${COR[ev.tipo] || 'bg-slate-50 border-slate-200'}`}>
-                    {ICONE[ev.tipo] || '📌'}
-                  </div>
-                  {/* Conteúdo */}
-                  <div className={`flex-1 min-w-0 p-3 rounded-xl border ${COR[ev.tipo] || 'bg-slate-50 border-slate-200'}`}>
-                    <div className="flex items-start justify-between gap-2 flex-wrap">
-                      <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                        {LABEL[ev.tipo] || ev.tipo}
-                        {ev.canal && <span className="ml-1 normal-case font-normal">· via {ev.canal}</span>}
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-slate-400 font-mono">{fmtData(ev.criado_em)}</span>
-                        {ev.tipo === 'anotacao' && (
-                          <button
-                            onClick={() => excluirEvento(ev.id)}
-                            className="opacity-0 group-hover:opacity-100 text-xs text-red-400 hover:text-red-600 transition-all"
-                            title="Excluir anotação"
-                          >
-                            ✕
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                    <p className="text-sm text-slate-700 mt-1 leading-relaxed whitespace-pre-wrap">{ev.descricao}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+      {loading ? (
+        <p className="text-sm text-slate-600">Carregando histórico...</p>
+      ) : eventos.length === 0 ? (
+        <p className="text-sm text-slate-600">Nenhum registro ainda. Comunicados, renovações e anotações aparecem aqui.</p>
+      ) : (
+        <ol className="divide-y divide-slate-100">
+          {eventos.map(ev => (
+            <li key={ev.id} className="flex flex-wrap gap-x-4 gap-y-1 py-2.5 text-sm">
+              <span className="w-36 flex-shrink-0 text-slate-600">{fmtData(ev.criado_em)}</span>
+              <div className="flex-1 min-w-[14rem]">
+                <p className="font-semibold text-slate-900">
+                  {LABEL[ev.tipo] || ev.tipo}
+                  {ev.canal && <span className="font-normal text-slate-600"> · via {ev.canal}</span>}
+                </p>
+                <p className="text-slate-700 whitespace-pre-wrap break-words">{ev.descricao}</p>
+              </div>
+              {ev.tipo === 'anotacao' && (
+                <button onClick={() => excluirEvento(ev.id)} className="self-start text-sm font-semibold text-slate-500 hover:text-red-700 hover:underline">
+                  Excluir
+                </button>
+              )}
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
   )
 }

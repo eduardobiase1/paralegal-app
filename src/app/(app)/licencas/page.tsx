@@ -112,6 +112,12 @@ function LicencasPage() {
     setModal('novo')
   }
 
+  // Vindo da busca rápida (Ctrl+K) com ?novo=1: abre direto o cadastro
+  const novoAberto = useRef(false)
+  useEffect(() => {
+    if (searchParams.get('novo') && !novoAberto.current && !loading) { novoAberto.current = true; openNovo() }
+  }, [searchParams, loading])
+
   async function handleDelete() {
     if (!excluirItem) return
     const { error } = await supabase.from('licencas_sanitarias').delete().eq('id', excluirItem.id)

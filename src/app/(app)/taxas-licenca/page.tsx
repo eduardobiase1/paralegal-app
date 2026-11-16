@@ -153,9 +153,6 @@ export default function TaxasLicencaPage() {
       <div className="bg-white border-b border-slate-200 px-6 py-5">
         <div className="max-w-5xl mx-auto">
 
-          <p className="text-xs font-bold uppercase tracking-wide text-blue-600 mb-1">
-            CONTROLES · TAXAS
-          </p>
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
@@ -219,7 +216,7 @@ export default function TaxasLicencaPage() {
 
           {/* Busca */}
           <div className="relative flex-1 min-w-52">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none">🔍</span>
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
             <input
               placeholder="Buscar empresa ou cidade..."
               value={busca}
@@ -253,7 +250,6 @@ export default function TaxasLicencaPage() {
           </div>
         ) : empresas.length === 0 ? (
           <div className="text-center py-20 text-slate-400">
-            <p className="text-4xl mb-3">🏢</p>
             <p className="font-semibold">Nenhuma empresa cadastrada.</p>
           </div>
         ) : Object.keys(porMunicipio).length === 0 ? (
@@ -269,7 +265,6 @@ export default function TaxasLicencaPage() {
                 <section key={municipio}>
                   {/* Cabeçalho do município */}
                   <div className="flex items-center gap-3 mb-3 pb-2 border-b border-slate-200">
-                    <span className="text-base">📍</span>
                     <span className="text-sm font-bold text-slate-700 uppercase tracking-wide">
                       {municipio}
                     </span>
@@ -278,7 +273,7 @@ export default function TaxasLicencaPage() {
                     </span>
                     {enviadosNaMun === lista.length && lista.length > 0 && (
                       <span className="text-xs font-bold text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">
-                        ✓ Concluído
+                        Concluído
                       </span>
                     )}
                   </div>

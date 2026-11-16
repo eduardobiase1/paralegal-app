@@ -76,7 +76,7 @@ export default function OnboardingPage() {
         >
           {/* Header */}
           <div className="mb-6 text-center">
-            <h1 className="text-white font-bold text-2xl mb-2">Bem-vindo! 👋</h1>
+            <h1 className="text-white font-bold text-2xl mb-2">Bem-vindo</h1>
             <p className="text-gray-400 text-sm">
               Para começar, crie a sua organização.<br />
               Ela representa o seu escritório no sistema.

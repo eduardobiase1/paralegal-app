@@ -7,6 +7,7 @@ import Image from 'next/image'
 import {
   Sun, Moon, Table2, Building2, CalendarClock, ListChecks, CircleDollarSign,
   Wrench, Users, LogOut, ChevronsLeft, ChevronDown, KeyRound, type LucideIcon,
+ Search,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
@@ -134,6 +135,16 @@ export default function Sidebar({ isOpen = true, onToggle, isDark = false, onTog
       {role === 'financeiro' && (
         <p className="mx-3 mb-2 px-3 py-1.5 rounded-lg bg-white/5 text-xs text-neutral-300">Acesso financeiro</p>
       )}
+
+      {/* Busca rápida */}
+      <div className="px-3 pb-3">
+        <button onClick={() => window.dispatchEvent(new Event('paralegal:buscar'))}
+          className="w-full flex items-center gap-3 px-3 min-h-[40px] rounded-lg border border-white/10 bg-white/[0.04] text-sm text-neutral-300 hover:bg-white/10 hover:text-white transition-colors">
+          <Search className="w-4 h-4 flex-shrink-0" strokeWidth={1.8} aria-hidden="true" />
+          <span className="flex-1 text-left">Buscar</span>
+          <kbd className="text-xs text-neutral-400 border border-white/15 rounded px-1.5 py-0.5">Ctrl K</kbd>
+        </button>
+      </div>
 
       {/* Navegação */}
       <nav aria-label="Menu principal" className="flex-1 overflow-y-auto px-3 space-y-0.5">

@@ -391,7 +391,7 @@ function SocietarioPageInner() {
     const docs = DOCS_MODELOS[processo.tipo] ?? []
     if (!force && processo.docs_solicitados && processo.docs_solicitados.length > 0) return
     try {
-      await supabase.from('processos_societarios').update({ docs_solicitados: docs }).eq('id', processo.id)
+      { const { error } = await supabase.from('processos_societarios').update({ docs_solicitados: docs }).eq('id', processo.id); if (error) { toast.error('Não foi possível salvar: ' + error.message); return } }
       setProcessos(prev => prev.map(p => p.id === processo.id ? { ...p, docs_solicitados: docs } : p))
       if (force) toast.success(`Modelo restaurado com ${docs.length} documentos.`)
     } catch { /* coluna pode não existir ainda */ }
@@ -401,7 +401,7 @@ function SocietarioPageInner() {
     const updated = [...docs]
     updated[index] = { ...updated[index], recebido: !updated[index].recebido }
     try {
-      await supabase.from('processos_societarios').update({ docs_solicitados: updated }).eq('id', procId)
+      { const { error } = await supabase.from('processos_societarios').update({ docs_solicitados: updated }).eq('id', procId); if (error) { toast.error('Não foi possível salvar: ' + error.message); return } }
       setProcessos(prev => prev.map(p => p.id === procId ? { ...p, docs_solicitados: updated } : p))
     } catch { toast.error('Erro ao salvar. Execute a migração SQL.') }
   }
@@ -410,27 +410,27 @@ function SocietarioPageInner() {
     if (!editDocText.trim()) { setEditingDocIndex(null); return }
     const updated = [...docs]
     updated[index] = { ...updated[index], doc: editDocText.trim() }
-    await supabase.from('processos_societarios').update({ docs_solicitados: updated }).eq('id', procId)
+    { const { error } = await supabase.from('processos_societarios').update({ docs_solicitados: updated }).eq('id', procId); if (error) { toast.error('Não foi possível salvar: ' + error.message); return } }
     setProcessos(prev => prev.map(p => p.id === procId ? { ...p, docs_solicitados: updated } : p))
     setEditingDocIndex(null)
   }
 
   async function deleteDoc(procId: string, docs: any[], index: number) {
     const updated = docs.filter((_, i) => i !== index)
-    await supabase.from('processos_societarios').update({ docs_solicitados: updated }).eq('id', procId)
+    { const { error } = await supabase.from('processos_societarios').update({ docs_solicitados: updated }).eq('id', procId); if (error) { toast.error('Não foi possível salvar: ' + error.message); return } }
     setProcessos(prev => prev.map(p => p.id === procId ? { ...p, docs_solicitados: updated } : p))
   }
 
   async function addDoc(procId: string, docs: any[]) {
     if (!newDocText.trim()) { setAddingDoc(false); return }
     const updated = [...docs, { doc: newDocText.trim(), recebido: false }]
-    await supabase.from('processos_societarios').update({ docs_solicitados: updated }).eq('id', procId)
+    { const { error } = await supabase.from('processos_societarios').update({ docs_solicitados: updated }).eq('id', procId); if (error) { toast.error('Não foi possível salvar: ' + error.message); return } }
     setProcessos(prev => prev.map(p => p.id === procId ? { ...p, docs_solicitados: updated } : p))
     setNewDocText(''); setAddingDoc(false)
   }
 
   async function saveTitulo(procId: string) {
-    await supabase.from('processos_societarios').update({ titulo: tituloText.trim() || null }).eq('id', procId)
+    { const { error } = await supabase.from('processos_societarios').update({ titulo: tituloText.trim() || null }).eq('id', procId); if (error) { toast.error('Não foi possível salvar: ' + error.message); return } }
     setProcessos(prev => prev.map(p => p.id === procId ? { ...p, titulo: tituloText.trim() || null } : p))
     setEditingTituloId(null)
   }
@@ -454,13 +454,13 @@ function SocietarioPageInner() {
   }
 
   async function deleteNota(notaId: string, procId: string) {
-    await supabase.from('processo_notas').delete().eq('id', notaId)
+    { const { error } = await supabase.from('processo_notas').delete().eq('id', notaId); if (error) { toast.error('Não foi possível salvar: ' + error.message); return } }
     setNotas(prev => ({ ...prev, [procId]: (prev[procId] || []).filter(n => n.id !== notaId) }))
   }
 
   async function updateNota(notaId: string, procId: string) {
     if (!editNotaText.trim()) { setEditingNotaId(null); return }
-    await supabase.from('processo_notas').update({ texto: editNotaText.trim() }).eq('id', notaId)
+    { const { error } = await supabase.from('processo_notas').update({ texto: editNotaText.trim() }).eq('id', notaId); if (error) { toast.error('Não foi possível salvar: ' + error.message); return } }
     setNotas(prev => ({ ...prev, [procId]: (prev[procId] || []).map(n => n.id === notaId ? { ...n, texto: editNotaText.trim() } : n) }))
     setEditingNotaId(null)
   }
@@ -470,7 +470,7 @@ function SocietarioPageInner() {
     updated[index] = { ...updated[index], status: STATUS_CYCLE[updated[index].status] ?? 'Pendente' }
     const concluidos = updated.filter(i => i.status === 'Concluido').length
     const novoStatus = concluidos === updated.length ? 'Finalizado' : 'Andamento'
-    await supabase.from('processos_societarios').update({ checklist: updated, status: novoStatus }).eq('id', procId)
+    { const { error } = await supabase.from('processos_societarios').update({ checklist: updated, status: novoStatus }).eq('id', procId); if (error) { toast.error('Não foi possível salvar: ' + error.message); return } }
     setProcessos(prev => prev.map(p => p.id === procId ? { ...p, checklist: updated, status: novoStatus } : p))
     if (updated[index].status === 'Concluido') logProc(procId, 'Etapa concluída', `Etapa concluída: ${updated[index].etapa}`)
     if (novoStatus === 'Finalizado') logProc(procId, 'Processo finalizado', 'Processo finalizado')
@@ -480,14 +480,14 @@ function SocietarioPageInner() {
     if (!editingItem || !editText.trim()) { setEditingItem(null); return }
     const updated = [...checklist]
     updated[editingItem.index] = { ...updated[editingItem.index], etapa: editText.trim() }
-    await supabase.from('processos_societarios').update({ checklist: updated }).eq('id', procId)
+    { const { error } = await supabase.from('processos_societarios').update({ checklist: updated }).eq('id', procId); if (error) { toast.error('Não foi possível salvar: ' + error.message); return } }
     setProcessos(prev => prev.map(p => p.id === procId ? { ...p, checklist: updated } : p))
     setEditingItem(null)
   }
 
   async function deleteItem(procId: string, checklist: any[], index: number) {
     const updated = checklist.filter((_, i) => i !== index)
-    await supabase.from('processos_societarios').update({ checklist: updated }).eq('id', procId)
+    { const { error } = await supabase.from('processos_societarios').update({ checklist: updated }).eq('id', procId); if (error) { toast.error('Não foi possível salvar: ' + error.message); return } }
     setProcessos(prev => prev.map(p => p.id === procId ? { ...p, checklist: updated } : p))
   }
 
@@ -496,21 +496,21 @@ function SocietarioPageInner() {
     const updated = [...checklist]
     const [moved] = updated.splice(from, 1)
     updated.splice(to, 0, moved)
-    await supabase.from('processos_societarios').update({ checklist: updated }).eq('id', procId)
+    { const { error } = await supabase.from('processos_societarios').update({ checklist: updated }).eq('id', procId); if (error) { toast.error('Não foi possível salvar: ' + error.message); return } }
     setProcessos(prev => prev.map(p => p.id === procId ? { ...p, checklist: updated } : p))
   }
 
   async function addItem(procId: string, checklist: any[]) {
     if (!newItemText.trim()) { setAddingTo(null); return }
     const updated = [...checklist, { etapa: newItemText.trim(), status: 'Pendente' }]
-    await supabase.from('processos_societarios').update({ checklist: updated }).eq('id', procId)
+    { const { error } = await supabase.from('processos_societarios').update({ checklist: updated }).eq('id', procId); if (error) { toast.error('Não foi possível salvar: ' + error.message); return } }
     setProcessos(prev => prev.map(p => p.id === procId ? { ...p, checklist: updated } : p))
     setNewItemText(''); setAddingTo(null)
   }
 
   async function deleteProcesso(id: string) {
     if (!confirm('Excluir este processo permanentemente?')) return
-    await supabase.from('processos_societarios').delete().eq('id', id)
+    { const { error } = await supabase.from('processos_societarios').delete().eq('id', id); if (error) { toast.error('Não foi possível salvar: ' + error.message); return } }
     setProcessos(prev => prev.filter(p => p.id !== id))
     setSelectedId(null)
     toast.success('Processo excluído.')
@@ -518,7 +518,7 @@ function SocietarioPageInner() {
 
   async function finalizarProcesso(id: string) {
     if (!confirm('Finalizar este processo mesmo com etapas pendentes?')) return
-    await supabase.from('processos_societarios').update({ status: 'Finalizado' }).eq('id', id)
+    { const { error } = await supabase.from('processos_societarios').update({ status: 'Finalizado' }).eq('id', id); if (error) { toast.error('Não foi possível salvar: ' + error.message); return } }
     setProcessos(prev => prev.map(p => p.id === id ? { ...p, status: 'Finalizado' } : p))
     logProc(id, 'Processo finalizado', 'Processo finalizado manualmente')
     toast.success('Processo finalizado.')
@@ -526,14 +526,14 @@ function SocietarioPageInner() {
 
   async function arquivarProcesso(id: string) {
     if (!confirm('Arquivar este processo?')) return
-    await supabase.from('processos_societarios').update({ status: 'Arquivado' }).eq('id', id)
+    { const { error } = await supabase.from('processos_societarios').update({ status: 'Arquivado' }).eq('id', id); if (error) { toast.error('Não foi possível salvar: ' + error.message); return } }
     setProcessos(prev => prev.map(p => p.id === id ? { ...p, status: 'Arquivado' } : p))
     setSelectedId(null)
     toast.success('Processo arquivado.')
   }
 
   async function reabrirProcesso(id: string) {
-    await supabase.from('processos_societarios').update({ status: 'Andamento' }).eq('id', id)
+    { const { error } = await supabase.from('processos_societarios').update({ status: 'Andamento' }).eq('id', id); if (error) { toast.error('Não foi possível salvar: ' + error.message); return } }
     setProcessos(prev => prev.map(p => p.id === id ? { ...p, status: 'Andamento' } : p))
     toast.success('Processo reaberto.')
   }
@@ -571,11 +571,11 @@ function SocietarioPageInner() {
                 <>
                   <button onClick={() => finalizarProcesso(p.id)}
                     className="text-xs text-emerald-600 hover:text-emerald-700 font-bold transition-colors border border-emerald-200 hover:border-emerald-400 px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100">
-                    ✓ Finalizar
+                    Finalizar
                   </button>
                   <button onClick={() => arquivarProcesso(p.id)}
                     className="text-xs text-slate-500 hover:text-slate-700 font-bold transition-colors border border-slate-200 hover:border-slate-400 px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-slate-100">
-                    ⬇ Arquivar
+                    Arquivar
                   </button>
                 </>
               )}
@@ -661,25 +661,24 @@ function SocietarioPageInner() {
         {/* Tabs */}
         <div className="flex gap-1.5 mb-4">
           {([
-            { id: 'etapas',    label: '📋 Etapas',     count: checklist.length,           hex: '#8B5CF6', glow: 'rgba(139,92,246,0.25)' },
-            { id: 'documentos',label: '📁 Documentos',  count: docs.length,                hex: '#3B82F6', glow: 'rgba(59,130,246,0.25)' },
-            { id: 'anotacoes', label: '📝 Anotações',   count: (notas[p.id] || []).length, hex: '#F59E0B', glow: 'rgba(245,158,11,0.25)' },
+            { id: 'etapas',    label: 'Etapas',     count: checklist.length },
+            { id: 'documentos',label: 'Documentos',  count: docs.length },
+            { id: 'anotacoes', label: 'Anotações',   count: (notas[p.id] || []).length },
           ] as const).map(t => {
             const isActive = activeDetailTab === t.id
             return (
               <button key={t.id} onClick={() => setActiveDetailTab(t.id)}
-                style={isActive ? { background: t.hex, boxShadow: `0 4px 16px ${t.glow}, 0 1px 3px rgba(0,0,0,0.1)` } : {}}
                 className={[
                   'flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap select-none outline-none',
                   'transition-all duration-200 ease-in-out',
                   isActive
-                    ? 'text-white -translate-y-px'
-                    : 'text-slate-500 bg-[#F3F4F6] hover:-translate-y-px hover:shadow-md',
+                    ? 'bg-slate-900 text-white border border-slate-900'
+                    : 'text-slate-700 bg-white border border-slate-300 hover:bg-slate-50',
                 ].join(' ')}>
                 {t.label}
                 <span
                   className="text-xs font-bold px-1.5 py-0.5 rounded-full leading-none"
-                  style={isActive ? { background: 'rgba(255,255,255,0.25)', color: 'white' } : { background: '#F1F5F9', color: '#64748B' }}>
+                  style={{ opacity: 0.75 }}>
                   {t.count}
                 </span>
               </button>
@@ -1007,27 +1006,26 @@ function SocietarioPageInner() {
       {/* Filtros */}
       <div className="flex flex-wrap gap-1.5 mb-5">
         {([
-          { val: 'Andamento', label: 'Em Andamento', hex: '#F59E0B', glow: 'rgba(245,158,11,0.25)' },
-          { val: 'Finalizado', label: 'Finalizados',  hex: '#10B981', glow: 'rgba(16,185,129,0.25)' },
-          { val: 'Arquivado',  label: 'Arquivados',   hex: '#64748B', glow: 'rgba(100,116,139,0.25)' },
-          { val: 'todos',      label: 'Todos',         hex: '#1E293B', glow: 'rgba(30,41,59,0.25)'  },
-        ] as const).map(({ val, label, hex, glow }) => {
+          { val: 'Andamento', label: 'Em Andamento' },
+          { val: 'Finalizado', label: 'Finalizados' },
+          { val: 'Arquivado',  label: 'Arquivados' },
+          { val: 'todos',      label: 'Todos' },
+        ] as const).map(({ val, label }) => {
           const isActive = filtroStatus === val
           const count = val === 'todos' ? processos.length : processos.filter(p => p.status === val).length
           return (
             <button key={val} onClick={() => setFiltroStatus(val)}
-              style={isActive ? { background: hex, boxShadow: `0 4px 16px ${glow}, 0 1px 3px rgba(0,0,0,0.1)` } : {}}
               className={[
                 'flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap select-none outline-none',
                 'transition-all duration-200 ease-in-out',
                 isActive
-                  ? 'text-white -translate-y-px'
-                  : 'text-slate-500 bg-[#F3F4F6] hover:-translate-y-px hover:shadow-md',
+                  ? 'bg-slate-900 text-white border border-slate-900'
+                  : 'text-slate-700 bg-white border border-slate-300 hover:bg-slate-50',
               ].join(' ')}>
               {label}
               <span
                 className="text-xs font-bold px-1.5 py-0.5 rounded-full leading-none"
-                style={isActive ? { background: 'rgba(255,255,255,0.25)', color: 'white' } : { background: '#F1F5F9', color: '#64748B' }}>
+                style={{ opacity: 0.75 }}>
                 {count}
               </span>
             </button>
@@ -1096,7 +1094,7 @@ function SocietarioPageInner() {
                     </div>
                     {docs.length > 0 && (
                       <span className={`text-xs font-semibold ${docsRec === docs.length ? 'text-emerald-600' : 'text-amber-600'}`}>
-                        📁 {docsRec}/{docs.length} docs
+                        {docsRec}/{docs.length} docs
                       </span>
                     )}
                   </div>
