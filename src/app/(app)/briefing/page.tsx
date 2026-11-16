@@ -278,8 +278,12 @@ export default function BriefingPage() {
   const q = busca.trim().toLowerCase()
   const visiveis = grupos.filter(g => !q || g.nome.toLowerCase().includes(q))
   const ativos = visiveis.filter(g => !adiadas.has(g.key))
-  const gruposDaAba = (t: Tier) => ativos.filter(g => g.pior === t)
-  const gruposAdiados = visiveis.filter(g => adiadas.has(g.key))
+  // Cada aba mostra só os documentos do seu prazo; a empresa pode aparecer em mais de uma aba
+  const temTier = (g: typeof grupos[number], t: Tier) => g.itens.some(i => i.tier === t)
+  const primeiroDia = (g: typeof grupos[number], t: Tier) => diasParaVencer(g.itens.find(i => i.tier === t)?.venc ?? null) ?? -9999
+  const gruposDaAba = (t: Tier) => ativos.filter(g => temTier(g, t))
+    .sort((a, b) => primeiroDia(a, t) - primeiroDia(b, t) || a.nome.localeCompare(b.nome, 'pt-BR'))
+  const adiadosDaAba = (t: Tier) => visiveis.filter(g => adiadas.has(g.key) && temTier(g, t))
 
   // Resumo por prazo (só documentos com data)
   const comData = itens.filter(i => i.venc && i.tipo !== 'Certificado em processo' && i.tipo !== 'Retorno do cliente')
@@ -301,7 +305,8 @@ export default function BriefingPage() {
   ]
 
   // Modo foco: um item por vez, do mais urgente ao menos urgente
-  const filaFoco = ativos.slice().sort((a, b) => ORDEM[a.pior] - ORDEM[b.pior]).flatMap(g => g.itens.map(i => ({ ...i, grupoKey: g.key })))
+  const filaFoco = ativos.flatMap(g => g.itens.map(i => ({ ...i, grupoKey: g.key })))
+    .sort((a, b) => ORDEM[a.tier] - ORDEM[b.tier] || (diasParaVencer(a.venc) ?? -9999) - (diasParaVencer(b.venc) ?? -9999))
   useEffect(() => {
     if (foco === null) return
     const tecla = (e: KeyboardEvent) => {
@@ -326,19 +331,23 @@ export default function BriefingPage() {
     )
   }
 
-  function blocoEmpresa(g: typeof grupos[number], adiado = false) {
+  const NOME_ABA: Record<Tier, string> = { critico: 'Críticos', urgente: 'Urgentes', atencao: 'Atenção' }
+
+  function blocoEmpresa(g: typeof grupos[number], tier: Tier, adiado = false) {
+    const daAba = g.itens.filter(i => i.tier === tier)
+    const outros = g.itens.filter(i => i.tier !== tier)
     return (
       <div key={g.key}>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-5 py-3 bg-slate-50 border-t border-slate-200 first:border-t-0">
           {g.empresaId && !g.empresaId.startsWith('avulsa-')
             ? <Link href={`/empresas/${g.empresaId}`} className="font-semibold text-slate-900 hover:underline">{g.nome}</Link>
             : <span className="font-semibold text-slate-900">{g.nome}</span>}
-          <span className="text-sm text-slate-600">{g.itens.length} {g.itens.length === 1 ? 'pendência' : 'pendências'}</span>
+          <span className="text-sm text-slate-600">{daAba.length} {daAba.length === 1 ? 'pendência' : 'pendências'}</span>
           <button onClick={() => adiar(g.key, adiado)} className="ml-auto text-sm font-semibold text-slate-600 hover:text-slate-900 hover:underline">
             {adiado ? 'Voltar para a lista' : 'Adiar para amanhã'}
           </button>
         </div>
-        {g.itens.map(i => (
+        {daAba.map(i => (
           <div key={i.key} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-2.5 border-t border-slate-100">
             <span className="w-40 flex-shrink-0 text-sm text-slate-600">{i.tipo}</span>
             <span className="flex-[1_1_14rem] min-w-0 font-medium text-slate-900 break-words">{i.doc}</span>
@@ -350,6 +359,20 @@ export default function BriefingPage() {
             </span>
           </div>
         ))}
+        {outros.length > 0 && (
+          <div className="px-5 py-2 border-t border-slate-100 text-sm text-slate-500">
+            <span>Também vence em breve: </span>
+            {outros.map((i, k) => (
+              <span key={i.key}>
+                {k > 0 && ' · '}
+                <button onClick={() => setAba(i.tier)} title={`Ver na aba ${NOME_ABA[i.tier]}`}
+                  className="hover:text-slate-900 hover:underline">
+                  {i.doc} {i.prazo.startsWith('vence') ? i.prazo.replace(/^vence /, '') : i.prazo}
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
       </div>
     )
   }
@@ -416,16 +439,17 @@ export default function BriefingPage() {
         <>
           {(aba === 'critico' || aba === 'urgente' || aba === 'atencao') && (() => {
             const lista = gruposDaAba(aba)
+            const gruposAdiados = adiadosDaAba(aba)
             return (
               <div className="space-y-4">
                 {lista.length === 0
                   ? vazioAba(q ? 'Nenhuma empresa encontrada.' : aba === 'critico' ? 'Nada vencido nem vencendo nos próximos 5 dias.' : aba === 'urgente' ? 'Nada vence entre 6 e 15 dias.' : 'Nada vence entre 16 e 30 dias.')
-                  : <section aria-label="Pendências" className="bg-white border border-slate-200 rounded-xl overflow-hidden">{lista.map(g => blocoEmpresa(g))}</section>}
+                  : <section aria-label="Pendências" className="bg-white border border-slate-200 rounded-xl overflow-hidden">{lista.map(g => blocoEmpresa(g, aba))}</section>}
 
                 {gruposAdiados.length > 0 && (
                   <section aria-label="Adiadas para amanhã" className="space-y-2">
                     <h2 className="text-sm font-semibold text-slate-600">Adiadas para amanhã · {gruposAdiados.length} {gruposAdiados.length === 1 ? 'empresa' : 'empresas'}</h2>
-                    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden opacity-80">{gruposAdiados.map(g => blocoEmpresa(g, true))}</div>
+                    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden opacity-80">{gruposAdiados.map(g => blocoEmpresa(g, aba, true))}</div>
                   </section>
                 )}
               </div>
