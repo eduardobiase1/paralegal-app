@@ -75,6 +75,19 @@ function portalCertidao(i: any): string | null {
   return null
 }
 
+/** Sugere o novo vencimento: mesma validade da certidão anterior; sem histórico, FGTS 30 dias e Federal 180 dias */
+function sugerirVencimento(item: any, emissao: string): string {
+  let dias = 0
+  if (item.data_emissao && item.data_vencimento) {
+    dias = Math.round((new Date(item.data_vencimento + 'T00:00:00').getTime() - new Date(item.data_emissao + 'T00:00:00').getTime()) / 86_400_000)
+  }
+  if (dias < 1 || dias > 400) dias = item.tipo === 'FGTS' ? 30 : item.tipo === 'Federal' ? 180 : 0
+  if (!dias) return ''
+  const d = new Date(emissao + 'T00:00:00')
+  d.setDate(d.getDate() + dias)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 function CertidoesPage() {
   const { orgId, orgName } = useOrg()
   const searchParams = useSearchParams()
@@ -166,13 +179,14 @@ function CertidoesPage() {
   }
 
   function openRenovar(item: any) {
+    const emissao = diaLocal()
     setForm({
       id: item.id,  // UPDATE no registro existente, não cria novo
       empresa_id: item.empresa_id,
       tipo: item.tipo || '',
       orgao_emissor: item.orgao_emissor || '',
-      data_emissao: diaLocal(),
-      data_vencimento: '',
+      data_emissao: emissao,
+      data_vencimento: sugerirVencimento(item, emissao),
       observacoes: '',
       pendencia_status: 'nenhuma',
     })
@@ -196,8 +210,13 @@ function CertidoesPage() {
 
     async function doSave(p: typeof payload) {
       if (form.id) {
-        // Editar ou Renovar: sempre atualiza o registro existente
-        return supabase.from('certidoes').update(p).eq('id', form.id)
+        // Editar ou Renovar: sempre atualiza o registro existente.
+        // .select() devolve a linha gravada: se o banco recusar em silêncio, vem vazio
+        const r = await supabase.from('certidoes').update(p).eq('id', form.id).select('id')
+        if (!r.error && (!r.data || r.data.length === 0)) {
+          return { ...r, error: { message: 'o banco não gravou a alteração (sem permissão para editar esta certidão).' } as any }
+        }
+        return r
       }
       return supabase.from('certidoes').insert([p])
     }
@@ -638,9 +657,12 @@ function CertidoesPage() {
 
                 {/* Data Vencimento */}
                 <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide block mb-1">Data de Vencimento</label>
-                  <input type="date" value={form.data_vencimento} onChange={e => setForm({ ...form, data_vencimento: e.target.value })}
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide block mb-1">Data de Vencimento{modalMode === 'renovar' ? ' *' : ''}</label>
+                  <input type="date" required={modalMode === 'renovar'} value={form.data_vencimento} onChange={e => setForm({ ...form, data_vencimento: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none focus:border-slate-400" />
+                  {modalMode === 'renovar' && form.data_vencimento && (
+                    <p className="text-xs text-slate-500 mt-1">Sugerido pela validade anterior. Confira com a certidão emitida.</p>
+                  )}
                 </div>
               </div>
 
