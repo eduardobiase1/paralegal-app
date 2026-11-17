@@ -78,12 +78,14 @@ function AlvarasPage() {
 
   // Vindo da ficha da empresa com ?renovar=ID: abre direto a renovação daquele documento
   const renovarId = searchParams.get('renovar')
-  const renovarAberto = useRef(false)
+  const renovarAberto = useRef<string | null>(null)
   useEffect(() => {
-    if (!renovarId || renovarAberto.current || dados.length === 0) return
-    const item = dados.find(d => d.id === renovarId)
-    if (item) { renovarAberto.current = true; openRenovar(item) }
-  }, [renovarId, dados])
+    if (!renovarId || renovarAberto.current === renovarId || loading) return
+    renovarAberto.current = renovarId
+    const item = dados.find((d: any) => d.id === renovarId)
+    if (item) openRenovar(item)
+    else toast.error('Não encontrei esse alvará para renovar. Ele pode ter sido excluído ou ser de outra organização.')
+  }, [renovarId, dados, loading])
 
   // Vindo da busca rápida (Ctrl+K) com ?novo=1: abre direto o cadastro
   const novoAberto = useRef(false)

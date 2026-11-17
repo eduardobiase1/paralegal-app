@@ -120,12 +120,14 @@ function CertidoesPage() {
 
   // Vindo da ficha da empresa com ?renovar=ID: abre direto a renovação daquele documento
   const renovarId = searchParams.get('renovar')
-  const renovarAberto = useRef(false)
+  const renovarAberto = useRef<string | null>(null)
   useEffect(() => {
-    if (!renovarId || renovarAberto.current || data.length === 0) return
+    if (!renovarId || renovarAberto.current === renovarId || loading) return
+    renovarAberto.current = renovarId
     const item = data.find((d: any) => d.id === renovarId)
-    if (item) { renovarAberto.current = true; openRenovar(item) }
-  }, [renovarId, data])
+    if (item) openRenovar(item)
+    else toast.error('Não encontrei essa certidão para renovar. Ela pode ter sido excluída ou ser de outra organização.')
+  }, [renovarId, data, loading])
 
   // Vindo da busca rápida (Ctrl+K) com ?novo=1: abre direto o cadastro
   const novoAberto = useRef(false)

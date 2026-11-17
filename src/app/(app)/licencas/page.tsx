@@ -58,12 +58,14 @@ function LicencasPage() {
 
   // Vindo do Briefing ou da ficha da empresa com ?renovar=ID: abre direto a renovação
   const renovarId = searchParams.get('renovar')
-  const renovarAberto = useRef(false)
+  const renovarAberto = useRef<string | null>(null)
   useEffect(() => {
-    if (!renovarId || renovarAberto.current || dados.length === 0) return
-    const item = dados.find(d => d.id === renovarId)
-    if (item) { renovarAberto.current = true; abrir(item, 'renovar') }
-  }, [renovarId, dados])
+    if (!renovarId || renovarAberto.current === renovarId || loading) return
+    renovarAberto.current = renovarId
+    const item = dados.find((d: any) => d.id === renovarId)
+    if (item) abrir(item, 'renovar')
+    else toast.error('Não encontrei essa licença para renovar. Ela pode ter sido excluída ou ser de outra organização.')
+  }, [renovarId, dados, loading])
 
   function fechar() { setModal(null); setEditItem(null); setForm(FORM_EMPTY) }
 
