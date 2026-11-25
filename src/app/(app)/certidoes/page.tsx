@@ -6,6 +6,9 @@ import { createClient } from '@/lib/supabase/client'
 import { useOrg } from '@/lib/org-context'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
+import { dataBR } from '@/lib/prazo'
+import BotaoRelatorio from '@/components/ui/BotaoRelatorio'
+import type { Relatorio } from '@/lib/relatorio'
 import { registrarAcao, diaLocal } from '@/lib/atividade'
 import { Search, ExternalLink, Ellipsis } from 'lucide-react'
 import { SEFAZ_URLS } from '@/types'
@@ -87,6 +90,9 @@ function sugerirVencimento(item: any, emissao: string): string {
   d.setDate(d.getDate() + dias)
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
+
+const situacaoPrazo = (d?: string | null) => { const n = diasParaVencer(d ?? undefined); return n === null ? 'Sem vencimento' : n > 30 ? 'Em dia' : prazoTexto(n).replace(/^./, c => c.toUpperCase()) }
+const formatarCnpj = (c?: string | null) => { const d = (c || '').replace(/\D/g, ''); return d.length === 14 ? d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5') : (c || '—') }
 
 function CertidoesPage() {
   const { orgId, orgName } = useOrg()
@@ -347,6 +353,22 @@ function CertidoesPage() {
   const emDia = ordenadas.filter(i => { const d = diasParaVencer(i.data_vencimento); return d !== null && d > 30 })
   const exibirEmDia = mostrarEmDia || !!search
 
+  const relatorio = (): Relatorio => ({
+    titulo: 'Certidões negativas', organizacao: orgName, arquivo: 'certidoes',
+    filtros: [
+      empresaNome ? 'Empresa: ' + empresaNome : 'Todas as empresas',
+      filterPendencia === 'todas' ? 'Todas as situações' : 'Situação: ' + (PENDENCIA_OPTIONS.find(o => o.value === filterPendencia)?.label || filterPendencia),
+      ...(search ? ['Busca: ' + search] : []),
+    ],
+    colunas: [{ titulo: 'Empresa' }, { titulo: 'CNPJ' }, { titulo: 'Tipo' }, { titulo: 'Órgão' }, { titulo: 'Emissão' }, { titulo: 'Vencimento' }, { titulo: 'Prazo' }, { titulo: 'Pendência' }, { titulo: 'Observações' }],
+    linhas: ordenadas.map(i => [
+      i.empresas?.razao_social || '—', formatarCnpj(i.empresas?.cnpj), i.tipo, i.orgao_emissor,
+      dataBR(i.data_emissao), dataBR(i.data_vencimento), situacaoPrazo(i.data_vencimento),
+      PENDENCIA_OPTIONS.find(o => o.value === (i.pendencia_status || 'nenhuma'))?.label || '—', i.observacoes || '',
+    ]),
+    destaque: k => (diasParaVencer(ordenadas[k].data_vencimento) ?? 1) < 0 || ordenadas[k].pendencia_status === 'impossivel_renovar',
+  })
+
   function abrirPortal(i: any) {
     const cnpj = (i.empresas?.cnpj || '').replace(/\D/g, '')
     if (cnpj) {
@@ -536,6 +558,7 @@ function CertidoesPage() {
             <option value="todas">Todas as situações</option>
             {PENDENCIA_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
+          <BotaoRelatorio gerar={relatorio} />
           <button data-atalho="novo" onClick={openNovo} className="h-11 px-4 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 whitespace-nowrap">
             Nova certidão
           </button>

@@ -4,11 +4,13 @@ import { useEffect, useState, useCallback, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
+import BotaoRelatorio from '@/components/ui/BotaoRelatorio'
+import type { Relatorio } from '@/lib/relatorio'
 import { Search, ExternalLink } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useOrg } from '@/lib/org-context'
 import { registrarAcao, diaLocal } from '@/lib/atividade'
-import { dataBR, prazoTexto } from '@/lib/prazo'
+import { dataBR, prazoTexto, diasParaVencer } from '@/lib/prazo'
 import AgendaVencimentos from '@/components/ui/AgendaVencimentos'
 import MenuAcoes from '@/components/ui/MenuAcoes'
 import Modal from '@/components/ui/Modal'
@@ -26,8 +28,10 @@ const FORM_EMPTY = {
 
 const ORGAO_LABEL: Record<string, string> = { VISA_MUNICIPAL: 'VISA municipal', ANVISA: 'ANVISA' }
 
+const situacaoPrazo = (d?: string | null) => { const n = diasParaVencer(d ?? null); return n === null ? 'Sem vencimento' : n > 30 ? 'Em dia' : prazoTexto(n).replace(/^./, c => c.toUpperCase()) }
+
 function LicencasPage() {
-  const { orgId } = useOrg()
+  const { orgId, orgName } = useOrg()
   const searchParams = useSearchParams()
   const empresaFiltro = searchParams.get('empresa')
   const [supabase] = useState(createClient)
@@ -142,6 +146,18 @@ function LicencasPage() {
     return [i.empresas?.razao_social, ORGAO_LABEL[i.orgao] || i.orgao, i.atividade_sanitaria, i.numero_licenca].join(' ').toLowerCase().includes(q)
   })
 
+  const relatorio = (): Relatorio => {
+    const lista = [...filtrados].sort((a, b) => (a.data_vencimento || '9999').localeCompare(b.data_vencimento || '9999'))
+    return {
+      titulo: 'Licenças sanitárias', organizacao: orgName, arquivo: 'licencas_sanitarias',
+      filtros: [empresaNome ? 'Empresa: ' + empresaNome : 'Todas as empresas', ...(search ? ['Busca: ' + search] : [])],
+      colunas: [{ titulo: 'Empresa' }, { titulo: 'Órgão' }, { titulo: 'Atividade' }, { titulo: 'Número' }, { titulo: 'Emissão' }, { titulo: 'Vencimento' }, { titulo: 'Prazo' }],
+      linhas: lista.map((l: any) => [l.empresas?.razao_social || '—', ORGAO_LABEL[l.orgao] || l.orgao || '—', l.atividade_sanitaria || '—', l.numero_licenca || '—',
+        dataBR(l.data_emissao), dataBR(l.data_vencimento), situacaoPrazo(l.data_vencimento)]),
+      destaque: k => (diasParaVencer(lista[k].data_vencimento) ?? 1) < 0,
+    }
+  }
+
   const btnSec = 'h-10 px-4 rounded-lg border border-slate-300 bg-white text-sm font-semibold text-slate-900 hover:bg-slate-50'
 
   return (
@@ -167,6 +183,7 @@ function LicencasPage() {
               aria-label="Buscar empresa, órgão ou atividade" placeholder="Buscar empresa, órgão ou atividade"
               className="w-56 bg-transparent outline-none text-sm text-slate-900 placeholder:text-slate-500" />
           </label>
+          <BotaoRelatorio gerar={relatorio} />
           <button data-atalho="novo" onClick={openNovo} className="h-11 px-4 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 whitespace-nowrap">
             Nova licença
           </button>

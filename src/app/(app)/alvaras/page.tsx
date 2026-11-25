@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
+import BotaoRelatorio from '@/components/ui/BotaoRelatorio'
+import type { Relatorio } from '@/lib/relatorio'
 import { Search, ExternalLink } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useOrg } from '@/lib/org-context'
@@ -13,6 +15,8 @@ import AgendaVencimentos from '@/components/ui/AgendaVencimentos'
 import MenuAcoes from '@/components/ui/MenuAcoes'
 import Modal from '@/components/ui/Modal'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
+
+const situacaoPrazo = (d?: string | null) => { const n = diasParaVencer(d ?? null); return n === null ? 'Sem vencimento' : n > 30 ? 'Em dia' : prazoTexto(n).replace(/^./, c => c.toUpperCase()) }
 
 type Alvara = {
   id: string
@@ -34,7 +38,7 @@ const FORM_EMPTY = {
 const TIPO_LABEL: Record<string, string> = { fixo: 'fixo', temporario: 'temporário', provisorio: 'provisório' }
 
 function AlvarasPage() {
-  const { orgId } = useOrg()
+  const { orgId, orgName } = useOrg()
   const searchParams = useSearchParams()
   const empresaFiltro = searchParams.get('empresa')
   const [supabase] = useState(createClient)
@@ -193,6 +197,17 @@ function AlvarasPage() {
     }
     return true
   })
+  const relatorio = (): Relatorio => {
+    const lista = [...filtrados].sort((a, b) => (a.data_vencimento || '9999').localeCompare(b.data_vencimento || '9999'))
+    return {
+      titulo: 'Alvarás', organizacao: orgName, arquivo: 'alvaras',
+      filtros: [empresaNome ? 'Empresa: ' + empresaNome : 'Todas as empresas', filtroOrgao ? 'Órgão: ' + filtroOrgao : 'Todos os órgãos', ...(busca ? ['Busca: ' + busca] : []), 'Somente o alvará vigente de cada empresa'],
+      colunas: [{ titulo: 'Empresa' }, { titulo: 'Município' }, { titulo: 'Órgão' }, { titulo: 'Tipo' }, { titulo: 'Número' }, { titulo: 'Emissão' }, { titulo: 'Vencimento' }, { titulo: 'Prazo' }],
+      linhas: lista.map(a => [a.empresas?.razao_social || '—', a.empresas?.municipio || '—', a.orgao_emissor || '—', (a as any).tipo || '—', (a as any).numero || '—',
+        dataBR((a as any).data_emissao), dataBR(a.data_vencimento), situacaoPrazo(a.data_vencimento)]),
+      destaque: k => (diasParaVencer(lista[k].data_vencimento) ?? 1) < 0,
+    }
+  }
   const historico = historicoItem
     ? dados.filter(d => chaveAlvara(d) === chaveAlvara(historicoItem)).sort((a, b) => (b.data_vencimento || '').localeCompare(a.data_vencimento || ''))
     : []
@@ -227,6 +242,7 @@ function AlvarasPage() {
             <option value="">Todos os órgãos</option>
             {orgaos.map(o => <option key={o} value={o}>{o}</option>)}
           </select>
+          <BotaoRelatorio gerar={relatorio} />
           <button data-atalho="novo" onClick={() => { setForm({ ...FORM_EMPTY, empresa_id: empresaFiltro || '' }); setModalNovo(true) }}
             className="h-11 px-4 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 whitespace-nowrap">
             Novo alvará

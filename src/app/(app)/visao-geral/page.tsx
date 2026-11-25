@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useOrg } from '@/lib/org-context'
 import Link from 'next/link'
+import BotaoRelatorio from '@/components/ui/BotaoRelatorio'
+import type { Relatorio } from '@/lib/relatorio'
 
 type CellInfo = { date: string | null; pendente: boolean }
 type CellKey = 'federal' | 'estadual' | 'municipal' | 'fgts' | 'trabalhista' | 'previdenciaria' | 'alvara' | 'licenca' | 'certificado'
@@ -74,7 +76,7 @@ function latestDate(items: Array<{ data_vencimento: string | null }>): CellInfo 
 }
 
 export default function VisaoGeralPage() {
-  const { orgId } = useOrg()
+  const { orgId, orgName } = useOrg()
   const [supabase] = useState(createClient())
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(true)
@@ -153,6 +155,18 @@ export default function VisaoGeralPage() {
         : a.nome.localeCompare(b.nome, 'pt-BR')
     )
 
+  const relatorio = (): Relatorio => ({
+    titulo: 'Visão geral dos vencimentos', organizacao: orgName, arquivo: 'visao_geral',
+    filtros: [
+      sortBy === 'urgencia' ? 'Ordenado por urgência' : 'Ordenado de A a Z',
+      ...(soProblemas ? ['Só empresas com problema'] : []),
+      ...(busca ? ['Busca: ' + busca] : []),
+    ],
+    colunas: [{ titulo: 'Empresa' }, ...COLS.map(c => ({ titulo: c.label }))],
+    linhas: filtered.map(r => [r.nome, ...COLS.map(c => cellLabel(r[c.key]))]),
+    destaque: k => COLS.some(c => { const i = filtered[k][c.key]; const d = i.date ? diasParaVencer(i.date) : null; return i.pendente || (d !== null && d < 0) }),
+  })
+
   return (
     <div className="p-4 md:p-6 xl:p-8">
       {/* ── Cabeçalho ─────────────────────────────────────────────── */}
@@ -187,6 +201,7 @@ export default function VisaoGeralPage() {
           <button onClick={load} className="h-10 px-3 rounded-lg border border-slate-300 bg-white text-sm font-semibold text-slate-900 hover:bg-slate-50">
             Atualizar
           </button>
+          <BotaoRelatorio gerar={relatorio} />
         </div>
       </div>
 

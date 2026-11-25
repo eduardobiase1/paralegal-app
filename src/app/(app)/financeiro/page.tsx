@@ -5,6 +5,8 @@ import * as XLSX from 'xlsx'
 import { createClient } from '@/lib/supabase/client'
 import { useOrg } from '@/lib/org-context'
 import toast from 'react-hot-toast'
+import { type Relatorio } from '@/lib/relatorio'
+import BotaoRelatorio from '@/components/ui/BotaoRelatorio'
 
 type MainTab = 'dashboard' | 'receber' | 'pagar' | 'extrato' | 'config' | 'relatorios'
 type ConfigTab = 'clientes' | 'fornecedores' | 'categorias' | 'centros' | 'contas'
@@ -276,6 +278,10 @@ function MesSeletor({ mes, onChange }: { mes: string; onChange: (m: string) => v
       <button onClick={() => onChange('todos')} disabled={mes === 'todos'} className={btn + ' px-3'}>Todos os meses</button>
     </div>
   )
+}
+
+function BotoesRelatorio({ gerar }: { gerar: () => Relatorio }) {
+  return <BotaoRelatorio gerar={gerar} className="ml-auto" />
 }
 
 function Totais({ itens }: { itens: Array<{ label: string; valor: number; cor?: string }> }) {
@@ -684,6 +690,58 @@ export default function FinanceiroPage() {
   const entradasMes = extratoMes.filter(e => e.tipo === 'credito').reduce((s, e) => s + (Number(e.valor) || 0), 0)
   const saidasMes = extratoMes.filter(e => e.tipo !== 'credito').reduce((s, e) => s + (Number(e.valor) || 0), 0)
 
+  // ── Relatórios das abas (seguem o mês e o filtro escolhidos) ─────────────────
+  const filtrosTela = (status: string, mapa: Record<string, { label: string }>) => [
+    mesSel === 'todos' ? 'Todos os meses' : mesLabel(mesSel) + ' (por vencimento)',
+    status === 'todos' ? 'Todas as situações' : 'Situação: ' + (mapa[status]?.label || status),
+  ]
+  const relReceber = (): Relatorio => ({
+    titulo: 'Contas a receber', organizacao: orgName, arquivo: 'contas_a_receber_' + mesSel,
+    filtros: filtrosTela(filterR, STATUS_R),
+    colunas: [{ titulo: 'Cliente' }, { titulo: 'Descrição' }, { titulo: 'NF / Parcela' }, { titulo: 'Vencimento' }, { titulo: 'Valor', moeda: true }, { titulo: 'Forma' }, { titulo: 'Situação' }, { titulo: 'Recebido em' }],
+    linhas: linhasR.map(r => [
+      r.cliente?.nome || '—', r.descricao, (r.numero_nf || '—') + (r.parcela_total > 1 ? ` · ${r.parcela_numero}/${r.parcela_total}` : ''),
+      fmtDate(r.data_vencimento) + (r._anterior ? ' (mês anterior)' : ''), Number(r.valor) || 0,
+      FORMA_LABELS[r.forma_pagamento] || r.forma_pagamento || '—', STATUS_R[statusR(r)]?.label || r.status,
+      r.data_pagamento ? fmtDate(r.data_pagamento) : '—',
+    ]),
+    destaque: i => statusR(linhasR[i]) === 'vencido',
+    totais: [
+      { label: 'Total listado', valor: fmt(somaV(linhasR)) },
+      ...(mesSel !== 'todos' ? totaisR.map(t => ({ label: t.label, valor: fmt(t.valor) })) : []),
+    ],
+  })
+  const relPagar = (): Relatorio => ({
+    titulo: 'Contas a pagar', organizacao: orgName, arquivo: 'contas_a_pagar_' + mesSel,
+    filtros: filtrosTela(filterP, STATUS_P),
+    colunas: [{ titulo: 'Fornecedor' }, { titulo: 'Descrição' }, { titulo: 'Categoria' }, { titulo: 'Centro de custo' }, { titulo: 'Vencimento' }, { titulo: 'Valor', moeda: true }, { titulo: 'Situação' }, { titulo: 'Pago em' }],
+    linhas: linhasP.map(p => [
+      p.fornecedor?.nome || '—', p.descricao + (p.recorrente ? ' (mensal)' : ''), p.categoria?.nome || '—', p.centro?.nome || '—',
+      fmtDate(p.data_vencimento) + (p._anterior ? ' (mês anterior)' : ''), Number(p.valor) || 0,
+      STATUS_P[statusP(p)]?.label || p.status, p.data_pagamento ? fmtDate(p.data_pagamento) : '—',
+    ]),
+    destaque: i => statusP(linhasP[i]) === 'vencido',
+    totais: [
+      { label: 'Total listado', valor: fmt(somaV(linhasP)) },
+      ...(mesSel !== 'todos' ? totaisP.map(t => ({ label: t.label, valor: fmt(t.valor) })) : []),
+    ],
+  })
+  const relExtrato = (): Relatorio => ({
+    titulo: 'Extrato bancário', organizacao: orgName, arquivo: 'extrato_' + mesSel,
+    filtros: [contaObj ? contaObj.nome + (contaObj.banco ? ' · ' + contaObj.banco : '') : 'Conta', mesSel === 'todos' ? 'Todos os meses' : mesLabel(mesSel)],
+    colunas: [{ titulo: 'Data' }, { titulo: 'Descrição' }, { titulo: 'Tipo' }, { titulo: 'Débito', moeda: true }, { titulo: 'Crédito', moeda: true }, { titulo: 'Saldo', moeda: true }],
+    linhas: [
+      ['—', mesSel === 'todos' ? 'Saldo inicial' : 'Saldo anterior', '', null, null, mesSel === 'todos' ? saldo0 : saldoAnterior],
+      ...extratoMes.map(e => [fmtDate(e.data), e.descricao + (e.observacoes ? ' — ' + e.observacoes : ''), e.tipo === 'credito' ? 'Entrada' : 'Saída',
+        e.tipo === 'debito' ? Number(e.valor) : null, e.tipo === 'credito' ? Number(e.valor) : null, e.saldo]),
+    ],
+    totais: [
+      { label: 'Entradas', valor: fmt(entradasMes) },
+      { label: 'Saídas', valor: fmt(saidasMes) },
+      { label: 'Saldo final', valor: fmt(extratoMes.length ? extratoMes[extratoMes.length - 1].saldo : (mesSel === 'todos' ? saldo0 : saldoAnterior)) },
+    ],
+  })
+
   // ── Conciliação OFX/CSV ───────────────────────────────────────────────────────
   function isJaLancado(txn: any) {
     return extrato.some(e =>
@@ -1078,8 +1136,9 @@ export default function FinanceiroPage() {
         {/* ── A RECEBER ── */}
         {tab === 'receber' && (
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100">
+            <div className="px-6 py-4 border-b border-slate-100 flex flex-wrap items-center gap-3">
               <MesSeletor mes={mesSel} onChange={escolherMes} />
+              <BotoesRelatorio gerar={relReceber} />
             </div>
             {mesSel !== 'todos' && <Totais itens={totaisR} />}
             <div className="px-6 py-4 border-b border-slate-50 flex flex-wrap items-center gap-2">
@@ -1141,8 +1200,9 @@ export default function FinanceiroPage() {
         {/* ── A PAGAR ── */}
         {tab === 'pagar' && (
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100">
+            <div className="px-6 py-4 border-b border-slate-100 flex flex-wrap items-center gap-3">
               <MesSeletor mes={mesSel} onChange={escolherMes} />
+              <BotoesRelatorio gerar={relPagar} />
             </div>
             {mesSel !== 'todos' && <Totais itens={totaisP} />}
             <div className="px-6 py-4 border-b border-slate-50 flex flex-wrap items-center gap-2">
@@ -1214,7 +1274,10 @@ export default function FinanceiroPage() {
         {/* ── EXTRATO ── */}
         {tab === 'extrato' && (
           <div className="space-y-4">
-            <MesSeletor mes={mesSel} onChange={escolherMes} />
+            <div className="flex flex-wrap items-center gap-3">
+              <MesSeletor mes={mesSel} onChange={escolherMes} />
+              {contas.length > 0 && <BotoesRelatorio gerar={relExtrato} />}
+            </div>
             <div className="flex flex-wrap items-center gap-4">
               {contas.length > 0 && (
                 <select value={contaSel} onChange={e => setContaSel(e.target.value)}

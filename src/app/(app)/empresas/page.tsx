@@ -1,4 +1,6 @@
 'use client'
+import BotaoRelatorio from '@/components/ui/BotaoRelatorio'
+import type { Relatorio } from '@/lib/relatorio'
 
 import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
@@ -175,6 +177,17 @@ export default function EmpresasPage() {
     )
   }, [empresas, search])
 
+  const relatorio = (): Relatorio => ({
+    titulo: 'Base de clientes', organizacao: orgName, arquivo: 'base_de_clientes',
+    filtros: search ? ['Busca: ' + search] : ['Todas as empresas'],
+    colunas: [{ titulo: 'Código' }, { titulo: 'Razão social' }, { titulo: 'CNPJ' }, { titulo: 'Município' }, { titulo: 'UF' }, { titulo: 'Regime' }, { titulo: 'Situação' }, { titulo: 'Telefone' }, { titulo: 'E-mail' }],
+    linhas: empresasFiltradas.map((e: any) => {
+      const d = String(e.cnpj || '').replace(/\D/g, '')
+      return [e.codigo || '—', e.razao_social, d.length === 14 ? d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5') : (e.cnpj || '—'),
+        e.municipio || '—', e.uf || '—', e.regime_tributario || '—', e.situacao || e.status || '—', e.telefone || '—', e.email || '—']
+    }),
+  })
+
   if (loading) return <div className="p-10 text-slate-400 italic font-sans">Sincronizando carteira...</div>
 
   return (
@@ -190,12 +203,15 @@ export default function EmpresasPage() {
             <span className="text-slate-400"> Clientes Ativos</span>
           </p>
         </div>
+        <div className="flex items-center gap-2">
+        <BotaoRelatorio gerar={relatorio} />
         <button
           onClick={() => { setFormData(initialForm); setIsModalOpen(true) }}
           className="bg-black text-yellow-400 px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wide hover:bg-slate-800 transition-all shadow-md"
         >
           + Importar CNPJ
         </button>
+        </div>
       </header>
 
       {/* Busca */}

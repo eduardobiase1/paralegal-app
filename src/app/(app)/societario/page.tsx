@@ -6,6 +6,8 @@ import { useOrg } from '@/lib/org-context'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
+import BotaoRelatorio from '@/components/ui/BotaoRelatorio'
+import type { Relatorio } from '@/lib/relatorio'
 import { registrarAcao } from '@/lib/atividade'
 
 // ─── Labels ──────────────────────────────────────────────────────────────────
@@ -320,6 +322,24 @@ function SocietarioPageInner() {
       return matchStatus && matchEmpresa && matchBusca
     })
   }, [processos, filtroStatus, empresaParamId, busca])
+
+  const relatorio = (): Relatorio => {
+    const data = (d?: string | null) => d ? new Date(d).toLocaleDateString('pt-BR') : '—'
+    const situacao = (st: string) => st === 'Finalizado' ? 'Finalizado' : st === 'Arquivado' ? 'Arquivado' : 'Em andamento'
+    return {
+      titulo: 'Processos societários', organizacao: orgName, arquivo: 'processos_societarios',
+      filtros: [
+        filtroStatus === 'todos' ? 'Todas as situações' : 'Situação: ' + situacao(filtroStatus),
+        ...(empresaParamId ? ['Empresa: ' + (processosFiltrados[0]?.empresas?.razao_social || '')] : []),
+        ...(busca ? ['Busca: ' + busca] : []),
+      ],
+      colunas: [{ titulo: 'Empresa / cliente' }, { titulo: 'Tipo' }, { titulo: 'Título' }, { titulo: 'Situação' }, { titulo: 'Aberto em' }, { titulo: 'Última atualização' }],
+      linhas: processosFiltrados.map((p: any) => [
+        p.empresas?.razao_social || p.cliente_nome || '—', TIPO_LABELS[p.tipo] ?? p.tipo ?? '—', p.titulo || '—',
+        situacao(p.status), data(p.created_at), data(p.updated_at || p.created_at),
+      ]),
+    }
+  }
 
   // ─── Fetch ─────────────────────────────────────────────────────────────────
 
@@ -952,6 +972,8 @@ function SocietarioPageInner() {
           </h1>
           <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">{empresaNomeSoc || orgName}</p>
         </div>
+        <div className="flex flex-wrap items-center gap-2">
+        <BotaoRelatorio gerar={relatorio} />
         {isViewer ? (
           <span className="flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-700 px-5 py-2.5 rounded-2xl text-xs font-bold uppercase tracking-wide">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -965,6 +987,7 @@ function SocietarioPageInner() {
             + NOVO PROCESSO
           </button>
         )}
+        </div>
       </header>
 
       {/* Barra de pesquisa */}
