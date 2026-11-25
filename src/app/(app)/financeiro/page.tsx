@@ -177,6 +177,58 @@ function FieldSelect({ label, children, ...props }: { label: string } & React.Se
   )
 }
 
+// ── Contas recorrentes ─────────────────────────────────────────────────────────
+// Uma "série" é o conjunto de lançamentos recorrentes com o mesmo fornecedor e a mesma descrição.
+const MESES_PROVISIONADOS = 12
+let provisionando = false  // evita lançar em dobro se a tela carregar duas vezes ao mesmo tempo
+const chaveSerie = (c: any) => `${c.fornecedor_id || ''}|${String(c.descricao || '').trim().toLowerCase()}`
+
+/** Mesmo dia do mês, ajustado ao último dia quando o mês é mais curto (31 → 30, 28...) */
+function dataNoMes(anoBase: number, mesBase0: number, dia: number) {
+  const ref = new Date(anoBase, mesBase0, 1)  // normaliza meses fora de 0–11
+  const ano = ref.getFullYear(), mes0 = ref.getMonth()
+  const ultimo = new Date(ano, mes0 + 1, 0).getDate()
+  return `${ano}-${String(mes0 + 1).padStart(2, '0')}-${String(Math.min(dia, ultimo)).padStart(2, '0')}`
+}
+
+/** Lançamentos que faltam para cada série recorrente ficar provisionada até 12 meses à frente */
+function faltandoRecorrentes(pagar: any[], orgId: string) {
+  const series = new Map<string, any[]>()
+  for (const c of pagar) {
+    if (!c.recorrente || !c.data_vencimento) continue
+    const k = chaveSerie(c)
+    series.set(k, [...(series.get(k) || []), c])
+  }
+  const hoje = new Date()
+  const limite = dataNoMes(hoje.getFullYear(), hoje.getMonth() + MESES_PROVISIONADOS, 31)
+  const inicioMesPassado = dataNoMes(hoje.getFullYear(), hoje.getMonth() - 1, 1)
+  const novos: any[] = []
+  for (const itens of series.values()) {
+    itens.sort((a, b) => a.data_vencimento.localeCompare(b.data_vencimento))
+    const primeiro = itens[0]
+    const ultimo = itens[itens.length - 1]
+    if (ultimo.status === 'cancelado') continue
+    // série parada há mais de um mês (conta que deixou de existir): não ressuscita
+    if (ultimo.data_vencimento < inicioMesPassado) continue
+    const dia = Number(primeiro.data_vencimento.slice(8, 10))
+    let ano = Number(ultimo.data_vencimento.slice(0, 4))
+    let mes0 = Number(ultimo.data_vencimento.slice(5, 7)) - 1
+    for (let i = 0; i < 36; i++) {
+      mes0++
+      if (mes0 > 11) { mes0 = 0; ano++ }
+      const venc = dataNoMes(ano, mes0, dia)
+      if (venc > limite) break
+      novos.push({
+        org_id: orgId, fornecedor_id: ultimo.fornecedor_id || null, categoria_id: ultimo.categoria_id || null,
+        centro_custo_id: ultimo.centro_custo_id || null, descricao: ultimo.descricao, valor: ultimo.valor,
+        data_vencimento: venc, forma_pagamento: ultimo.forma_pagamento, recorrente: true, status: 'a_pagar',
+        observacoes: ultimo.observacoes || null,
+      })
+    }
+  }
+  return novos
+}
+
 /** Seletor de mês: setas, grade com os 12 meses, "Mês atual" e "Todos os meses" */
 function MesSeletor({ mes, onChange }: { mes: string; onChange: (m: string) => void }) {
   const [aberto, setAberto] = useState(false)
@@ -320,7 +372,20 @@ export default function FinanceiroPage() {
       supabase.from('bm_contas_bancarias').select('*').eq('org_id', orgId).eq('ativa', true).order('nome'),
     ])
     setReceber(rR.data || [])
-    setPagar(rP.data || [])
+    let listaPagar = rP.data || []
+    // Contas recorrentes: garante os próximos 12 meses lançados
+    if (orgId && listaPagar.length && !provisionando) {
+      provisionando = true
+      const novos = faltandoRecorrentes(listaPagar, orgId)
+      if (novos.length) {
+        const { data: criados, error } = await supabase.from('bm_contas_pagar').insert(novos)
+          .select('*, fornecedor:bm_fornecedores(nome), categoria:bm_categorias(nome), centro:bm_centros_custo(nome)')
+        if (error) toast.error('Não foi possível lançar os próximos meses das contas recorrentes: ' + error.message)
+        else listaPagar = [...listaPagar, ...(criados || [])].sort((a, b) => String(a.data_vencimento).localeCompare(String(b.data_vencimento)))
+      }
+      provisionando = false
+    }
+    setPagar(listaPagar)
     setClientes(rCl.data || [])
     setFornecedores(rFo.data || [])
     setCategorias(rCa.data || [])
@@ -422,11 +487,39 @@ export default function FinanceiroPage() {
       observacoes: formP.observacoes.trim() || null,
     }
     if (!editId) p.status = 'a_pagar'
+    const original = editId ? pagar.find(x => x.id === editId) : null
     const { error } = editId
       ? await supabase.from('bm_contas_pagar').update(p).eq('id', editId)
       : await supabase.from('bm_contas_pagar').insert([p])
-    if (!error) { toast.success(editId ? 'Atualizado!' : 'Criado!'); setModalP(false); fetchAll() }
-    else toast.error(error.message)
+    if (error) { toast.error(error.message); return }
+
+    // Editando uma conta recorrente: os meses seguintes ainda em aberto da mesma série
+    if (original?.recorrente) {
+      const futuros = pagar.filter(x => x.id !== original.id && x.recorrente && x.status === 'a_pagar'
+        && chaveSerie(x) === chaveSerie(original) && x.data_vencimento > original.data_vencimento)
+      if (futuros.length) {
+        const ids = futuros.map(x => x.id)
+        if (!formP.recorrente) {
+          if (confirm(`Recorrência encerrada. Excluir também os ${futuros.length} lançamentos futuros em aberto desta conta?`)) {
+            const r = await supabase.from('bm_contas_pagar').delete().in('id', ids)
+            if (r.error) toast.error('Não foi possível excluir os próximos meses: ' + r.error.message)
+          }
+          // tira a marca de recorrente da série para o sistema não lançar de novo
+          await supabase.from('bm_contas_pagar').update({ recorrente: false }).in('id', pagar.filter(x => chaveSerie(x) === chaveSerie(original)).map(x => x.id))
+        } else {
+          const mudou = original.valor !== p.valor || original.descricao !== p.descricao || original.fornecedor_id !== p.fornecedor_id
+            || original.categoria_id !== p.categoria_id || original.centro_custo_id !== p.centro_custo_id || original.forma_pagamento !== p.forma_pagamento
+          if (mudou && confirm(`Aplicar esta alteração também aos ${futuros.length} meses seguintes em aberto?`)) {
+            const { org_id, data_vencimento, status, observacoes, recorrente, ...campos } = p
+            const r = await supabase.from('bm_contas_pagar').update(campos).in('id', ids)
+            if (r.error) toast.error('Não foi possível atualizar os próximos meses: ' + r.error.message)
+          }
+        }
+      }
+    }
+    toast.success(editId ? 'Atualizado!' : formP.recorrente ? `Criado! Os próximos ${MESES_PROVISIONADOS} meses foram lançados.` : 'Criado!')
+    setModalP(false)
+    fetchAll()
   }
 
   function abrirPagamento(p: any) {
@@ -454,18 +547,6 @@ export default function FinanceiroPage() {
         descricao: p.descricao, tipo: 'debito', valor: totalPago,
         forma_pagamento: p.forma_pagamento, origem: 'contas_pagar', origem_id: p.id,
       }])
-    }
-    if (p.recorrente) {
-      const d = new Date(p.data_vencimento + 'T00:00:00')
-      d.setMonth(d.getMonth() + 1)
-      const nd = d.toISOString().split('T')[0]
-      if (confirm('Conta recorrente — criar próximo vencimento em ' + fmtDate(nd) + '?')) {
-        await supabase.from('bm_contas_pagar').insert([{
-          org_id: orgId, fornecedor_id: p.fornecedor_id, categoria_id: p.categoria_id,
-          centro_custo_id: p.centro_custo_id, descricao: p.descricao, valor: p.valor,
-          data_vencimento: nd, forma_pagamento: p.forma_pagamento, recorrente: true, status: 'a_pagar',
-        }])
-      }
     }
     toast.success('Pagamento registrado!')
     setModalPagto(false)
@@ -1537,7 +1618,7 @@ export default function FinanceiroPage() {
                     <input type="checkbox" checked={formP.recorrente} onChange={e => setFormP({ ...formP, recorrente: e.target.checked })} className="w-4 h-4 accent-violet-600 flex-shrink-0" />
                     <div>
                       <p className="text-sm font-semibold text-violet-700">Conta recorrente mensal</p>
-                      <p className="text-xs text-violet-400 mt-0.5">Ao pagar, pergunta se cria o próximo mês automaticamente</p>
+                      <p className="text-xs text-violet-400 mt-0.5">Lança automaticamente os próximos 12 meses, no mesmo dia de vencimento</p>
                     </div>
                   </label>
                 </div>
