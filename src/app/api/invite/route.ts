@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     if (!email || !role || !orgId) {
       return NextResponse.json({ error: 'email, role e orgId são obrigatórios.' }, { status: 400 })
     }
-    if (!['admin', 'operador', 'viewer'].includes(role)) {
+    if (!['admin', 'operador', 'viewer', 'financeiro'].includes(role)) {
       return NextResponse.json({ error: 'role inválido.' }, { status: 400 })
     }
 

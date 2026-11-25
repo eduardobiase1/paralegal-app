@@ -7,7 +7,7 @@ import { formatDate } from '@/lib/utils'
 import Modal from '@/components/ui/Modal'
 import toast from 'react-hot-toast'
 
-type OrgRole = 'admin' | 'operador' | 'viewer'
+type OrgRole = 'admin' | 'operador' | 'viewer' | 'financeiro'
 
 interface MemberProfile {
   nome: string
@@ -32,18 +32,21 @@ const ROLE_LABELS: Record<OrgRole, string> = {
   admin: 'Administrador',
   operador: 'Operador',
   viewer: 'Visualizador',
+  financeiro: 'Financeiro',
 }
 
 const ROLE_COLORS: Record<OrgRole, string> = {
   admin: 'bg-amber-100 text-amber-700',
   operador: 'bg-blue-100 text-blue-700',
   viewer: 'bg-slate-100 text-slate-600',
+  financeiro: 'bg-emerald-100 text-emerald-700',
 }
 
 const ROLE_DESCRIPTIONS: Record<OrgRole, string> = {
   admin: 'Gerencia usuários, configurações e todos os módulos',
   operador: 'Cria e edita registros em todos os módulos',
   viewer: 'Visualiza apenas o Módulo Societário (somente leitura)',
+  financeiro: 'Acessa somente o módulo Financeiro desta organização',
 }
 
 export default function UsuariosPage() {
@@ -244,6 +247,7 @@ export default function UsuariosPage() {
                           <option value="admin">Administrador</option>
                           <option value="operador">Operador</option>
                           <option value="viewer">Visualizador</option>
+                          <option value="financeiro">Financeiro</option>
                         </select>
                       ) : (
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ROLE_COLORS[m.role]}`}>
@@ -350,7 +354,7 @@ export default function UsuariosPage() {
               Nível de acesso
             </label>
             <div className="space-y-2">
-              {(['admin', 'operador', 'viewer'] as OrgRole[]).map(r => (
+              {(['admin', 'operador', 'viewer', 'financeiro'] as OrgRole[]).map(r => (
                 <label
                   key={r}
                   className={`flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
