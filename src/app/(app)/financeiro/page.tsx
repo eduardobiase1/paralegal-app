@@ -59,7 +59,23 @@ function fmtDate(d: string | null) {
   if (!d) return '—'
   return new Date(d + 'T00:00:00').toLocaleDateString('pt-BR')
 }
-function today() { return new Date().toISOString().split('T')[0] }
+function today() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+const mesAtual = () => today().slice(0, 7)
+const MESES_NOME = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro']
+function mesLabel(mes: string) {
+  if (mes === 'todos') return 'Todos os meses'
+  const [a, m] = mes.split('-')
+  const n = MESES_NOME[parseInt(m) - 1]
+  return n.charAt(0).toUpperCase() + n.slice(1) + ' de ' + a
+}
+function somaMes(mes: string, delta: number) {
+  const [a, m] = mes.split('-').map(Number)
+  const d = new Date(a, m - 1 + delta, 1)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
 function fmtShort(n: number) {
   const abs = Math.abs(n)
   if (abs >= 1000000) return 'R$' + (n / 1000000).toFixed(1) + 'M'
@@ -161,6 +177,68 @@ function FieldSelect({ label, children, ...props }: { label: string } & React.Se
   )
 }
 
+/** Seletor de mês: setas, grade com os 12 meses, "Mês atual" e "Todos os meses" */
+function MesSeletor({ mes, onChange }: { mes: string; onChange: (m: string) => void }) {
+  const [aberto, setAberto] = useState(false)
+  const [ano, setAno] = useState(() => Number((mes === 'todos' ? mesAtual() : mes).slice(0, 4)))
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!aberto) return
+    const fechar = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setAberto(false) }
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setAberto(false) }
+    document.addEventListener('mousedown', fechar); document.addEventListener('keydown', esc)
+    return () => { document.removeEventListener('mousedown', fechar); document.removeEventListener('keydown', esc) }
+  }, [aberto])
+  const base = mes === 'todos' ? mesAtual() : mes
+  const btn = 'inline-flex items-center justify-center h-9 rounded-lg border border-slate-300 bg-white text-sm font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-40'
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <div ref={ref} className="relative flex items-center gap-1">
+        <button onClick={() => onChange(somaMes(base, -1))} aria-label="Mês anterior" className={btn + ' w-9'}>‹</button>
+        <button onClick={() => { setAno(Number(base.slice(0, 4))); setAberto(v => !v) }} aria-expanded={aberto}
+          className={btn + ' px-3 min-w-[11rem]'}>{mesLabel(mes)}</button>
+        <button onClick={() => onChange(somaMes(base, 1))} aria-label="Próximo mês" className={btn + ' w-9'}>›</button>
+        {aberto && (
+          <div className="absolute left-0 top-11 z-30 w-72 bg-white border border-slate-200 rounded-xl shadow-lg p-3">
+            <div className="flex items-center justify-between mb-2">
+              <button onClick={() => setAno(a => a - 1)} aria-label="Ano anterior" className={btn + ' w-8 h-8'}>‹</button>
+              <span className="text-sm font-semibold text-slate-900">{ano}</span>
+              <button onClick={() => setAno(a => a + 1)} aria-label="Próximo ano" className={btn + ' w-8 h-8'}>›</button>
+            </div>
+            <div className="grid grid-cols-3 gap-1.5">
+              {MESES_PT.map((nome, i) => {
+                const valor = `${ano}-${String(i + 1).padStart(2, '0')}`
+                const sel = valor === mes
+                return (
+                  <button key={valor} onClick={() => { onChange(valor); setAberto(false) }}
+                    className={`h-9 rounded-lg text-sm font-medium ${sel ? 'bg-slate-900 text-white' : valor === mesAtual() ? 'border border-slate-400 text-slate-900 hover:bg-slate-50' : 'text-slate-700 hover:bg-slate-100'}`}>
+                    {nome}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+      <button onClick={() => onChange(mesAtual())} disabled={mes === mesAtual()} className={btn + ' px-3'}>Mês atual</button>
+      <button onClick={() => onChange('todos')} disabled={mes === 'todos'} className={btn + ' px-3'}>Todos os meses</button>
+    </div>
+  )
+}
+
+function Totais({ itens }: { itens: Array<{ label: string; valor: number; cor?: string }> }) {
+  return (
+    <div className="flex flex-wrap gap-x-8 gap-y-2 px-6 py-3 border-b border-slate-100 bg-slate-50/60">
+      {itens.map(t => (
+        <div key={t.label}>
+          <p className="text-xs text-slate-500">{t.label}</p>
+          <p className={`text-base font-bold tabular-nums ${t.cor || 'text-slate-900'}`}>{fmt(t.valor)}</p>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function StatusBadge({ status, map }: { status: string; map: typeof STATUS_R }) {
   const s = map[status]
   if (!s) return <span className="text-xs text-slate-400">{status}</span>
@@ -199,6 +277,10 @@ export default function FinanceiroPage() {
   const [contaSel, setContaSel] = useState('')
   const [filterR, setFilterR] = useState('todos')
   const [filterP, setFilterP] = useState('todos')
+  // Mês escolhido: vale para A Receber, A Pagar e Extrato, e fica lembrado
+  const [mesSel, setMesSel] = useState(mesAtual)
+  useEffect(() => { try { const m = localStorage.getItem('fin_mes'); if (m) setMesSel(m) } catch {} }, [])
+  function escolherMes(m: string) { setMesSel(m); try { localStorage.setItem('fin_mes', m) } catch {} }
   const [loading, setLoading] = useState(true)
 
   const [modalR, setModalR] = useState(false)
@@ -475,6 +557,51 @@ export default function FinanceiroPage() {
     balanco += e.tipo === 'credito' ? e.valor : -e.valor
     return { ...e, saldo: balanco }
   })
+
+  // ── Filtro por mês (pelo vencimento) ──────────────────────────────────────────
+  const noMes = (d?: string | null) => mesSel === 'todos' || (!!d && d.startsWith(mesSel))
+  const inicioMes = mesSel === 'todos' ? '' : mesSel + '-01'
+  const mostrarAnteriores = mesSel === mesAtual()
+  const somaV = (arr: any[]) => arr.reduce((s, x) => s + (Number(x.valor) || 0), 0)
+  const somaPago = (arr: any[]) => arr.reduce((s, x) => s + (Number(x.valor_pago) || Number(x.valor) || 0), 0)
+
+  const statusR = (r: any) => r.status === 'aguardando' && r.data_vencimento < hj ? 'vencido' : r.status
+  const receberMes = receber.filter(r => noMes(r.data_vencimento))
+  const receberAnt = mostrarAnteriores ? receber.filter(r => r.status === 'aguardando' && r.data_vencimento < inicioMes) : []
+  const passaR = (r: any) => filterR === 'todos' || statusR(r) === filterR
+  const linhasR = [
+    ...receberAnt.filter(passaR).map(r => ({ ...r, _anterior: true })),
+    ...receberMes.filter(passaR).map(r => ({ ...r, _anterior: false })),
+  ]
+  const totaisR = [
+    { label: 'Previsto no mês', valor: somaV(receberMes.filter(r => r.status !== 'cancelado')) },
+    { label: 'Recebido', valor: somaPago(receberMes.filter(r => r.status === 'pago')), cor: 'text-emerald-700' },
+    { label: 'Falta receber', valor: somaV(receberMes.filter(r => statusR(r) === 'aguardando')), cor: 'text-blue-700' },
+    { label: 'Vencido', valor: somaV(receberMes.filter(r => statusR(r) === 'vencido')), cor: 'text-red-700' },
+    ...(receberAnt.length ? [{ label: 'Atrasado de meses anteriores', valor: somaV(receberAnt), cor: 'text-red-700' }] : []),
+  ]
+
+  const statusP = (p: any) => p.status === 'a_pagar' && p.data_vencimento < hj ? 'vencido' : p.status
+  const pagarMes = pagar.filter(p => noMes(p.data_vencimento))
+  const pagarAnt = mostrarAnteriores ? pagar.filter(p => p.status === 'a_pagar' && p.data_vencimento < inicioMes) : []
+  const passaP = (p: any) => filterP === 'todos' || statusP(p) === filterP
+  const linhasP = [
+    ...pagarAnt.filter(passaP).map(p => ({ ...p, _anterior: true })),
+    ...pagarMes.filter(passaP).map(p => ({ ...p, _anterior: false })),
+  ]
+  const totaisP = [
+    { label: 'Previsto no mês', valor: somaV(pagarMes.filter(p => p.status !== 'cancelado')) },
+    { label: 'Pago', valor: somaPago(pagarMes.filter(p => p.status === 'pago')), cor: 'text-emerald-700' },
+    { label: 'Falta pagar', valor: somaV(pagarMes.filter(p => statusP(p) === 'a_pagar')), cor: 'text-amber-700' },
+    { label: 'Vencido', valor: somaV(pagarMes.filter(p => statusP(p) === 'vencido')), cor: 'text-red-700' },
+    ...(pagarAnt.length ? [{ label: 'Atrasado de meses anteriores', valor: somaV(pagarAnt), cor: 'text-red-700' }] : []),
+  ]
+
+  const extratoMes = extratoSaldo.filter(e => noMes(e.data))
+  const antesDoMes = mesSel === 'todos' ? [] : extratoSaldo.filter(e => e.data < inicioMes)
+  const saldoAnterior = antesDoMes.length ? antesDoMes[antesDoMes.length - 1].saldo : saldo0
+  const entradasMes = extratoMes.filter(e => e.tipo === 'credito').reduce((s, e) => s + (Number(e.valor) || 0), 0)
+  const saidasMes = extratoMes.filter(e => e.tipo !== 'credito').reduce((s, e) => s + (Number(e.valor) || 0), 0)
 
   // ── Conciliação OFX/CSV ───────────────────────────────────────────────────────
   function isJaLancado(txn: any) {
@@ -870,6 +997,10 @@ export default function FinanceiroPage() {
         {/* ── A RECEBER ── */}
         {tab === 'receber' && (
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100">
+              <MesSeletor mes={mesSel} onChange={escolherMes} />
+            </div>
+            {mesSel !== 'todos' && <Totais itens={totaisR} />}
             <div className="px-6 py-4 border-b border-slate-50 flex flex-wrap items-center gap-2">
               {['todos', 'aguardando', 'vencido', 'pago', 'cancelado'].map(f => (
                 <button key={f} onClick={() => setFilterR(f)}
@@ -888,14 +1019,17 @@ export default function FinanceiroPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {receber.filter(r => filterR === 'todos' || r.status === filterR).map(r => {
+                  {linhasR.map(r => {
                     const atrasado = r.status === 'aguardando' && r.data_vencimento < hj
                     return (
                       <tr key={r.id} className={`hover:bg-slate-50/60 transition-colors ${atrasado ? 'bg-red-50/20' : ''}`}>
                         <td className="px-5 py-3.5 text-sm font-semibold text-slate-800">{r.cliente?.nome || '—'}</td>
                         <td className="px-5 py-3.5 text-sm text-slate-500">{r.descricao}</td>
                         <td className="px-5 py-3.5 text-xs text-slate-400">{r.numero_nf || '—'}{r.parcela_total > 1 ? ` · ${r.parcela_numero}/${r.parcela_total}` : ''}</td>
-                        <td className={`px-5 py-3.5 text-sm tabular-nums ${atrasado ? 'text-red-600 font-semibold' : 'text-slate-600'}`}>{fmtDate(r.data_vencimento)}</td>
+                        <td className={`px-5 py-3.5 text-sm tabular-nums ${atrasado ? 'text-red-600 font-semibold' : 'text-slate-600'}`}>
+                          {fmtDate(r.data_vencimento)}
+                          {r._anterior && <span className="block text-xs font-medium text-red-600">de mês anterior</span>}
+                        </td>
                         <td className="px-5 py-3.5 text-sm font-bold text-slate-900 tabular-nums">{fmt(r.valor)}</td>
                         <td className="px-5 py-3.5 text-xs text-slate-400">{FORMA_LABELS[r.forma_pagamento] || r.forma_pagamento}</td>
                         <td className="px-5 py-3.5"><StatusBadge status={atrasado ? 'vencido' : r.status} map={STATUS_R} /></td>
@@ -914,7 +1048,7 @@ export default function FinanceiroPage() {
                       </tr>
                     )
                   })}
-                  {!loading && receber.filter(r => filterR === 'todos' || r.status === filterR).length === 0 && (
+                  {!loading && linhasR.length === 0 && (
                     <tr><td colSpan={8} className="px-5 py-16 text-center text-sm text-slate-400">Nenhum lançamento encontrado.</td></tr>
                   )}
                 </tbody>
@@ -926,6 +1060,10 @@ export default function FinanceiroPage() {
         {/* ── A PAGAR ── */}
         {tab === 'pagar' && (
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100">
+              <MesSeletor mes={mesSel} onChange={escolherMes} />
+            </div>
+            {mesSel !== 'todos' && <Totais itens={totaisP} />}
             <div className="px-6 py-4 border-b border-slate-50 flex flex-wrap items-center gap-2">
               {['todos', 'a_pagar', 'vencido', 'pago', 'cancelado'].map(f => (
                 <button key={f} onClick={() => setFilterP(f)}
@@ -944,7 +1082,7 @@ export default function FinanceiroPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {pagar.filter(p => filterP === 'todos' || p.status === filterP).map(p => {
+                  {linhasP.map(p => {
                     const atrasado = p.status === 'a_pagar' && p.data_vencimento < hj
                     return (
                       <tr key={p.id} className={`hover:bg-slate-50/60 transition-colors ${atrasado ? 'bg-red-50/20' : ''}`}>
@@ -955,7 +1093,10 @@ export default function FinanceiroPage() {
                         </td>
                         <td className="px-5 py-3.5 text-xs text-slate-400">{p.categoria?.nome || '—'}</td>
                         <td className="px-5 py-3.5 text-xs text-slate-400">{p.centro?.nome || '—'}</td>
-                        <td className={`px-5 py-3.5 text-sm tabular-nums ${atrasado ? 'text-red-600 font-semibold' : 'text-slate-600'}`}>{fmtDate(p.data_vencimento)}</td>
+                        <td className={`px-5 py-3.5 text-sm tabular-nums ${atrasado ? 'text-red-600 font-semibold' : 'text-slate-600'}`}>
+                          {fmtDate(p.data_vencimento)}
+                          {p._anterior && <span className="block text-xs font-medium text-red-600">de mês anterior</span>}
+                        </td>
                         <td className="px-5 py-3.5 tabular-nums">
                           <span className="text-sm font-bold text-slate-900">{fmt(p.valor)}</span>
                           {p.status === 'pago' && ((p.juros || 0) + (p.multa || 0)) > 0 && (
@@ -980,7 +1121,7 @@ export default function FinanceiroPage() {
                       </tr>
                     )
                   })}
-                  {!loading && pagar.filter(p => filterP === 'todos' || p.status === filterP).length === 0 && (
+                  {!loading && linhasP.length === 0 && (
                     <tr><td colSpan={8} className="px-5 py-16 text-center text-sm text-slate-400">Nenhum lançamento encontrado.</td></tr>
                   )}
                 </tbody>
@@ -992,6 +1133,7 @@ export default function FinanceiroPage() {
         {/* ── EXTRATO ── */}
         {tab === 'extrato' && (
           <div className="space-y-4">
+            <MesSeletor mes={mesSel} onChange={escolherMes} />
             <div className="flex flex-wrap items-center gap-4">
               {contas.length > 0 && (
                 <select value={contaSel} onChange={e => setContaSel(e.target.value)}
@@ -1003,6 +1145,11 @@ export default function FinanceiroPage() {
               {extratoSaldo.length > 0 && (
                 <span className={`text-sm font-bold tabular-nums ${extratoSaldo[extratoSaldo.length - 1].saldo >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                   Saldo atual: {fmt(extratoSaldo[extratoSaldo.length - 1].saldo)}
+                </span>
+              )}
+              {mesSel !== 'todos' && (
+                <span className="text-sm text-slate-600">
+                  No mês: entradas <strong className="text-emerald-700 tabular-nums">{fmt(entradasMes)}</strong> · saídas <strong className="text-red-700 tabular-nums">{fmt(saidasMes)}</strong>
                 </span>
               )}
             </div>
@@ -1029,11 +1176,11 @@ export default function FinanceiroPage() {
                     <tbody className="divide-y divide-slate-50">
                       <tr className="bg-slate-50/40">
                         <td className="px-5 py-3 text-xs text-slate-400">—</td>
-                        <td className="px-5 py-3 text-xs text-slate-400 italic">Saldo inicial</td>
+                        <td className="px-5 py-3 text-xs text-slate-400 italic">{mesSel === 'todos' ? 'Saldo inicial' : 'Saldo anterior'}</td>
                         <td /><td /><td />
-                        <td className="px-5 py-3 text-sm font-bold text-slate-700 text-right tabular-nums">{fmt(saldo0)}</td>
+                        <td className="px-5 py-3 text-sm font-bold text-slate-700 text-right tabular-nums">{fmt(mesSel === 'todos' ? saldo0 : saldoAnterior)}</td>
                       </tr>
-                      {extratoSaldo.map(e => (
+                      {extratoMes.map(e => (
                         <tr key={e.id} className="hover:bg-slate-50/60 transition-colors">
                           <td className="px-5 py-3.5 text-xs text-slate-500 tabular-nums">{fmtDate(e.data)}</td>
                           <td className="px-5 py-3.5">
@@ -1058,8 +1205,8 @@ export default function FinanceiroPage() {
                           </td>
                         </tr>
                       ))}
-                      {extratoSaldo.length === 0 && (
-                        <tr><td colSpan={6} className="px-5 py-16 text-center text-sm text-slate-400">Nenhuma movimentação registrada.</td></tr>
+                      {extratoMes.length === 0 && (
+                        <tr><td colSpan={6} className="px-5 py-16 text-center text-sm text-slate-400">{mesSel === 'todos' ? 'Nenhuma movimentação registrada.' : 'Nenhuma movimentação neste mês.'}</td></tr>
                       )}
                     </tbody>
                   </table>
