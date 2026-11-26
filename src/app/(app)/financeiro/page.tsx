@@ -338,7 +338,17 @@ export default function FinanceiroPage() {
   // Mês escolhido: vale para A Receber, A Pagar e Extrato, e fica lembrado
   const [mesSel, setMesSel] = useState(mesAtual)
   useEffect(() => { try { const m = localStorage.getItem('fin_mes'); if (m) setMesSel(m) } catch {} }, [])
-  function escolherMes(m: string) { setMesSel(m); try { localStorage.setItem('fin_mes', m) } catch {} }
+  function escolherMes(m: string) { setMesSel(m); setDiaSel(''); try { localStorage.setItem('fin_mes', m) } catch {} }
+  // Extrato: filtro por dia, para conciliar com o banco
+  const [diaSel, setDiaSel] = useState('')
+  function escolherDia(d: string) {
+    setDiaSel(d)
+    if (d) { setMesSel(d.slice(0, 7)); try { localStorage.setItem('fin_mes', d.slice(0, 7)) } catch {} }
+  }
+  function somaDia(d: string, delta: number) {
+    const x = new Date((d || today()) + 'T00:00:00'); x.setDate(x.getDate() + delta)
+    return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`
+  }
   const [loading, setLoading] = useState(true)
 
   const [modalR, setModalR] = useState(false)
@@ -684,8 +694,9 @@ export default function FinanceiroPage() {
     ...(pagarAnt.length ? [{ label: 'Atrasado de meses anteriores', valor: somaV(pagarAnt), cor: 'text-red-700' }] : []),
   ]
 
-  const extratoMes = extratoSaldo.filter(e => noMes(e.data))
-  const antesDoMes = mesSel === 'todos' ? [] : extratoSaldo.filter(e => e.data < inicioMes)
+  const semCorte = !diaSel && mesSel === 'todos'
+  const extratoMes = extratoSaldo.filter(e => diaSel ? e.data === diaSel : noMes(e.data))
+  const antesDoMes = semCorte ? [] : extratoSaldo.filter(e => e.data < (diaSel || inicioMes))
   const saldoAnterior = antesDoMes.length ? antesDoMes[antesDoMes.length - 1].saldo : saldo0
   const entradasMes = extratoMes.filter(e => e.tipo === 'credito').reduce((s, e) => s + (Number(e.valor) || 0), 0)
   const saidasMes = extratoMes.filter(e => e.tipo !== 'credito').reduce((s, e) => s + (Number(e.valor) || 0), 0)
@@ -728,17 +739,17 @@ export default function FinanceiroPage() {
   })
   const relExtrato = (): Relatorio => ({
     titulo: 'Extrato bancário', organizacao: orgName, arquivo: 'extrato_' + mesSel,
-    filtros: [contaObj ? contaObj.nome + (contaObj.banco ? ' · ' + contaObj.banco : '') : 'Conta', mesSel === 'todos' ? 'Todos os meses' : mesLabel(mesSel)],
+    filtros: [contaObj ? contaObj.nome + (contaObj.banco ? ' · ' + contaObj.banco : '') : 'Conta', diaSel ? 'Dia ' + fmtDate(diaSel) : mesSel === 'todos' ? 'Todos os meses' : mesLabel(mesSel)],
     colunas: [{ titulo: 'Data' }, { titulo: 'Descrição' }, { titulo: 'Tipo' }, { titulo: 'Débito', moeda: true }, { titulo: 'Crédito', moeda: true }, { titulo: 'Saldo', moeda: true }],
     linhas: [
-      ['—', mesSel === 'todos' ? 'Saldo inicial' : 'Saldo anterior', '', null, null, mesSel === 'todos' ? saldo0 : saldoAnterior],
+      ['—', semCorte ? 'Saldo inicial' : 'Saldo anterior', '', null, null, semCorte ? saldo0 : saldoAnterior],
       ...extratoMes.map(e => [fmtDate(e.data), e.descricao + (e.observacoes ? ' — ' + e.observacoes : ''), e.tipo === 'credito' ? 'Entrada' : 'Saída',
         e.tipo === 'debito' ? Number(e.valor) : null, e.tipo === 'credito' ? Number(e.valor) : null, e.saldo]),
     ],
     totais: [
       { label: 'Entradas', valor: fmt(entradasMes) },
       { label: 'Saídas', valor: fmt(saidasMes) },
-      { label: 'Saldo final', valor: fmt(extratoMes.length ? extratoMes[extratoMes.length - 1].saldo : (mesSel === 'todos' ? saldo0 : saldoAnterior)) },
+      { label: diaSel ? 'Saldo no fim do dia' : 'Saldo final', valor: fmt(extratoMes.length ? extratoMes[extratoMes.length - 1].saldo : (semCorte ? saldo0 : saldoAnterior)) },
     ],
   })
 
@@ -1276,6 +1287,18 @@ export default function FinanceiroPage() {
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-3">
               <MesSeletor mes={mesSel} onChange={escolherMes} />
+              <div className="flex items-center gap-1">
+                <span className="text-sm text-slate-600 mr-1">Dia</span>
+                <button onClick={() => escolherDia(somaDia(diaSel, -1))} aria-label="Dia anterior"
+                  className="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-slate-300 bg-white text-sm font-semibold text-slate-800 hover:bg-slate-50">‹</button>
+                <input type="date" value={diaSel} onChange={e => escolherDia(e.target.value)} aria-label="Filtrar por dia"
+                  className={`h-9 px-2 rounded-lg border text-sm ${diaSel ? 'border-slate-900 text-slate-900 font-semibold' : 'border-slate-300 text-slate-700'} bg-white`} />
+                <button onClick={() => escolherDia(somaDia(diaSel, 1))} aria-label="Próximo dia"
+                  className="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-slate-300 bg-white text-sm font-semibold text-slate-800 hover:bg-slate-50">›</button>
+                {diaSel && (
+                  <button onClick={() => setDiaSel('')} className="h-9 px-3 text-sm font-semibold text-slate-600 hover:text-slate-900 hover:underline">Ver o mês todo</button>
+                )}
+              </div>
               {contas.length > 0 && <BotoesRelatorio gerar={relExtrato} />}
             </div>
             <div className="flex flex-wrap items-center gap-4">
@@ -1291,9 +1314,10 @@ export default function FinanceiroPage() {
                   Saldo atual: {fmt(extratoSaldo[extratoSaldo.length - 1].saldo)}
                 </span>
               )}
-              {mesSel !== 'todos' && (
+              {!semCorte && (
                 <span className="text-sm text-slate-600">
-                  No mês: entradas <strong className="text-emerald-700 tabular-nums">{fmt(entradasMes)}</strong> · saídas <strong className="text-red-700 tabular-nums">{fmt(saidasMes)}</strong>
+                  {diaSel ? 'No dia ' + fmtDate(diaSel) : 'No mês'}: entradas <strong className="text-emerald-700 tabular-nums">{fmt(entradasMes)}</strong> · saídas <strong className="text-red-700 tabular-nums">{fmt(saidasMes)}</strong>
+                  {diaSel && <> · saldo no fim do dia <strong className="text-slate-900 tabular-nums">{fmt(extratoMes.length ? extratoMes[extratoMes.length - 1].saldo : saldoAnterior)}</strong></>}
                 </span>
               )}
             </div>
@@ -1320,13 +1344,15 @@ export default function FinanceiroPage() {
                     <tbody className="divide-y divide-slate-50">
                       <tr className="bg-slate-50/40">
                         <td className="px-5 py-3 text-xs text-slate-400">—</td>
-                        <td className="px-5 py-3 text-xs text-slate-400 italic">{mesSel === 'todos' ? 'Saldo inicial' : 'Saldo anterior'}</td>
+                        <td className="px-5 py-3 text-xs text-slate-400 italic">{semCorte ? 'Saldo inicial' : 'Saldo anterior'}</td>
                         <td /><td /><td />
-                        <td className="px-5 py-3 text-sm font-bold text-slate-700 text-right tabular-nums">{fmt(mesSel === 'todos' ? saldo0 : saldoAnterior)}</td>
+                        <td className="px-5 py-3 text-sm font-bold text-slate-700 text-right tabular-nums">{fmt(semCorte ? saldo0 : saldoAnterior)}</td>
                       </tr>
                       {extratoMes.map(e => (
                         <tr key={e.id} className="hover:bg-slate-50/60 transition-colors">
-                          <td className="px-5 py-3.5 text-xs text-slate-500 tabular-nums">{fmtDate(e.data)}</td>
+                          <td className="px-5 py-3.5 text-xs text-slate-500 tabular-nums">
+                            <button onClick={() => escolherDia(e.data)} title="Ver só este dia" className="hover:text-slate-900 hover:underline">{fmtDate(e.data)}</button>
+                          </td>
                           <td className="px-5 py-3.5">
                             <p className="text-sm text-slate-800">{e.descricao}</p>
                             {e.observacoes && <p className="text-xs text-slate-400 mt-0.5">{e.observacoes}</p>}
@@ -1350,7 +1376,7 @@ export default function FinanceiroPage() {
                         </tr>
                       ))}
                       {extratoMes.length === 0 && (
-                        <tr><td colSpan={6} className="px-5 py-16 text-center text-sm text-slate-400">{mesSel === 'todos' ? 'Nenhuma movimentação registrada.' : 'Nenhuma movimentação neste mês.'}</td></tr>
+                        <tr><td colSpan={6} className="px-5 py-16 text-center text-sm text-slate-400">{semCorte ? 'Nenhuma movimentação registrada.' : diaSel ? 'Nenhuma movimentação neste dia.' : 'Nenhuma movimentação neste mês.'}</td></tr>
                       )}
                     </tbody>
                   </table>
